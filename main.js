@@ -1386,3 +1386,38 @@ async function subirFotoCliente(){
     }
   });
 })();
+
+// ─── SCROLL → HASH (botón atrás del celular) ─────────────────────────────────
+(function(){
+  const secciones = ['inicio','promociones','catalogo','mayoreo','nosotros','contacto','tiktok-section'];
+  let ultimaSeccion = '';
+  let scrollManual = false;
+
+  const obs = new IntersectionObserver((entries) => {
+    if(scrollManual) return;
+    entries.forEach(entry => {
+      if(entry.isIntersecting){
+        const id = entry.target.id;
+        if(id && secciones.includes(id) && id !== ultimaSeccion){
+          ultimaSeccion = id;
+          // replaceState para no llenar el historial con cada scroll
+          // pushState solo al dar clic en menú (ya existe arriba)
+          history.replaceState(null, null, '#' + id);
+        }
+      }
+    });
+  }, { threshold: 0.35 });
+
+  function iniciarObservador(){
+    secciones.forEach(id => {
+      const el = document.getElementById(id);
+      if(el) obs.observe(el);
+    });
+  }
+
+  if(document.readyState === 'loading'){
+    document.addEventListener('DOMContentLoaded', iniciarObservador);
+  } else {
+    iniciarObservador();
+  }
+})();
