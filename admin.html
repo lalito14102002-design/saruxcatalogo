@@ -1,0 +1,1707 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>SARUX — Panel de Administración</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Space+Mono:wght@400;700&family=Rajdhani:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  /* VARIABLES */
+  :root {
+    --black:#060606; --dark:#0e0e0e; --card:#141414; --card2:#1a1a1a;
+    --neon:#e8192c; --neon2:#ff003c; --neon3:#ff6b35;
+    --gray:#777; --light:#e0e0e0; --white:#fff; --border:rgba(255,255,255,0.06);
+    --font-display:'Bebas Neue',sans-serif;
+    --font-mono:'Space Mono',monospace;
+    --font-body:'Rajdhani',sans-serif;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:var(--black);color:var(--light);font-family:var(--font-body);overflow-x:hidden}
+
+  /* ESTADÍSTICAS */
+  .stat-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:1rem;margin-bottom:2rem}
+  .stat-card{background:var(--card);border:1px solid var(--border);padding:1.2rem;border-top:2px solid var(--neon)}
+  .stat-card-num{font-family:var(--font-display);font-size:2.5rem;color:var(--neon);line-height:1}
+  .stat-card-label{font-family:var(--font-mono);font-size:.5rem;letter-spacing:2px;color:var(--gray);margin-top:.3rem;text-transform:uppercase}
+  .stats-table{width:100%;border-collapse:collapse;margin-bottom:1.5rem}
+  .stats-table th{font-family:var(--font-mono);font-size:.5rem;letter-spacing:2px;color:var(--neon);text-align:left;padding:.5rem .8rem;border-bottom:1px solid rgba(232,25,44,.2)}
+  .stats-table td{font-size:.8rem;padding:.5rem .8rem;border-bottom:1px solid var(--border);color:var(--light)}
+  .stats-table td:last-child{text-align:right;font-family:var(--font-mono);color:var(--neon)}
+  .stats-bar-wrap{background:rgba(255,255,255,.04);height:4px;border-radius:2px;margin-top:.3rem}
+  .stats-bar{height:4px;border-radius:2px;background:linear-gradient(90deg,var(--neon),var(--neon3));transition:width .6s ease}
+
+  /* CONFIRM DELETE */
+  .confirm-overlay{position:fixed;inset:0;background:rgba(0,0,0,.95);z-index:9999999;display:none;align-items:center;justify-content:center}
+  .confirm-overlay.show{display:flex}
+  .confirm-box{background:#0a0a0a;border:1px solid rgba(232,25,44,.3);border-top:3px solid var(--neon);padding:2rem;max-width:360px;width:90%;text-align:center}
+  .confirm-title{font-family:var(--font-display);font-size:1.5rem;color:var(--white);margin-bottom:.5rem}
+  .confirm-msg{font-family:var(--font-mono);font-size:.6rem;color:var(--gray);margin-bottom:1.5rem}
+  .confirm-btns{display:flex;gap:1rem}
+  .confirm-yes,.confirm-no{background:var(--neon);border:none;padding:.8rem;color:#000;cursor:pointer;flex:1}
+  .confirm-no{background:none;border:1px solid rgba(255,255,255,.2);color:var(--gray)}
+
+  /* ADMIN LOGIN */
+  #adminLoginOverlay{position:fixed;inset:0;background:rgba(0,0,0,.98);z-index:99999;display:flex;align-items:center;justify-content:center}
+  .admin-login-box{background:#0a0a0a;border:1px solid rgba(232,25,44,.3);padding:2rem;max-width:400px;width:90%;text-align:center;position:relative}
+  .admin-login-box h2{font-family:var(--font-display);font-size:2rem;letter-spacing:4px;color:var(--white)}
+  .admin-login-step{margin-bottom:1rem}
+  .admin-login-step-label{font-family:var(--font-mono);font-size:.55rem;color:var(--neon);display:block;text-align:left}
+  .admin-login-input{width:100%;background:#0d0d0d;border:1px solid rgba(232,25,44,.3);padding:.8rem;color:var(--white);font-family:monospace}
+  .admin-login-btn{width:100%;background:var(--neon);border:none;padding:.8rem;color:#000;font-weight:bold;cursor:pointer;margin-top:1rem}
+  .admin-login-err{color:var(--neon);margin-top:.5rem;display:none}
+  .admin-close-login{position:absolute;top:.5rem;right:1rem;background:none;border:none;color:gray;font-size:1.5rem;cursor:pointer}
+
+  /* ADMIN PANEL */
+  #adminPanel{position:fixed;inset:0;background:#0c0c0c;z-index:99998;display:none;flex-direction:column}
+  #adminPanel.show{display:flex}
+  .admin-topbar{background:#080808;border-bottom:2px solid var(--neon);padding:.8rem 1rem;display:flex;justify-content:space-between;align-items:center}
+  .admin-topbar-title{font-family:var(--font-display);font-size:1.2rem;color:var(--white)}
+  .admin-topbar-title span{color:var(--neon)}
+  .admin-exit-btn{background:rgba(232,25,44,.2);border:1px solid var(--neon);color:var(--neon);padding:.3rem .8rem;cursor:pointer}
+  .admin-menu-btn{background:none;border:1px solid #333;color:white;padding:.3rem .7rem;cursor:pointer;display:none}
+  .admin-save-float{position:fixed;bottom:1rem;left:30%;transform:translateX(-50%);background:var(--neon);border:none;padding:.8rem 2rem;color:#000;font-weight:bold;cursor:pointer;z-index:99999;display:none}
+  .admin-body{display:flex;flex:1;overflow:hidden}
+  .admin-sidebar{width:260px;background:#080808;border-right:1px solid rgba(232,25,44,.1);overflow-y:auto;flex-shrink:0}
+  .admin-nav-group{padding:.5rem 0}
+  .admin-nav-label{font-family:var(--font-mono);font-size:.5rem;color:rgba(255,255,255,.2);padding:.5rem 1rem}
+  .admin-nav-btn{width:100%;background:none;border:none;padding:.8rem 1rem;text-align:left;color:#aaa;cursor:pointer;display:flex;gap:.7rem;border-left:3px solid transparent}
+  .admin-nav-btn.active{color:var(--neon);border-left-color:var(--neon);background:rgba(232,25,44,.1)}
+  .admin-main{flex:1;overflow-y:auto;padding:1rem 1.5rem}
+  .admin-section{display:none}
+  .admin-section.active{display:block}
+  .admin-section-title{font-family:var(--font-display);font-size:1.8rem;letter-spacing:4px;color:var(--white);margin-bottom:.2rem}
+  .admin-section-sub{font-family:var(--font-mono);font-size:.5rem;color:var(--gray);margin-bottom:1.5rem}
+  .admin-card{background:#111;border:1px solid rgba(255,255,255,.07);padding:1rem;margin-bottom:1rem}
+  .admin-card-title{font-family:var(--font-mono);font-size:.6rem;color:var(--neon);border-bottom:1px solid rgba(232,25,44,.1);padding-bottom:.5rem;margin-bottom:.8rem}
+  .admin-field{margin-bottom:.8rem}
+  .admin-field label{display:block;font-family:var(--font-mono);font-size:.55rem;color:var(--gray);margin-bottom:.2rem}
+  .admin-input,.admin-textarea,.admin-select{width:100%;background:#080808;border:1px solid #333;padding:.6rem;color:white;font-family:inherit}
+  .admin-textarea{min-height:80px;resize:vertical}
+  .admin-grid-2{display:grid;grid-template-columns:1fr 1fr;gap:.8rem}
+  .admin-grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:.8rem}
+  .admin-toggle{display:flex;align-items:center;gap:.5rem;cursor:pointer}
+  .toggle-track{width:44px;height:24px;background:#333;border-radius:12px;position:relative}
+  .toggle-track::after{content:'';position:absolute;width:18px;height:18px;background:white;border-radius:50%;top:3px;left:3px;transition:transform .2s}
+  .admin-toggle input:checked + .toggle-track{background:var(--neon)}
+  .admin-toggle input:checked + .toggle-track::after{transform:translateX(20px)}
+  .color-preview-wrap{display:flex;align-items:center;gap:.5rem}
+  .color-preview-dot{width:36px;height:36px;border-radius:4px;border:1px solid #333}
+  .admin-img-upload{border:2px dashed rgba(232,25,44,.3);padding:1rem;text-align:center;cursor:pointer;position:relative}
+  .admin-img-upload input{position:absolute;inset:0;opacity:0;cursor:pointer}
+  .admin-img-upload p{font-size:.6rem;color:gray}
+  .admin-img-preview{max-width:100%;max-height:100px;margin-top:.5rem;display:none}
+  .admin-product-list{display:flex;flex-direction:column;gap:.5rem}
+  .admin-product-item{background:#080808;padding:.5rem;display:flex;align-items:center;gap:.5rem}
+  .admin-product-name{flex:1}
+  .admin-product-price{color:var(--neon)}
+  .admin-btn-sm{background:none;border:1px solid #444;padding:.2rem .5rem;color:#ccc;cursor:pointer}
+  .admin-btn-sm.danger:hover{border-color:#ff4444;color:#ff4444}
+  .admin-btn-add{background:rgba(232,25,44,.1);border:1px dashed var(--neon);padding:.6rem;color:var(--neon);cursor:pointer;width:100%;margin-top:.5rem}
+  .admin-modal{position:fixed;inset:0;background:rgba(0,0,0,.95);z-index:999999;display:none;align-items:center;justify-content:center}
+  .admin-modal.show{display:flex}
+  .admin-modal-box{background:#0a0a0a;border-top:2px solid var(--neon);width:90%;max-width:650px;max-height:90vh;overflow-y:auto;padding:1.5rem;position:relative}
+  .admin-modal-title{font-family:var(--font-display);font-size:1.4rem;color:var(--white);margin-bottom:1rem}
+  .admin-modal-close{position:absolute;top:.5rem;right:1rem;background:none;border:none;color:gray;font-size:1.5rem;cursor:pointer}
+  .admin-modal-save{background:var(--neon);border:none;padding:.8rem;color:#000;cursor:pointer;width:100%;margin-top:1rem}
+  .security-info{background:rgba(232,25,44,.1);padding:1rem;border-left:3px solid var(--neon);font-size:.7rem;margin-bottom:1rem}
+  .diseno-admin-row{display:flex;align-items:center;gap:.5rem;background:#111;padding:.5rem;margin-bottom:.5rem}
+  .diseno-admin-row img{width:40px;height:40px;object-fit:cover}
+  .admin-notif{position:fixed;bottom:5rem;left:50%;transform:translateX(-50%);background:#000;border:1px solid var(--neon);padding:.5rem 1rem;color:var(--neon);z-index:999999;opacity:0;transition:opacity .2s;pointer-events:none}
+  .admin-notif.show{opacity:1}
+  .grid-control-row{display:flex;align-items:center;gap:.8rem;margin-bottom:.8rem;padding:.7rem 1rem;background:#080808}
+  .grid-control-label{flex:1;font-family:var(--font-mono);font-size:.55rem}
+  .grid-cols-btns{display:flex;gap:.4rem}
+  .grid-col-btn{padding:.4rem .8rem;background:none;border:1px solid #444;color:#aaa;cursor:pointer}
+  .grid-col-btn.active{border-color:var(--neon);color:var(--neon)}
+  @media (max-width:768px){
+    .admin-menu-btn{display:block}
+    .admin-sidebar{position:fixed;left:-100%;top:0;width:80%;height:100%;z-index:99999;transition:left .3s}
+    .admin-sidebar.open{left:0}
+    .admin-grid-2,.admin-grid-3{grid-template-columns:1fr}
+  }
+</style>
+<!-- SDK de Supabase -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+
+<!-- CONFIRM DELETE -->
+<div class="confirm-overlay" id="confirmOverlay">
+  <div class="confirm-box">
+    <div class="confirm-title">¿ELIMINAR?</div>
+    <div class="confirm-msg" id="confirmMsg">¿Seguro que quieres eliminar?</div>
+    <div class="confirm-btns">
+      <button class="confirm-no" onclick="closeConfirm()">Cancelar</button>
+      <button class="confirm-yes" onclick="doConfirmDelete()">Eliminar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL EDITAR RESEÑA -->
+<div class="admin-modal" id="editResenaModal">
+  <div class="admin-modal-box" style="max-width:500px">
+    <button class="admin-modal-close" onclick="cerrarEditResena()">✕</button>
+    <div class="admin-modal-title">✏️ Editar reseña</div>
+    <input type="hidden" id="edit-resena-id">
+    <div class="admin-field"><label>Nombre del cliente</label><input class="admin-input" id="edit-resena-nombre"></div>
+    <div class="admin-field"><label>Producto</label><input class="admin-input" id="edit-resena-producto"></div>
+    <div class="admin-field"><label>Reseña</label><textarea class="admin-textarea" id="edit-resena-texto" rows="4"></textarea></div>
+    <div class="admin-field">
+      <label>Calificación</label>
+      <div id="edit-resena-stars" style="display:flex;gap:.5rem;font-size:1.8rem;cursor:pointer;margin-top:.3rem">
+        <span class="edit-star" data-val="1">☆</span>
+        <span class="edit-star" data-val="2">☆</span>
+        <span class="edit-star" data-val="3">☆</span>
+        <span class="edit-star" data-val="4">☆</span>
+        <span class="edit-star" data-val="5">☆</span>
+      </div>
+    </div>
+    <button class="admin-modal-save" onclick="guardarEdicionResena()">💾 GUARDAR CAMBIOS</button>
+  </div>
+</div>
+
+<!-- LOGIN Supabase Auth -->
+<div id="adminLoginOverlay">
+  <div class="admin-login-box">
+    <button class="admin-close-login" onclick="closeAdminLogin()">✕</button>
+    <div style="font-size:2.5rem;">🔐</div>
+    <h2>ADMIN <span style="color:var(--neon)">SARUX</span></h2>
+    <p class="admin-section-sub" style="margin-bottom:1rem">Inicia sesión con tu cuenta</p>
+    <div class="admin-login-step">
+      <span class="admin-login-step-label">📧 Correo electrónico</span>
+      <input type="email" id="adminEmail" class="admin-login-input" placeholder="admin@tudominio.com">
+    </div>
+    <div class="admin-login-step">
+      <span class="admin-login-step-label">🔑 Contraseña</span>
+      <input type="password" id="adminPassword" class="admin-login-input" placeholder="Contraseña">
+    </div>
+    <button class="admin-login-btn" onclick="loginAdmin()">ENTRAR</button>
+    <div class="admin-login-err" id="adminErr">Credenciales incorrectas</div>
+  </div>
+</div>
+
+<!-- MODAL PRODUCTO -->
+<div class="admin-modal" id="adminProdModal">
+  <div class="admin-modal-box">
+    <button class="admin-modal-close" onclick="closeProdModal()">✕</button>
+    <div class="admin-modal-title" id="adminModalTitle">Editar Producto</div>
+    <div class="admin-field"><label>Nombre</label><input class="admin-input" id="pm-nombre"></div>
+    <div class="admin-grid-2">
+      <div class="admin-field"><label>Precio (MXN)</label><input class="admin-input" id="pm-precio" type="number"></div>
+      <div class="admin-field"><label>Stock</label><input class="admin-input" id="pm-stock" type="number"></div>
+    </div>
+    <div class="admin-field"><label>Descripción</label><textarea class="admin-textarea" id="pm-desc"></textarea></div>
+    <div class="admin-field"><label>Colores (separados por coma)</label><input class="admin-input" id="pm-colores"></div>
+    <div class="admin-field"><label>Tallas (separadas por coma)</label><input class="admin-input" id="pm-tallas"></div>
+    <div class="admin-field">
+      <label>Tipo <span style="font-size:.6rem;color:var(--gray)">(ej: Taza 11oz, Taza Mágica)</span></label>
+      <select class="admin-input" id="pm-tipo" style="cursor:pointer">
+        <option value="">Sin tipo</option>
+      </select>
+    </div>
+    <div class="admin-field">
+      <label>Categoría <span style="font-size:.6rem;color:var(--gray)">(ej: Anime, Fútbol, Cine)</span></label>
+      <div id="pm-temas-checkboxes" style="display:flex;flex-wrap:wrap;gap:.5rem;margin-bottom:.5rem"></div>
+      <div style="display:flex;gap:.5rem">
+        <input class="admin-input" id="pm-tema-custom" placeholder="Agregar nueva categoría..." style="flex:1" onkeydown="if(event.key==='Enter'){event.preventDefault();agregarTemaCustom();}">
+        <button class="admin-btn-sm" onclick="agregarTemaCustom()" style="white-space:nowrap">+ Agregar</button>
+      </div>
+    </div>
+    <div class="admin-field"><label>Diseño / Serie <span style="font-size:.6rem;color:var(--gray)">(ej: Dragon Ball, Naruto)</span></label><input class="admin-input" id="pm-subtema" placeholder="ej: Dragon Ball"></div>
+    <div class="admin-field">
+      <label>Imagen principal</label>
+      <div class="admin-img-upload"><input type="file" accept="image/*" onchange="uploadProdImg(this)"><p>Subir imagen</p><img id="pm-img-preview" class="admin-img-preview"></div>
+      <input class="admin-input" id="pm-imagen" placeholder="O URL">
+    </div>
+    <div class="admin-field">
+      <label>Diseños adicionales (cada diseño con imagen)</label>
+      <div id="pm-disenos-list"></div>
+      <div style="display:flex;gap:.5rem">
+        <button class="admin-btn-sm" onclick="addDiseno()" style="width:auto;flex:1">+ Agregar diseño</button>
+        <label class="admin-btn-sm" style="width:auto;flex:1;cursor:pointer;text-align:center;background:rgba(232,25,44,.15);border-color:rgba(232,25,44,.4)">📤 Varias imágenes<input type="file" multiple accept="image/*" style="display:none" onchange="uploadMasivoDisenos(this)"></label>
+      </div>
+    </div>
+    <div class="admin-field">
+      <label style="color:var(--neon)">⭐ Personajes / Sub-diseños <span style="font-size:.6rem;color:var(--gray);font-weight:300">(ej: Goku, Vegeta, Freezer — cada uno con sus diseños)</span></label>
+      <div style="font-family:var(--font-mono);font-size:.55rem;color:var(--gray);margin-bottom:.6rem;letter-spacing:1px">Al agregar personajes, la tarjeta abrirá una galería en lugar del modal de compra.</div>
+      <div id="pm-personajes-list"></div>
+      <button class="admin-btn-sm" onclick="addPersonaje()" style="width:100%;margin-top:.4rem">+ Agregar personaje</button>
+    </div>
+    <div class="admin-field"><label>Badge</label><select class="admin-select" id="pm-badge"><option value="">Sin badge</option><option>Popular</option><option>Más vendido</option><option>Nuevo</option></select></div>
+    <button class="admin-modal-save" onclick="saveProdModal()">Guardar producto</button>
+  </div>
+</div>
+
+<!-- PANEL PRINCIPAL -->
+<div id="adminPanel">
+  <div class="admin-topbar">
+    <button class="admin-menu-btn" onclick="toggleSidebar()">☰</button>
+    <div class="admin-topbar-title">ADMIN <span>SARUX</span></div>
+    <button class="admin-exit-btn" onclick="exitAdmin()">Salir</button>
+  </div>
+  <div class="admin-body">
+    <div class="admin-sidebar" id="adminSidebar">
+      <div style="padding:1rem; border-bottom:1px solid #222;">SECCIONES</div>
+      <div class="admin-nav-group"><span class="admin-nav-label">📋 General</span>
+        <button class="admin-nav-btn active" onclick="showSec('negocio',this)">🏪 Mi negocio</button>
+        <button class="admin-nav-btn" onclick="showSec('redes',this)">📱 Redes sociales</button>
+        <button class="admin-nav-btn" onclick="showSec('logo',this)">🖼️ Logo</button>
+        <button class="admin-nav-btn" onclick="showSec('seguridad',this)">🔐 Seguridad</button>
+      </div>
+      <div class="admin-nav-group"><span class="admin-nav-label">🎨 Apariencia</span>
+        <button class="admin-nav-btn" onclick="showSec('colores',this)">🎨 Colores</button>
+        <button class="admin-nav-btn" onclick="showSec('tipografia',this)">🔤 Tipografía</button>
+        <button class="admin-nav-btn" onclick="showSec('hero',this)">🦸 Hero</button>
+        <button class="admin-nav-btn" onclick="showSec('cuadricula',this)">⊞ Cuadrículas</button>
+      </div>
+      <div class="admin-nav-group"><span class="admin-nav-label">🖌️ Personalización</span>
+        <button class="admin-nav-btn" onclick="showSec('imagenes-personalizacion',this)">🖼️ Galería personalización</button>
+        <button class="admin-nav-btn" onclick="showSec('imagen-lluvia',this)">🌧️ Imagen de lluvia</button>
+      </div>
+      <div class="admin-nav-group"><span class="admin-nav-label">📝 Contenido</span>
+        <button class="admin-nav-btn" onclick="showSec('popup',this)">🎁 Popup</button>
+        <button class="admin-nav-btn" onclick="showSec('promos',this)">🔥 Promociones</button>
+        <button class="admin-nav-btn" onclick="showSec('productos',this)">📦 Catálogo</button>
+        <button class="admin-nav-btn" onclick="showSec('filtros',this)">🔍 Filtros</button>
+        <button class="admin-nav-btn" onclick="showSec('vendidos',this)">⭐ Más vendidos</button>
+        <button class="admin-nav-btn" onclick="showSec('mayoreo',this)">🎊 Mayoreo</button>
+        <button class="admin-nav-btn" onclick="showSec('resenas',this)">💬 Reseñas</button>
+        <button class="admin-nav-btn" onclick="showSec('lanzamientos',this)">🚀 Lanzamientos</button>
+        <button class="admin-nav-btn" onclick="showSec('estadisticas',this);loadStats()">📊 Estadísticas</button>
+        <button class="admin-nav-btn" onclick="showSec('faqs',this)">❓ Preguntas</button>
+        <button class="admin-nav-btn" onclick="showSec('ig-posts',this)">📸 Instagram</button>
+        <button class="admin-nav-btn" onclick="showSec('tt-posts',this)">🎵 TikTok</button>
+        <button class="admin-nav-btn" onclick="showSec('fotos-clientes',this);cargarFotosClientesAdmin()">📷 Fotos Reales</button>
+        <button class="admin-nav-btn" onclick="showSec('nosotros',this)">ℹ️ Sobre nosotros</button>
+        <button class="admin-nav-btn" onclick="showSec('pasos',this)">👣 Cómo pedir</button>
+        <button class="admin-nav-btn" onclick="showSec('ticker',this)">📢 Ticker</button>
+        <button class="admin-nav-btn" onclick="showSec('nube',this)">☁️ Subir a internet</button>
+      </div>
+    </div>
+    <div class="admin-main" id="adminMain"></div>
+  </div>
+</div>
+<button class="admin-save-float" id="saveFloatBtn" onclick="guardarTodo()">💾 GUARDAR TODO</button>
+<div class="admin-notif" id="adminNotif"></div>
+
+<script>
+    // CONFIGURACIÓN DE SUPABASE
+  const SUPABASE_URL = 'https://ngavbeiochxdvgzcywuh.supabase.co';  
+  const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5nYXZiZWlvY2h4ZHZnemN5d3VoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgxODU5NDMsImV4cCI6MjA5Mzc2MTk0M30.Cu0qst-ff8ZKLTvJoauCOssCFdrp1csmilbqWByCM0E'; 
+  const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  // DATOS POR DEFECTO 
+  const DEFAULTS = {
+    NEGOCIO: { nombre:"SARUX", descripcion:"Diseños originales", whatsapp:"522229250603", instagram:"https://instagram.com/sarux", facebook:"https://facebook.com/sarux", tiktok:"https://tiktok.com/@sarux", tiktok_user:"@sarux", hero_frase1:"DISEÑO", hero_frase2:"QUE", hero_frase3:"HABLA", icono_instagram:"", icono_whatsapp:"", icono_facebook:"", icono_tiktok:"" },
+    COLORES: { fondo:"#060606", tarjetas:"#141414", acento:"#e8192c", acento2:"#ff6b35", texto:"#e0e0e0", gris:"#777777" },
+    FUENTES: { display:"'Bebas Neue',sans-serif", mono:"'Space Mono',monospace", body:"'Rajdhani',sans-serif" },
+    POPUP: { activo:true, emoji:"🎁", titulo:"BIENVENIDO", descripcion:"Ofertas increíbles", boton:"Ver catálogo" },
+    TICKER: ["PLAYERAS","TAZAS","TERMOS","SARUX"],
+    LOGO: "",
+    PROMOCIONES: [],
+    MAS_VENDIDOS: [{ nombre:"Playera Eclipse", categoria:"Playeras", precio:350, emoji:"👕", imagen:"", badge:"Popular", tallas:["S","M","L"], colores:["Negro"] }],
+    CATALOGO: [{ nombre:"Tazas", emoji:"☕", activa:true, imagen_portada:"", productos:[{ nombre:"Taza Goku", precio:180, colores:["Negro"], tallas:[], stock:10, imagen:"", descripcion:"Taza anime", temas:["Anime"], subtema:"Dragon Ball", disenos:[] }] }],
+    MAYOREO: { activo:true, subtitulo:"Bodas · XV Años", descripcion:"Precios especiales", minimo:"10 piezas", descuento:"30%", entrega:"7 días", whatsapp_msg:"Hola, quiero cotizar mayoreo", eventos:[{ nombre:"Bodas", emoji:"💍", descripcion:"Recuerdos personalizados" }], paquetes:[{ nombre:"Pack Básico", piezas:"10-24", precio:"$300", emoji:"📦", incluye:"Playera" }] },
+    LANZAMIENTOS: [{ nombre:"Colección Verano", fecha:"Mayo", descripcion:"Nuevos diseños", emoji:"🔥", imagen:"", activo:true }],
+    FAQS: [{ pregunta:"¿Hacen envíos?", respuesta:"Sí, a toda la República." }],
+    RESENAS: [{ texto:"Excelente calidad", autor:"Cliente", estrellas:5, activa:true }],
+    NOSOTROS: { titulo:"SOMOS SARUX", parrafo1:"Marca de diseños originales.", parrafo2:"Calidad garantizada.", parrafo3:"Contáctanos." },
+    PASOS: [{ emoji:"🔍", titulo:"Explora", desc:"Encuentra tu producto" }],
+    PASOS_TITULO:"CÓMO PEDIR", PASOS_LABEL:"Es fácil",
+    FOTOS_NOSOTROS: [{ emoji:"📸", texto:"Foto", imagen:"" }],
+    IG_POSTS: [{ titulo:"Post", imagen:"", url:"" }],
+    TIKTOK_POSTS: [{ titulo:"Video", imagen:"", url:"" }],
+    GRID_CONFIG: { productos:3, masVendidos:4, promos:2, lanzamientos:3 },
+    CARD_RATIO: "4/5",
+    CARD_FIT: "contain",
+    IMAGENES_PERSONALIZACION: [],  
+    IMAGEN_LLUVIA: "",
+    LLUVIA_CONFIG: {activa:true, cantidad:20, velocidad:2, espera:0}
+  };
+
+  // Variables globales sincronizadas con APP_DATA
+  let APP_DATA = {};
+  let NEGOCIO, COLORES, FUENTES, POPUP_D, TICKER_D, LOGO_D;
+  window.FILTROS_GLOBALES_D = {tipos:[], categorias:[], disenos:[]};
+  let PROMOCIONES_D, MAS_VENDIDOS_D, CATALOGO_D, MAYOREO_D, LANZAMIENTOS_D, FAQS_D, RESENAS_D, NOSOTROS_D;
+  let GRID_CONFIG = DEFAULTS.GRID_CONFIG, CARD_RATIO = DEFAULTS.CARD_RATIO, CARD_FIT = DEFAULTS.CARD_FIT;
+  let IMAGENES_PERSONALIZACION = [];   
+  let IMAGEN_LLUVIA = "";
+  let LLUVIA_CONFIG = {activa:true, cantidad:20, velocidad:2, espera:0};
+
+  // FUNCIONES DE SUPABASE 
+  async function loadAllFromSupabase() {
+    const { data, error } = await sb
+      .from('site_config')
+      .select('config_data')
+      .eq('id', 1)
+      .single();
+    if (error || !data) {
+      console.warn('Usando datos por defecto, error:', error);
+      APP_DATA = JSON.parse(JSON.stringify(DEFAULTS));
+    } else {
+      APP_DATA = { ...DEFAULTS, ...data.config_data };
+      // Asegurar que los nuevos campos existan
+      if (!APP_DATA.IMAGENES_PERSONALIZACION) APP_DATA.IMAGENES_PERSONALIZACION = [];
+      if (!APP_DATA.IMAGEN_LLUVIA) APP_DATA.IMAGEN_LLUVIA = "";
+    }
+    syncGlobalsFromAppData();
+  }
+
+  async function saveAllToSupabase() {
+    const { error } = await sb
+      .from('site_config')
+      .upsert({ id: 1, config_data: APP_DATA, updated_at: new Date() });
+    if (error) {
+      showNotif('❌ Error al guardar en Supabase: ' + error.message);
+    } else {
+      // Limpiar cache para que clientes vean cambios al recargar
+      try { localStorage.removeItem('sarux_cfg'); } catch(e){}
+      showNotif('✅ Datos guardados en la nube');
+    }
+  }
+
+  function syncGlobalsFromAppData() {
+    NEGOCIO = APP_DATA.NEGOCIO;
+    COLORES = APP_DATA.COLORES;
+    FUENTES = APP_DATA.FUENTES;
+    POPUP_D = APP_DATA.POPUP;
+    TICKER_D = APP_DATA.TICKER;
+    LOGO_D = APP_DATA.LOGO;
+    PROMOCIONES_D = APP_DATA.PROMOCIONES;
+    MAS_VENDIDOS_D = APP_DATA.MAS_VENDIDOS;
+    CATALOGO_D = APP_DATA.CATALOGO;
+    MAYOREO_D = APP_DATA.MAYOREO;
+    LANZAMIENTOS_D = APP_DATA.LANZAMIENTOS;
+    FAQS_D = APP_DATA.FAQS;
+    RESENAS_D = APP_DATA.RESENAS;
+    NOSOTROS_D = APP_DATA.NOSOTROS;
+    window.PASOS_D = APP_DATA.PASOS;
+    window.PASOS_TITULO_D = APP_DATA.PASOS_TITULO;
+    window.PASOS_LABEL_D = APP_DATA.PASOS_LABEL;
+    window.FOTOS_NOSOTROS_D = APP_DATA.FOTOS_NOSOTROS;
+    window.IG_POSTS_D = APP_DATA.IG_POSTS;
+    window.TIKTOK_POSTS_D = APP_DATA.TIKTOK_POSTS;
+    GRID_CONFIG = APP_DATA.GRID_CONFIG || DEFAULTS.GRID_CONFIG;
+    CARD_RATIO = APP_DATA.CARD_RATIO || DEFAULTS.CARD_RATIO;
+    CARD_FIT = APP_DATA.CARD_FIT || DEFAULTS.CARD_FIT;
+    IMAGENES_PERSONALIZACION = APP_DATA.IMAGENES_PERSONALIZACION || [];
+    IMAGEN_LLUVIA = APP_DATA.IMAGEN_LLUVIA || "";
+    LLUVIA_CONFIG = APP_DATA.LLUVIA_CONFIG || {activa:true, cantidad:20, velocidad:2, espera:0};
+    window.FILTROS_GLOBALES_D = APP_DATA.FILTROS_GLOBALES || {tipos:[],categorias:[],disenos:[]};
+    if(!APP_DATA.FOTOS_CLIENTES_CFG) APP_DATA.FOTOS_CLIENTES_CFG = {activo:true, titulo:'FOTOS REALES'};
+  }
+
+  // SUBIDA DE IMÁGENES A SUPABASE STORAGE
+  async function uploadToStorage(file, folder = '') {
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${Date.now()}_${Math.random().toString(36).substr(2, 9)}.${fileExt}`;
+    const filePath = folder ? `${folder}/${fileName}` : fileName;
+    const { data, error } = await sb.storage
+      .from('images')
+      .upload(filePath, file, {
+        cacheControl: '3600',
+        upsert: false
+      });
+    if (error) throw error;
+    const { data: { publicUrl } } = sb.storage.from('images').getPublicUrl(data.path);
+    return publicUrl;
+  }
+
+  // AUTENTICACIÓN 
+  async function loginAdmin() {
+    const email = document.getElementById('adminEmail').value.trim();
+    const password = document.getElementById('adminPassword').value;
+    const errEl = document.getElementById('adminErr');
+    errEl.style.display = 'none';
+    const { data, error } = await sb.auth.signInWithPassword({ email, password });
+    if (error) {
+      errEl.textContent = error.message;
+      errEl.style.display = 'block';
+      return;
+    }
+    document.getElementById('adminLoginOverlay').style.display = 'none';
+    document.getElementById('adminPanel').classList.add('show');
+    document.getElementById('saveFloatBtn').style.display = 'block';
+    await loadAllFromSupabase();
+    loadAllAdminFields();
+  }
+
+  async function exitAdmin() {
+    await sb.auth.signOut();
+    document.getElementById('adminPanel').classList.remove('show');
+    document.getElementById('saveFloatBtn').style.display = 'none';
+    document.getElementById('adminLoginOverlay').style.display = 'flex';
+    document.getElementById('adminEmail').value = '';
+    document.getElementById('adminPassword').value = '';
+    document.getElementById('adminErr').style.display = 'none';
+  }
+
+  async function initAuth() {
+    const { data: { session } } = await sb.auth.getSession();
+    if (session) {
+      document.getElementById('adminLoginOverlay').style.display = 'none';
+      document.getElementById('adminPanel').classList.add('show');
+      document.getElementById('saveFloatBtn').style.display = 'block';
+      await loadAllFromSupabase();
+      loadAllAdminFields();
+    }
+  }
+
+  function closeAdminLogin() {
+    document.getElementById('adminLoginOverlay').style.display = 'none';
+  }
+
+  // UTILERÍAS 
+  let _confirmCb = null;
+  function confirmDelete(msg, cb){ _confirmCb = cb; document.getElementById('confirmMsg').textContent = msg; document.getElementById('confirmOverlay').classList.add('show'); }
+  function doConfirmDelete(){ if(_confirmCb) _confirmCb(); closeConfirm(); }
+  function closeConfirm(){ document.getElementById('confirmOverlay').classList.remove('show'); _confirmCb = null; }
+  function showNotif(msg){ const n=document.getElementById('adminNotif'); n.textContent=msg; n.classList.add('show'); setTimeout(()=>n.classList.remove('show'),2000); }
+
+  // APARIENCIA 
+  function applyStyles(){
+    document.documentElement.style.setProperty('--black', COLORES.fondo);
+    document.documentElement.style.setProperty('--card', COLORES.tarjetas);
+    document.documentElement.style.setProperty('--neon', COLORES.acento);
+    document.documentElement.style.setProperty('--neon3', COLORES.acento2);
+    document.documentElement.style.setProperty('--light', COLORES.texto);
+    document.documentElement.style.setProperty('--gray', COLORES.gris);
+    document.documentElement.style.setProperty('--font-display', FUENTES.display);
+    document.documentElement.style.setProperty('--font-mono', FUENTES.mono);
+    document.documentElement.style.setProperty('--font-body', FUENTES.body);
+  }
+  function previewColors(){ applyStyles(); showNotif('Colores previsualizados'); }
+  function previewFonts(){
+    if(document.getElementById('fp-display')) document.getElementById('fp-display').style.fontFamily = FUENTES.display;
+    if(document.getElementById('fp-mono')) document.getElementById('fp-mono').style.fontFamily = FUENTES.mono;
+    if(document.getElementById('fp-body')) document.getElementById('fp-body').style.fontFamily = FUENTES.body;
+  }
+  function updateColorPreview(input, dotId){ document.getElementById(dotId).style.background=input.value; document.getElementById(dotId.replace('dp-','ct-')).value=input.value; }
+  function syncColorText(input, colorId, dotId){ const v=input.value; if(/^#[0-9A-Fa-f]{6}$/.test(v)){ document.getElementById(colorId).value=v; document.getElementById(dotId).style.background=v; } }
+
+  // LOGO 
+  const LOGO_FALLBACK = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='60' viewBox='0 0 200 60'%3E%3Crect width='200' height='60' fill='%23060606'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' fill='%23e8192c' font-family='Arial Black' font-size='28' letter-spacing='8'%3ESARUX%3C/text%3E%3C/svg%3E";
+  function getLogoSrc(){ return LOGO_D && LOGO_D.length>10 ? LOGO_D : LOGO_FALLBACK; }
+  
+  async function uploadLogo(input) {
+    const f = input.files[0];
+    if (!f) return;
+    try {
+      const url = await uploadToStorage(f, 'logo');
+      LOGO_D = url;
+      document.getElementById('logoPreview').src = LOGO_D;
+      showNotif('Logo guardado en la nube');
+    } catch(e) {
+      showNotif('Error al subir: ' + e.message);
+    }
+  }
+
+  function applyLogoUrl(){
+    const url = document.getElementById('logoUrl').value.trim();
+    if(url){
+      LOGO_D = url;
+      document.getElementById('logoPreview').src = LOGO_D;
+      showNotif('Logo actualizado (guarda para conservar)');
+    }
+  }
+
+  // SUBIDA DE IMÁGENES EN GENERAL 
+  async function uploadIconoRed(input, key) {
+    const f = input.files[0];
+    if (!f) return;
+    try {
+      const url = await uploadToStorage(f, 'iconos');
+      NEGOCIO[key] = url;
+      const prev = document.getElementById('prev-icono-' + key.replace('icono_',''));
+      if (prev) prev.innerHTML = `<img src="${url}" style="width:32px;height:32px;object-fit:contain">`;
+      showNotif('Ícono guardado');
+    } catch(e) { showNotif('Error: ' + e.message); }
+  }
+
+  async function uploadCatPortada(input, ci) {
+    const f = input.files[0];
+    if (!f) return;
+    try {
+      const url = await uploadToStorage(f, 'portadas');
+      CATALOGO_D[ci].imagen_portada = url;
+      renderAdminCatalogo();
+      showNotif('Portada actualizada');
+    } catch(e) { showNotif('Error: ' + e.message); }
+  }
+
+  async function uploadProdImg(input) {
+    const f = input.files[0];
+    if (!f) return;
+    try {
+      const url = await uploadToStorage(f, 'productos');
+      document.getElementById('pm-imagen').value = url;
+      document.getElementById('pm-img-preview').src = url;
+      document.getElementById('pm-img-preview').style.display = 'block';
+    } catch(e) { showNotif('Error: ' + e.message); }
+  }
+
+  async function uploadDisenoImg(input, idx) {
+    const f = input.files[0];
+    if (!f) return;
+    try {
+      const url = await uploadToStorage(f, 'disenos');
+      _disenosTemp[idx].imagen = url;
+      renderDisenosAdmin();
+    } catch(e) { showNotif('Error: ' + e.message); }
+  }
+
+  async function uploadFotoNosotros(input, idx) {
+    const f = input.files[0];
+    if (!f) return;
+    try {
+      const url = await uploadToStorage(f, 'nosotros');
+      window.FOTOS_NOSOTROS_D[idx].imagen = url;
+      renderAdminFotosNosotros();
+      showNotif('Foto actualizada');
+    } catch(e) { showNotif('Error: ' + e.message); }
+  }
+
+  async function uploadIgPost(input, idx) {
+    const f = input.files[0];
+    if (!f) return;
+    try {
+      const url = await uploadToStorage(f, 'ig');
+      window.IG_POSTS_D[idx].imagen = url;
+      renderAdminIgPosts();
+      showNotif('Imagen actualizada');
+    } catch(e) { showNotif('Error: ' + e.message); }
+  }
+
+  async function uploadTtPost(input, idx) {
+    const f = input.files[0];
+    if (!f) return;
+    try {
+      const url = await uploadToStorage(f, 'tiktok');
+      window.TIKTOK_POSTS_D[idx].imagen = url;
+      renderAdminTtPosts();
+      showNotif('Miniatura actualizada');
+    } catch(e) { showNotif('Error: ' + e.message); }
+  }
+
+  //  NUEVAS FUNCIONES PARA PERSONALIZACIÓN 
+  async function uploadImagenPersonalizacion(input, idx) {
+    const f = input.files[0];
+    if (!f) return;
+    try {
+      const url = await uploadToStorage(f, 'personalizacion');
+      if (idx === undefined) {
+        IMAGENES_PERSONALIZACION.push({ nombre: "Nuevo diseño", url: url });
+        renderAdminImagenesPersonalizacion();
+      } else {
+        IMAGENES_PERSONALIZACION[idx].url = url;
+        renderAdminImagenesPersonalizacion();
+      }
+      showNotif('Imagen de personalización guardada');
+    } catch(e) { showNotif('Error: ' + e.message); }
+  }
+
+  async function uploadImagenLluvia(input) {
+    const f = input.files[0];
+    if (!f) return;
+    try {
+      const url = await uploadToStorage(f, 'lluvia');
+      IMAGEN_LLUVIA = url;
+      document.getElementById('lluviaPreview').src = url;
+      document.getElementById('lluviaPreview').style.display = 'block';
+      showNotif('Imagen de lluvia actualizada');
+    } catch(e) { showNotif('Error: ' + e.message); }
+  }
+
+  function setLluviaUrl() {
+    const url = document.getElementById('lluviaUrl').value.trim();
+    if (url) {
+      IMAGEN_LLUVIA = url;
+      document.getElementById('lluviaPreview').src = url;
+      document.getElementById('lluviaPreview').style.display = 'block';
+      showNotif('URL de lluvia aplicada (guarda para conservar)');
+    }
+  }
+
+  function renderAdminImagenesPersonalizacion() {
+    const cont = document.getElementById('admin-imagenes-personalizacion-list');
+    if (!cont) return;
+    cont.innerHTML = '';
+    IMAGENES_PERSONALIZACION.forEach((img, i) => {
+      cont.innerHTML += `
+        <div class="admin-card">
+          <div class="admin-card-title">Imagen ${i+1}<button class="admin-btn-sm danger" style="float:right" onclick="confirmDelete('¿Eliminar esta imagen?',()=>{IMAGENES_PERSONALIZACION.splice(${i},1);renderAdminImagenesPersonalizacion()})">🗑️</button></div>
+          <div class="admin-field"><label>Nombre (opcional)</label><input class="admin-input" value="${img.nombre}" oninput="IMAGENES_PERSONALIZACION[${i}].nombre=this.value"></div>
+          <div class="admin-field"><label>Imagen</label><div class="admin-img-upload"><input type="file" accept="image/*" onchange="uploadImagenPersonalizacion(this,${i})"><p>Subir imagen</p></div>${img.url ? `<img src="${img.url}" style="max-height:80px; margin-top:.5rem">` : ''}<input class="admin-input" placeholder="O URL directa" value="${img.url}" oninput="IMAGENES_PERSONALIZACION[${i}].url=this.value"></div>
+        </div>`;
+    });
+  }
+
+  function addImagenPersonalizacion() {
+    IMAGENES_PERSONALIZACION.push({ nombre: "", url: "" });
+    renderAdminImagenesPersonalizacion();
+  }
+
+  // RENDERIZADO DE SECCIONES
+  function buildSectionsHTML(){
+    return `
+      <div id="sec-negocio" class="admin-section active"><div class="admin-section-title">MI NEGOCIO</div><div class="admin-card"><div class="admin-field"><label>Nombre</label><input class="admin-input" id="a-nombre"></div><div class="admin-field"><label>Descripción</label><textarea class="admin-textarea" id="a-descripcion"></textarea></div><div class="admin-field"><label>WhatsApp (código+tel)</label><input class="admin-input" id="a-whatsapp"></div></div></div>
+      <div id="sec-redes" class="admin-section"><div class="admin-section-title">REDES SOCIALES</div><div class="admin-card"><div class="admin-field"><label>Instagram URL</label><input class="admin-input" id="a-instagram"></div><div class="admin-field"><label>Ícono Instagram</label><div class="admin-img-upload"><input type="file" accept="image/*" onchange="uploadIconoRed(this,'icono_instagram')"><p>Subir ícono</p></div><div id="prev-icono-instagram" style="width:40px;height:40px;margin-bottom:.5rem"></div><button class="admin-btn-sm" onclick="quitarIconoRed('icono_instagram')">Quitar personalizado</button></div><div class="admin-field"><label>Facebook URL</label><input class="admin-input" id="a-facebook"></div><div class="admin-field"><label>Ícono Facebook</label><div class="admin-img-upload"><input type="file" accept="image/*" onchange="uploadIconoRed(this,'icono_facebook')"><p>Subir ícono</p></div><div id="prev-icono-facebook" style="width:40px;height:40px"></div><button class="admin-btn-sm" onclick="quitarIconoRed('icono_facebook')">Quitar</button></div><div class="admin-field"><label>TikTok URL</label><input class="admin-input" id="a-tiktok"></div><div class="admin-field"><label>Usuario TikTok (ej: @sarux)</label><input class="admin-input" id="a-tiktok-user"></div><div class="admin-field"><label>Ícono TikTok</label><div class="admin-img-upload"><input type="file" accept="image/*" onchange="uploadIconoRed(this,'icono_tiktok')"><p>Subir ícono</p></div><div id="prev-icono-tiktok" style="width:40px;height:40px"></div><button class="admin-btn-sm" onclick="quitarIconoRed('icono_tiktok')">Quitar</button></div><div class="admin-field"><label>WhatsApp ícono</label><div class="admin-img-upload"><input type="file" accept="image/*" onchange="uploadIconoRed(this,'icono_whatsapp')"><p>Subir ícono</p></div><div id="prev-icono-whatsapp" style="width:40px;height:40px"></div><button class="admin-btn-sm" onclick="quitarIconoRed('icono_whatsapp')">Quitar</button></div></div></div>
+      <div id="sec-logo" class="admin-section"><div class="admin-section-title">LOGO</div><div class="admin-card"><div style="text-align:center"><img id="logoPreview" style="max-height:80px; margin-bottom:1rem"></div><div class="admin-img-upload"><input type="file" accept="image/*" onchange="uploadLogo(this)"><p>Subir logo</p></div><div class="admin-field"><input class="admin-input" id="logoUrl" placeholder="URL del logo"><button class="admin-btn-add" onclick="applyLogoUrl()">Aplicar URL</button></div></div></div>
+      <div id="sec-seguridad" class="admin-section"><div class="admin-section-title">SEGURIDAD</div><div class="security-info">La autenticación se gestiona mediante Supabase Auth. Para cambiar tu contraseña, utiliza el panel de Supabase o la opción de recuperación.</div></div>
+      <div id="sec-colores" class="admin-section"><div class="admin-section-title">COLORES</div><div class="admin-card"><div class="admin-field"><label>Fondo principal</label><div class="color-preview-wrap"><input type="color" class="admin-color" id="c-fondo" oninput="updateColorPreview(this,'dp-fondo')"><div class="color-preview-dot" id="dp-fondo"></div><input class="admin-input" id="ct-fondo" oninput="syncColorText(this,'c-fondo','dp-fondo')"></div></div><div class="admin-field"><label>Fondo tarjetas</label><div class="color-preview-wrap"><input type="color" class="admin-color" id="c-tarjetas" oninput="updateColorPreview(this,'dp-tarjetas')"><div class="color-preview-dot" id="dp-tarjetas"></div><input class="admin-input" id="ct-tarjetas" oninput="syncColorText(this,'c-tarjetas','dp-tarjetas')"></div></div><div class="admin-field"><label>Color principal (acento)</label><div class="color-preview-wrap"><input type="color" class="admin-color" id="c-acento" oninput="updateColorPreview(this,'dp-acento')"><div class="color-preview-dot" id="dp-acento"></div><input class="admin-input" id="ct-acento" oninput="syncColorText(this,'c-acento','dp-acento')"></div></div><div class="admin-field"><label>Color secundario</label><div class="color-preview-wrap"><input type="color" class="admin-color" id="c-acento2" oninput="updateColorPreview(this,'dp-acento2')"><div class="color-preview-dot" id="dp-acento2"></div><input class="admin-input" id="ct-acento2" oninput="syncColorText(this,'c-acento2','dp-acento2')"></div></div><div class="admin-field"><label>Color de texto</label><div class="color-preview-wrap"><input type="color" class="admin-color" id="c-texto" oninput="updateColorPreview(this,'dp-texto')"><div class="color-preview-dot" id="dp-texto"></div><input class="admin-input" id="ct-texto" oninput="syncColorText(this,'c-texto','dp-texto')"></div></div><div class="admin-field"><label>Color gris</label><div class="color-preview-wrap"><input type="color" class="admin-color" id="c-gris" oninput="updateColorPreview(this,'dp-gris')"><div class="color-preview-dot" id="dp-gris"></div><input class="admin-input" id="ct-gris" oninput="syncColorText(this,'c-gris','dp-gris')"></div></div><button class="admin-btn-add" onclick="previewColors()">Previsualizar colores</button></div></div>
+      <div id="sec-tipografia" class="admin-section"><div class="admin-section-title">TIPOGRAFÍA</div><div class="admin-card"><div class="admin-field"><label>Fuente títulos</label><select class="admin-select" id="f-display" onchange="previewFonts()"><option value="'Bebas Neue',sans-serif">Bebas Neue</option><option value="'Oswald',sans-serif">Oswald</option><option value="'Anton',sans-serif">Anton</option><option value="'Righteous',cursive">Righteous</option><option value="'Bungee',cursive">Bungee</option><option value="'Russo One',sans-serif">Russo One</option></select><div id="fp-display" style="font-size:1.2rem;margin-top:.5rem">SARUX</div></div><div class="admin-field"><label>Fuente mono (etiquetas)</label><select class="admin-select" id="f-mono" onchange="previewFonts()"><option value="'Space Mono',monospace">Space Mono</option><option value="'Share Tech Mono',monospace">Share Tech Mono</option><option value="'Courier New',monospace">Courier New</option><option value="'IBM Plex Mono',monospace">IBM Plex Mono</option></select><div id="fp-mono" style="margin-top:.5rem">PRECIO</div></div><div class="admin-field"><label>Fuente cuerpo</label><select class="admin-select" id="f-body" onchange="previewFonts()"><option value="'Rajdhani',sans-serif">Rajdhani</option><option value="'Exo 2',sans-serif">Exo 2</option><option value="'Titillium Web',sans-serif">Titillium Web</option><option value="'Kanit',sans-serif">Kanit</option><option value="'Barlow',sans-serif">Barlow</option></select><div id="fp-body" style="margin-top:.5rem">Texto de ejemplo</div></div></div></div>
+      <div id="sec-hero" class="admin-section"><div class="admin-section-title">SECCIÓN PRINCIPAL (HERO)</div><div class="admin-card"><div class="admin-field"><label>Palabra 1</label><input class="admin-input" id="h-frase1"></div><div class="admin-field"><label>Palabra 2 (rojo)</label><input class="admin-input" id="h-frase2"></div><div class="admin-field"><label>Palabra 3</label><input class="admin-input" id="h-frase3"></div></div></div>
+      <div id="sec-cuadricula" class="admin-section"><div class="admin-section-title">CUADRÍCULAS</div><div class="admin-card"><div class="grid-control-row"><span class="grid-control-label">📦 Catálogo</span><div class="grid-cols-btns" id="gc-productos"><button class="grid-col-btn" onclick="setGridCols('productos',2,this)">2</button><button class="grid-col-btn active" onclick="setGridCols('productos',3,this)">3</button><button class="grid-col-btn" onclick="setGridCols('productos',4,this)">4</button></div></div><div class="grid-control-row"><span class="grid-control-label">⭐ Más vendidos</span><div class="grid-cols-btns" id="gc-masVendidos"><button class="grid-col-btn" onclick="setGridCols('masVendidos',2,this)">2</button><button class="grid-col-btn active" onclick="setGridCols('masVendidos',3,this)">3</button><button class="grid-col-btn" onclick="setGridCols('masVendidos',4,this)">4</button></div></div><div class="grid-control-row"><span class="grid-control-label">🔥 Promociones</span><div class="grid-cols-btns" id="gc-promos"><button class="grid-col-btn" onclick="setGridCols('promos',1,this)">1</button><button class="grid-col-btn active" onclick="setGridCols('promos',2,this)">2</button><button class="grid-col-btn" onclick="setGridCols('promos',3,this)">3</button></div></div><div class="grid-control-row"><span class="grid-control-label">🚀 Lanzamientos</span><div class="grid-cols-btns" id="gc-lanzamientos"><button class="grid-col-btn" onclick="setGridCols('lanzamientos',2,this)">2</button><button class="grid-col-btn active" onclick="setGridCols('lanzamientos',3,this)">3</button></div></div></div><div class="admin-card"><div class="admin-card-title">Formato de imagen de productos</div><div class="grid-control-row"><span class="grid-control-label">Proporción</span><div class="grid-cols-btns" id="gc-ratio"><button class="grid-col-btn" onclick="setCardRatio('1/1',this)">1:1</button><button class="grid-col-btn active" onclick="setCardRatio('4/5',this)">4:5</button><button class="grid-col-btn" onclick="setCardRatio('3/4',this)">3:4</button><button class="grid-col-btn" onclick="setCardRatio('9/16',this)">9:16</button></div></div><div class="grid-control-row"><span class="grid-control-label">Recorte</span><div class="grid-cols-btns" id="gc-fit"><button class="grid-col-btn" onclick="setCardFit('cover',this)">Recortar</button><button class="grid-col-btn active" onclick="setCardFit('contain',this)">Sin corte</button></div></div></div></div>
+      
+      <!-- SECCIÓN PERSONALIZACIÓN: IMÁGENES DE PERSONALIZACIÓN -->
+      <div id="sec-imagenes-personalizacion" class="admin-section"><div class="admin-section-title">🖼️ GALERÍA DE PERSONALIZACIÓN</div><div class="admin-card"><p class="admin-section-sub">Estas imágenes se mostrarán en la sección "Personaliza" del sitio, como ejemplos de diseños.</p><div id="admin-imagenes-personalizacion-list"></div><button class="admin-btn-add" onclick="addImagenPersonalizacion()">+ Agregar imagen de personalización</button></div></div>
+      
+      <!-- SECCIÓN PERSONALIZACIÓN: IMAGEN DE LLUVIA -->
+      <div id="sec-imagen-lluvia" class="admin-section"><div class="admin-section-title">🌧️ LLUVIA DE IMÁGENES</div>
+        <div class="admin-card">
+          <div class="admin-field"><label class="admin-toggle"><input type="checkbox" id="lluvia-activa"><div class="toggle-track"></div><span>Lluvia activa</span></label></div>
+          <div class="admin-field"><label>Cantidad de imágenes (1-200)</label><input type="number" class="admin-input" id="lluvia-cantidad" min="1" max="200" value="20"></div>
+          <div class="admin-field"><label>Velocidad (1 = lento, 5 = rápido)</label><input type="number" class="admin-input" id="lluvia-velocidad" min="0.1" max="10" step="0.1" value="2"></div>
+          <div class="admin-field"><label>Tiempo de espera entre caídas (segundos, 0 = sin espera)</label><input type="number" class="admin-input" id="lluvia-espera" min="0" max="300" value="0"></div>
+        </div>
+        <div class="admin-card">
+          <div class="admin-field"><label>Imagen que caerá en la lluvia (fondo del sitio)</label><div class="admin-img-upload"><input type="file" accept="image/*" onchange="uploadImagenLluvia(this)"><p>Subir imagen (png, jpg)</p></div><img id="lluviaPreview" style="max-height:100px; margin-top:.5rem; display:none"><input class="admin-input" id="lluviaUrl" placeholder="O URL de imagen externa" onblur="setLluviaUrl()"><p class="admin-section-sub" style="margin-top:.5rem">Si no se especifica, se usará el logo del negocio.</p></div>
+        </div>
+      </div>
+
+      <div id="sec-popup" class="admin-section"><div class="admin-section-title">POPUP BIENVENIDA</div><div class="admin-card"><div class="admin-field"><label class="admin-toggle"><input type="checkbox" id="p-activo"><div class="toggle-track"></div><span>Mostrar popup al entrar</span></label></div><div class="admin-field"><label>Emoji</label><input class="admin-input" id="p-emoji"></div><div class="admin-field"><label>Título</label><input class="admin-input" id="p-titulo"></div><div class="admin-field"><label>Descripción</label><textarea class="admin-textarea" id="p-desc"></textarea></div><div class="admin-field"><label>Texto botón</label><input class="admin-input" id="p-boton"></div></div></div>
+      <div id="sec-promos" class="admin-section"><div class="admin-section-title">PROMOCIONES</div><div id="admin-promos-list"></div><button class="admin-btn-add" onclick="addPromo()">+ Agregar promoción</button></div>
+      <div id="sec-productos" class="admin-section"><div class="admin-section-title">CATÁLOGO</div><div id="admin-cats-list"></div><button class="admin-btn-add" onclick="addCategoria()">+ Agregar categoría</button></div>
+      <div id="sec-filtros" class="admin-section">
+        <div class="admin-section-title">FILTROS DEL CATÁLOGO</div>
+        <div class="admin-card" style="border-left:3px solid var(--neon)">
+          <div style="font-family:var(--font-mono);font-size:.6rem;color:var(--gray);letter-spacing:1px;line-height:2">
+            <div style="color:var(--neon);font-size:.65rem;margin-bottom:.8rem">⚡ GESTIÓN DE FILTROS</div>
+            Aquí puedes agregar, editar y eliminar los filtros que aparecen en el catálogo del sitio.<br>
+            Los clientes los usan para encontrar productos por <b style="color:var(--light)">Tipo → Temática → Diseño</b>.
+          </div>
+        </div>
+
+        <!-- TIPOS -->
+        <div class="admin-card">
+          <div class="admin-card-title">🏷️ TIPOS DE PRODUCTO</div>
+          <div id="filtros-tipos-list" style="display:flex;flex-wrap:wrap;gap:.4rem;margin-bottom:.8rem"></div>
+          <div style="display:flex;gap:.5rem">
+            <input class="admin-input" id="filtro-tipo-new" placeholder="Ej: Taza 11oz, Playera Básica..." style="flex:1" onkeydown="if(event.key==='Enter')agregarFiltro('tipos')">
+            <button class="admin-btn-add" style="width:auto;padding:.5rem 1rem;white-space:nowrap" onclick="agregarFiltro('tipos')">+ Agregar</button>
+          </div>
+        </div>
+
+        <!-- TEMÁTICAS -->
+        <div class="admin-card">
+          <div class="admin-card-title">📂 TEMÁTICAS</div>
+          <div id="filtros-temas-list" style="display:flex;flex-wrap:wrap;gap:.4rem;margin-bottom:.8rem"></div>
+          <div style="display:flex;gap:.5rem">
+            <input class="admin-input" id="filtro-tema-new" placeholder="Ej: Anime, Fútbol, Música..." style="flex:1" onkeydown="if(event.key==='Enter')agregarFiltro('categorias')">
+            <button class="admin-btn-add" style="width:auto;padding:.5rem 1rem;white-space:nowrap" onclick="agregarFiltro('categorias')">+ Agregar</button>
+          </div>
+        </div>
+
+        <!-- DISEÑOS -->
+        <div class="admin-card">
+          <div class="admin-card-title">🎨 DISEÑOS / SERIES</div>
+          <div id="filtros-disenos-list" style="display:flex;flex-wrap:wrap;gap:.4rem;margin-bottom:.8rem"></div>
+          <div style="display:flex;gap:.5rem">
+            <input class="admin-input" id="filtro-diseno-new" placeholder="Ej: Dragon Ball, Naruto, Batman..." style="flex:1" onkeydown="if(event.key==='Enter')agregarFiltro('disenos')">
+            <button class="admin-btn-add" style="width:auto;padding:.5rem 1rem;white-space:nowrap" onclick="agregarFiltro('disenos')">+ Agregar</button>
+          </div>
+        </div>
+
+        <!-- SINCRONIZAR DESDE PRODUCTOS -->
+        <div class="admin-card" style="border:1px dashed rgba(232,25,44,.3)">
+          <div class="admin-card-title">🔄 SINCRONIZAR CON CATÁLOGO</div>
+          <div style="font-family:var(--font-mono);font-size:.55rem;color:var(--gray);margin-bottom:.8rem;line-height:1.8">
+            Importa automáticamente todos los tipos, temáticas y diseños que ya existen en tus productos.
+          </div>
+          <button class="admin-btn-add" onclick="sincronizarFiltrosDesdeProductos()">📥 Importar filtros desde mis productos</button>
+        </div>
+      </div>
+      <div id="sec-vendidos" class="admin-section"><div class="admin-section-title">MÁS VENDIDOS</div><div id="admin-vendidos-list"></div><button class="admin-btn-add" onclick="addVendido()">+ Agregar producto destacado</button></div>
+      <div id="sec-mayoreo" class="admin-section"><div class="admin-section-title">MAYOREO</div><div class="admin-card"><div class="admin-field"><label class="admin-toggle"><input type="checkbox" id="my-activo"><div class="toggle-track"></div><span>Mostrar sección mayoreo</span></label></div><div class="admin-field"><label>Subtítulo</label><input class="admin-input" id="my-subtitulo"></div><div class="admin-field"><label>Descripción</label><textarea class="admin-textarea" id="my-descripcion"></textarea></div><div class="admin-field"><label>Mínimo de piezas</label><input class="admin-input" id="my-minimo"></div><div class="admin-field"><label>Descuento</label><input class="admin-input" id="my-descuento"></div><div class="admin-field"><label>Tiempo de entrega</label><input class="admin-input" id="my-entrega"></div><div class="admin-field"><label>Mensaje WhatsApp mayoreo</label><input class="admin-input" id="my-msg"></div></div><div class="admin-card"><div class="admin-card-title">🎉 Tipos de eventos</div><div id="admin-eventos-list"></div><button class="admin-btn-add" onclick="addEvento()">+ Agregar evento</button></div><div class="admin-card"><div class="admin-card-title">📦 Paquetes de mayoreo</div><div id="admin-paquetes-list"></div><button class="admin-btn-add" onclick="addPaquete()">+ Agregar paquete</button></div></div>
+      <div id="sec-resenas" class="admin-section"><div class="admin-section-title">RESEÑAS</div><div id="admin-resenas-list"></div><button class="admin-btn-add" onclick="addResena()">+ Agregar reseña</button></div>
+      <div id="sec-estadisticas" class="admin-section">
+        <div class="admin-section-title">ESTADÍSTICAS</div>
+        <div style="font-family:var(--font-mono);font-size:.55rem;color:var(--gray);margin-bottom:1.5rem;letter-spacing:1px">Datos recopilados del navegador de tus visitantes · Se actualizan en tiempo real</div>
+        <div class="stat-grid" id="statsGrid"></div>
+        <div class="admin-card">
+          <div class="admin-card-title">👁️ PRODUCTOS MÁS VISTOS</div>
+          <table class="stats-table" id="statsVistas"><tr><td style="color:var(--gray);font-size:.7rem">Sin datos aún</td></tr></table>
+        </div>
+        <div class="admin-card">
+          <div class="admin-card-title">📱 CLICKS EN WHATSAPP</div>
+          <table class="stats-table" id="statsWA"><tr><td style="color:var(--gray);font-size:.7rem">Sin datos aún</td></tr></table>
+        </div>
+        <div class="admin-card">
+          <div class="admin-card-title">🔍 BÚSQUEDAS POPULARES</div>
+          <table class="stats-table" id="statsBusquedas"><tr><td style="color:var(--gray);font-size:.7rem">Sin datos aún</td></tr></table>
+        </div>
+        <button class="admin-btn-sm danger" onclick="if(confirm('¿Borrar todas las estadísticas?')){localStorage.removeItem('sarux_stats');loadStats();}" style="margin-top:.5rem">🗑️ Borrar estadísticas</button>
+      </div>
+      <div id="sec-lanzamientos" class="admin-section"><div class="admin-section-title">PRÓXIMOS LANZAMIENTOS</div><div id="admin-lanz-list"></div><button class="admin-btn-add" onclick="addLanzamiento()">+ Agregar lanzamiento</button></div>
+      <div id="sec-faqs" class="admin-section"><div class="admin-section-title">PREGUNTAS FRECUENTES</div><div id="admin-faqs-list"></div><button class="admin-btn-add" onclick="addFaq()">+ Agregar pregunta</button></div>
+      <div id="sec-ig-posts" class="admin-section"><div class="admin-section-title">POSTS INSTAGRAM</div><div id="admin-ig-posts-list"></div><button class="admin-btn-add" onclick="addIgPost()">+ Agregar post</button></div>
+      <div id="sec-tt-posts" class="admin-section"><div class="admin-section-title">VIDEOS TIKTOK</div><div id="admin-tt-posts-list"></div><button class="admin-btn-add" onclick="addTtPost()">+ Agregar video</button></div>
+
+      <!-- FOTOS CLIENTES / RESEÑAS -->
+      <div id="sec-fotos-clientes" class="admin-section">
+        <div class="admin-section-title">⭐ RESEÑAS DE CLIENTES</div>
+        <div class="admin-section-sub">Agrega reseñas manualmente o elimina las que subieron los clientes.</div>
+        <div class="admin-card">
+          <div class="admin-field">
+            <label class="admin-toggle">
+              <input type="checkbox" id="fc-activo" onchange="guardarCfgFotos()">
+              <div class="toggle-track"></div>
+              <span>Mostrar sección en el sitio</span>
+            </label>
+          </div>
+        </div>
+
+        <!-- FORMULARIO AGREGAR RESEÑA MANUAL -->
+        <div class="admin-card" id="fc-add-form">
+          <div class="admin-card-title">➕ Agregar reseña manualmente</div>
+          <div class="admin-field"><label>Nombre del cliente</label><input class="admin-input" id="fc-new-nombre" placeholder="Ej: María G."></div>
+          <div class="admin-field"><label>Producto</label><input class="admin-input" id="fc-new-producto" placeholder="Ej: Taza Dragon Ball"></div>
+          <div class="admin-field"><label>Reseña</label><textarea class="admin-textarea" id="fc-new-resena" rows="3" placeholder="Escribe la reseña del cliente..."></textarea></div>
+          <div class="admin-field">
+            <label>Calificación</label>
+            <div id="fc-new-stars" style="display:flex;gap:.5rem;font-size:1.8rem;cursor:pointer;margin-top:.3rem">
+              <span class="admin-star" data-val="1">☆</span>
+              <span class="admin-star" data-val="2">☆</span>
+              <span class="admin-star" data-val="3">☆</span>
+              <span class="admin-star" data-val="4">☆</span>
+              <span class="admin-star" data-val="5">☆</span>
+            </div>
+          </div>
+          <div class="admin-field">
+            <label>Foto o Video (opcional)</label>
+            <div style="display:flex;flex-direction:column;gap:.6rem">
+              <label style="cursor:pointer;display:flex;align-items:center;gap:.6rem;background:rgba(255,255,255,.04);border:1px dashed rgba(255,255,255,.15);padding:.7rem 1rem;font-family:var(--font-mono);font-size:.55rem;letter-spacing:2px;color:var(--gray);transition:border-color .2s" onmouseover="this.style.borderColor='var(--neon)'" onmouseout="this.style.borderColor='rgba(255,255,255,.15)'">
+                📤 SELECCIONAR ARCHIVO
+                <input type="file" id="fc-new-file" accept="image/*,video/*" style="display:none" onchange="prevFcNewFile(this)">
+              </label>
+              <img id="fc-new-preview-img" style="max-height:100px;display:none;border:1px solid var(--border);object-fit:cover">
+              <video id="fc-new-preview-vid" style="max-height:100px;display:none;border:1px solid var(--border)" muted playsinline></video>
+              <div id="fc-new-upload-prog" style="display:none;height:3px;background:rgba(232,25,44,.2)"><div id="fc-new-prog-bar" style="height:100%;background:var(--neon);width:0;transition:width .3s"></div></div>
+            </div>
+          </div>
+          <button class="admin-btn-add" style="margin-top:.5rem;width:100%" onclick="agregarResenaAdmin()">✅ PUBLICAR RESEÑA</button>
+        </div>
+
+        <div id="admin-fotos-clientes-list">
+          <div style="font-family:var(--font-mono);font-size:.6rem;color:var(--gray);padding:1rem 0">Cargando reseñas...</div>
+        </div>
+      </div>
+
+      <div id="sec-nosotros" class="admin-section"><div class="admin-section-title">SOBRE NOSOTROS</div><div class="admin-card"><div class="admin-field"><label>Título</label><input class="admin-input" id="n-titulo"></div><div class="admin-field"><label>Párrafo 1</label><textarea class="admin-textarea" id="n-p1"></textarea></div><div class="admin-field"><label>Párrafo 2</label><textarea class="admin-textarea" id="n-p2"></textarea></div><div class="admin-field"><label>Párrafo 3</label><textarea class="admin-textarea" id="n-p3"></textarea></div></div><div class="admin-card"><div class="admin-card-title">🖼️ Fotos (4 imágenes)</div><div id="admin-fotos-list"></div></div></div>
+      <div id="sec-pasos" class="admin-section"><div class="admin-section-title">CÓMO PEDIR</div><div class="admin-card"><div class="admin-field"><label>Etiqueta pequeña</label><input class="admin-input" id="pasos-label-inp"></div><div class="admin-field"><label>Título grande</label><input class="admin-input" id="pasos-titulo-inp"></div></div><div class="admin-card"><div class="admin-card-title">Pasos</div><div id="admin-pasos-list"></div><button class="admin-btn-add" onclick="addPaso()">+ Agregar paso</button></div></div>
+      <div id="sec-ticker" class="admin-section"><div class="admin-section-title">TICKER</div><div class="admin-card"><textarea class="admin-textarea" id="a-ticker" rows="5" placeholder="Una palabra por línea"></textarea></div></div>
+      <div id="sec-nube" class="admin-section"><div class="admin-section-title">☁️ CONECTAR A INTERNET</div><div class="admin-card"><div class="admin-card-title">Tus datos ya se guardan automáticamente en Supabase.</div><p style="font-size:0.7rem; color:var(--gray)">No necesitas configuración adicional.</p></div></div>
+    `;
+  }
+
+  // FUNCIONES DE NAVEGACIÓN 
+  function toggleSidebar() {
+    document.getElementById('adminSidebar').classList.toggle('open');
+  }
+
+  function showSec(sec, btn) {
+    document.querySelectorAll('.admin-section').forEach(s => s.classList.remove('active'));
+    const target = document.getElementById('sec-' + sec);
+    if (target) target.classList.add('active');
+    document.querySelectorAll('.admin-nav-btn').forEach(b => b.classList.remove('active'));
+    if (btn) btn.classList.add('active');
+    if (sec === 'filtros') setTimeout(renderAdminFiltros, 50);
+    if (window.innerWidth <= 768) {
+      document.getElementById('adminSidebar').classList.remove('open');
+    }
+  }
+
+  //  RENDERIZADO DE LISTAS 
+  function renderAdminPromos(){
+    const cont = document.getElementById('admin-promos-list'); if(!cont) return;
+    cont.innerHTML = '';
+    PROMOCIONES_D.forEach((p,i)=>{
+      cont.innerHTML += `<div class="admin-card"><div class="admin-card-title">Promo ${i+1}<button class="admin-btn-sm danger" style="float:right" onclick="confirmDelete('¿Eliminar promo?',()=>{PROMOCIONES_D.splice(${i},1);renderAdminPromos()})">🗑️</button></div>
+        <div class="admin-grid-2"><div class="admin-field"><label>Nombre</label><input class="admin-input" value="${p.nombre}" oninput="PROMOCIONES_D[${i}].nombre=this.value"></div>
+        <div class="admin-field"><label>Descuento</label><input class="admin-input" value="${p.descuento}" oninput="PROMOCIONES_D[${i}].descuento=this.value"></div>
+        <div class="admin-field"><label>Precio</label><input class="admin-input" value="${p.precio}" oninput="PROMOCIONES_D[${i}].precio=this.value"></div>
+        <div class="admin-field"><label>Horas</label><input type="number" class="admin-input" value="${p.duracion_horas}" oninput="PROMOCIONES_D[${i}].duracion_horas=+this.value"></div></div>
+        <div class="admin-field"><label>Descripción (aparece en el modal al hacer click)</label><textarea class="admin-textarea" style="min-height:60px" oninput="PROMOCIONES_D[${i}].descripcion=this.value">${p.descripcion||''}</textarea></div>
+        <div class="admin-field"><label>Imagen</label><input class="admin-input" value="${p.imagen||''}" placeholder="URL de imagen" oninput="PROMOCIONES_D[${i}].imagen=this.value">${p.imagen?`<img src="${p.imagen}" style="max-height:60px;margin-top:.3rem;display:block">`:''}<div class="admin-img-upload" style="margin-top:.3rem"><label style="cursor:pointer;display:flex;align-items:center;gap:.5rem;background:rgba(255,255,255,.05);border:1px dashed rgba(255,255,255,.2);padding:.5rem .8rem;font-size:.7rem;letter-spacing:2px">📤 SUBIR IMAGEN<input type="file" accept="image/*" style="display:none" onchange="uploadGenerico(this,PROMOCIONES_D,'imagen',${i},renderAdminPromos)"></label></div></div>
+        <div class="admin-field"><label>Activa</label><label class="admin-toggle"><input type="checkbox" ${p.activa?'checked':''} onchange="togglePromoActiva(${i},this.checked)"><div class="toggle-track"></div></label></div>
+        ${p.inicio_ts ? `<div style="font-family:var(--font-mono);font-size:.5rem;color:var(--gray);margin-top:.3rem">⏱ Iniciada: ${new Date(p.inicio_ts).toLocaleString('es-MX')}</div>` : ''}
+        </div>`;
+    });
+  }
+  function addPromo(){ PROMOCIONES_D.push({nombre:"Nueva promo",descuento:"-10%",precio:"$199",duracion_horas:24,emoji:"🎁",imagen:"",descripcion:"",activa:false,inicio_ts:null}); renderAdminPromos(); }
+
+  function togglePromoActiva(idx, activa){
+    PROMOCIONES_D[idx].activa = activa;
+    if(activa){
+      // Registrar el momento en que se activa la promo — este es el "inicio del reloj"
+      PROMOCIONES_D[idx].inicio_ts = Date.now();
+    } else {
+      PROMOCIONES_D[idx].inicio_ts = null;
+    }
+    renderAdminPromos();
+  }
+
+  function renderAdminCatalogo(){
+    const cont = document.getElementById('admin-cats-list'); if(!cont) return;
+    cont.innerHTML = '';
+    CATALOGO_D.forEach((cat, ci)=>{
+      cont.innerHTML += `<div class="admin-card"><div class="admin-card-title">${cat.emoji} ${cat.nombre}<button class="admin-btn-sm danger" style="float:right" onclick="confirmDelete('¿Eliminar categoría?',()=>{CATALOGO_D.splice(${ci},1);renderAdminCatalogo()})">🗑️</button></div>
+        <div class="admin-field"><label>Nombre</label><input class="admin-input" value="${cat.nombre}" oninput="CATALOGO_D[${ci}].nombre=this.value"></div>
+        <div class="admin-field"><label>Emoji</label><input class="admin-input" value="${cat.emoji}" oninput="CATALOGO_D[${ci}].emoji=this.value"></div>
+        <div class="admin-field"><label>Activa</label><label class="admin-toggle"><input type="checkbox" ${cat.activa?'checked':''} onchange="CATALOGO_D[${ci}].activa=this.checked"><div class="toggle-track"></div></label></div>
+        <div class="admin-field"><label>Imagen portada</label><div class="admin-img-upload"><input type="file" accept="image/*" onchange="uploadCatPortada(this,${ci})"><p>Subir portada</p></div>${cat.imagen_portada?`<img src="${cat.imagen_portada}" style="max-height:60px">`:''}<input class="admin-input" value="${cat.imagen_portada||''}" placeholder="URL portada" oninput="CATALOGO_D[${ci}].imagen_portada=this.value"></div>
+        <div class="admin-product-list" id="cat-prods-${ci}"></div>
+        <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-top:.5rem">
+          <button class="admin-btn-add" style="width:auto;flex:1" onclick="openAddProd(${ci})">+ Agregar producto</button>
+          <label class="admin-btn-add" style="width:auto;flex:1;cursor:pointer;text-align:center;background:rgba(232,25,44,.15);border-color:rgba(232,25,44,.4)">📤 Subir varias imágenes<input type="file" multiple accept="image/*" style="display:none" onchange="uploadMasivoProductos(this,${ci})"></label>
+        </div></div>`;
+      const prodList = document.getElementById(`cat-prods-${ci}`);
+      if(prodList){
+        cat.productos.forEach((p, pi)=>{
+          prodList.innerHTML += `<div class="admin-product-item"><div class="admin-product-name">${p.nombre}</div><div class="admin-product-price">$${p.precio}</div><div><button class="admin-btn-sm" onclick="openEditProd(${ci},${pi})">✏️</button><button class="admin-btn-sm danger" onclick="confirmDelete('¿Eliminar producto?',()=>{CATALOGO_D[${ci}].productos.splice(${pi},1);renderAdminCatalogo()})">🗑️</button></div></div>`;
+        });
+      }
+    });
+  }
+  async function uploadGenerico(input, arr, field, idx, renderFn) {
+    const file = input.files[0]; if(!file) return;
+    showNotif('Subiendo imagen...');
+    try {
+      const url = await uploadToStorage(file, 'general');
+      arr[idx][field] = url;
+      renderFn();
+      showNotif('✅ Imagen subida');
+    } catch(e) { showNotif('Error al subir imagen'); }
+  }
+
+  function addCategoria(){ CATALOGO_D.push({nombre:"Nueva categoría",emoji:"📦",activa:true,imagen_portada:"",productos:[]}); renderAdminCatalogo(); }
+
+  function loadStats(){
+    const STATS_KEY = 'sarux_stats';
+    let s = {};
+    try { s = JSON.parse(localStorage.getItem(STATS_KEY)||'{}'); } catch(e){}
+    const vistas = Object.entries(s.vistas||{}).sort((a,b)=>b[1]-a[1]).slice(0,10);
+    const wa = Object.entries(s.whatsapp||{}).sort((a,b)=>b[1]-a[1]).slice(0,10);
+    const busq = Object.entries(s.busquedas||{}).sort((a,b)=>b[1]-a[1]).slice(0,10);
+    const totalVistas = vistas.reduce((s,i)=>s+i[1],0);
+    const totalWA = wa.reduce((s,i)=>s+i[1],0);
+    const totalBusq = busq.reduce((s,i)=>s+i[1],0);
+    // Summary cards
+    const grid = document.getElementById('statsGrid');
+    if(grid) grid.innerHTML = [
+      {num: totalVistas, label:'Total vistas de producto'},
+      {num: totalWA, label:'Clicks en WhatsApp'},
+      {num: totalBusq, label:'Búsquedas realizadas'},
+      {num: vistas.length, label:'Productos explorados'},
+    ].map(c=>`<div class="stat-card"><div class="stat-card-num">${c.num}</div><div class="stat-card-label">${c.label}</div></div>`).join('');
+    // Tables
+    const mkTable = (items, maxVal) => items.length
+      ? '<thead><tr><th>Nombre</th><th>Veces</th></tr></thead><tbody>'
+        + items.map(([n,v])=>`<tr><td>${n}<div class="stats-bar-wrap"><div class="stats-bar" style="width:${Math.round(v/maxVal*100)}%"></div></div></td><td>${v}</td></tr>`).join('')
+        + '</tbody>'
+      : '<tr><td style="color:var(--gray);font-size:.7rem">Sin datos aún</td></tr>';
+    const maxV = vistas[0]?vistas[0][1]:1, maxW = wa[0]?wa[0][1]:1, maxB = busq[0]?busq[0][1]:1;
+    const tv = document.getElementById('statsVistas'); if(tv) tv.innerHTML = mkTable(vistas, maxV);
+    const tw = document.getElementById('statsWA'); if(tw) tw.innerHTML = mkTable(wa, maxW);
+    const tb = document.getElementById('statsBusquedas'); if(tb) tb.innerHTML = mkTable(busq, maxB);
+  }
+
+  function renderAdminFiltros(){
+    renderFiltrosList('tipos',    'filtros-tipos-list');
+    renderFiltrosList('categorias','filtros-temas-list');
+    renderFiltrosList('disenos',  'filtros-disenos-list');
+  }
+
+  function renderFiltrosList(tipo, containerId){
+    const cont = document.getElementById(containerId); if(!cont) return;
+    const lista = (window.FILTROS_GLOBALES_D && window.FILTROS_GLOBALES_D[tipo]) || [];
+    if(!lista.length){
+      cont.innerHTML = '<span style="font-family:var(--font-mono);font-size:.55rem;color:rgba(255,255,255,.2);letter-spacing:1px">Sin filtros aún</span>';
+      return;
+    }
+    cont.innerHTML = lista.map((v,i) => `
+      <div style="display:inline-flex;align-items:center;gap:.4rem;background:rgba(255,255,255,.05);border:1px solid var(--border);padding:.25rem .6rem;font-family:var(--font-mono);font-size:.55rem;letter-spacing:1px">
+        <span id="filtro-label-${tipo}-${i}" ondblclick="editarFiltroInline('${tipo}',${i})">${v}</span>
+        <button onclick="eliminarFiltro('${tipo}',${i})" style="background:none;border:none;color:rgba(255,255,255,.3);cursor:pointer;font-size:.8rem;padding:0;line-height:1" title="Eliminar">✕</button>
+      </div>`).join('');
+  }
+
+  function agregarFiltro(tipo){
+    const inputId = tipo==='tipos' ? 'filtro-tipo-new' : tipo==='categorias' ? 'filtro-tema-new' : 'filtro-diseno-new';
+    const input = document.getElementById(inputId); if(!input) return;
+    const val = input.value.trim(); if(!val) return;
+    if(!window.FILTROS_GLOBALES_D) window.FILTROS_GLOBALES_D = {tipos:[],categorias:[],disenos:[]};
+    if(!window.FILTROS_GLOBALES_D[tipo]) window.FILTROS_GLOBALES_D[tipo] = [];
+    if(window.FILTROS_GLOBALES_D[tipo].includes(val)){ showNotif('Ya existe ese filtro'); return; }
+    window.FILTROS_GLOBALES_D[tipo].push(val);
+    input.value = '';
+    renderAdminFiltros();
+    showNotif('✅ Filtro agregado · Recuerda guardar');
+  }
+
+  function eliminarFiltro(tipo, idx){
+    if(!window.FILTROS_GLOBALES_D || !window.FILTROS_GLOBALES_D[tipo]) return;
+    window.FILTROS_GLOBALES_D[tipo].splice(idx,1);
+    renderAdminFiltros();
+    showNotif('Filtro eliminado · Recuerda guardar');
+  }
+
+  function editarFiltroInline(tipo, idx){
+    const spanId = `filtro-label-${tipo}-${idx}`;
+    const span = document.getElementById(spanId); if(!span) return;
+    const valActual = span.textContent;
+    const input = document.createElement('input');
+    input.value = valActual;
+    input.style.cssText = 'background:#1a1a1a;border:1px solid var(--neon);color:white;font-family:var(--font-mono);font-size:.55rem;letter-spacing:1px;padding:.1rem .3rem;width:120px';
+    span.replaceWith(input);
+    input.focus(); input.select();
+    const confirmar = () => {
+      const nuevo = input.value.trim();
+      if(nuevo && nuevo !== valActual){
+        window.FILTROS_GLOBALES_D[tipo][idx] = nuevo;
+        showNotif('Filtro editado · Recuerda guardar');
+      }
+      renderAdminFiltros();
+    };
+    input.onblur = confirmar;
+    input.onkeydown = e => { if(e.key==='Enter') confirmar(); if(e.key==='Escape') renderAdminFiltros(); };
+  }
+
+  function sincronizarFiltrosDesdeProductos(){
+    const tipos=new Set(), temas=new Set(), disenos=new Set();
+    (CATALOGO_D||[]).forEach(cat=>(cat.productos||[]).forEach(p=>{
+      if(p.tipo&&p.tipo.trim()) tipos.add(p.tipo.trim());
+      (p.temas||[]).forEach(t=>{ if(t&&t.trim()) temas.add(t.trim()); });
+      if(p.subtema&&p.subtema.trim()) disenos.add(p.subtema.trim());
+    }));
+    if(!window.FILTROS_GLOBALES_D) window.FILTROS_GLOBALES_D={tipos:[],categorias:[],disenos:[]};
+    let nuevos = 0;
+    tipos.forEach(v=>{ if(!window.FILTROS_GLOBALES_D.tipos.includes(v)){ window.FILTROS_GLOBALES_D.tipos.push(v); nuevos++; }});
+    temas.forEach(v=>{ if(!window.FILTROS_GLOBALES_D.categorias.includes(v)){ window.FILTROS_GLOBALES_D.categorias.push(v); nuevos++; }});
+    disenos.forEach(v=>{ if(!window.FILTROS_GLOBALES_D.disenos.includes(v)){ window.FILTROS_GLOBALES_D.disenos.push(v); nuevos++; }});
+    renderAdminFiltros();
+    showNotif(nuevos > 0 ? `✅ ${nuevos} filtros importados · Recuerda guardar` : 'No hay filtros nuevos para importar');
+  }
+
+  async function uploadMasivoProductos(input, ci) {
+    const files = Array.from(input.files);
+    if(!files.length) return;
+    showNotif(`Subiendo ${files.length} imagen(es)...`);
+    let subidos = 0;
+    for(const file of files) {
+      try {
+        const url = await uploadToStorage(file, 'productos');
+        const nombre = file.name.replace(/\.[^.]+$/, '').replace(/[-_]/g,' ');
+        CATALOGO_D[ci].productos.push({
+          nombre: nombre.charAt(0).toUpperCase() + nombre.slice(1),
+          precio: 0, stock: 0, descripcion: '', colores: [], tallas: [],
+          temas: [], subtema: '', disenos: [], imagen: url, badge: ''
+        });
+        subidos++;
+        showNotif(`Subiendo... ${subidos}/${files.length}`);
+      } catch(e) { showNotif('Error subiendo '+file.name); }
+    }
+    renderAdminCatalogo();
+    showNotif(`✅ ${subidos} productos agregados. Edítalos para completar info.`);
+  }
+
+  let editingProd = null;
+  let _disenosTemp = [];
+  function openAddProd(ci){ editingProd={ci, pi:-1}; _disenosTemp=[]; _personajesTemp=[]; document.getElementById('adminModalTitle').textContent='Agregar Producto'; clearProdModal(); renderTipoDropdown(''); renderTemasCheckboxes([]); renderDisenosAdmin(); renderPersonajesAdmin(); document.getElementById('adminProdModal').classList.add('show'); }
+  function openEditProd(ci, pi){
+    const p = CATALOGO_D[ci].productos[pi];
+    editingProd={ci,pi}; _disenosTemp = JSON.parse(JSON.stringify(p.disenos||[]));
+    document.getElementById('adminModalTitle').textContent=`Editar: ${p.nombre}`;
+    document.getElementById('pm-nombre').value=p.nombre; document.getElementById('pm-precio').value=p.precio;
+    document.getElementById('pm-stock').value=p.stock; document.getElementById('pm-desc').value=p.descripcion||'';
+    document.getElementById('pm-colores').value=(p.colores||[]).join(', '); document.getElementById('pm-tallas').value=(p.tallas||[]).join(', ');
+    document.getElementById('pm-imagen').value=p.imagen||''; document.getElementById('pm-subtema').value=p.subtema||'';
+    document.getElementById('pm-tipo').value=p.tipo||'';
+    renderTipoDropdown(p.tipo||'');
+    _personajesTemp = JSON.parse(JSON.stringify(p.personajes||[]));
+    renderTemasCheckboxes(p.temas||[]); renderDisenosAdmin(); renderPersonajesAdmin();
+    const preview=document.getElementById('pm-img-preview'); if(p.imagen){preview.src=p.imagen;preview.style.display='block';}else preview.style.display='none';
+    document.getElementById('adminProdModal').classList.add('show');
+  }
+  function clearProdModal(){
+    ['pm-nombre','pm-precio','pm-stock','pm-desc','pm-colores','pm-tallas','pm-imagen','pm-subtema'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
+    renderTipoDropdown('');
+    document.getElementById('pm-badge').value=''; document.getElementById('pm-img-preview').style.display='none';
+  }
+  function closeProdModal(){ document.getElementById('adminProdModal').classList.remove('show'); editingProd=null; }
+  function saveProdModal(){
+    if(!editingProd) return;
+    const {ci,pi}=editingProd;
+    const prod = {
+      nombre: document.getElementById('pm-nombre').value, precio: +document.getElementById('pm-precio').value,
+      stock: +document.getElementById('pm-stock').value, descripcion: document.getElementById('pm-desc').value,
+      colores: document.getElementById('pm-colores').value.split(',').map(s=>s.trim()).filter(Boolean),
+      tallas: document.getElementById('pm-tallas').value.split(',').map(s=>s.trim()).filter(Boolean),
+      temas: getTemasSeleccionados(), subtema: document.getElementById('pm-subtema').value.trim(),
+      tipo: document.getElementById('pm-tipo').value || '',
+      disenos: _disenosTemp.filter(d=>d.imagen||d.nombre),
+      personajes: _personajesTemp.filter(pj=>pj.nombre||pj.imagen),
+      imagen: document.getElementById('pm-imagen').value || (_disenosTemp[0]&&_disenosTemp[0].imagen)||'',
+      badge: document.getElementById('pm-badge').value
+    };
+    if(pi===-1) CATALOGO_D[ci].productos.push(prod); else CATALOGO_D[ci].productos[pi]=prod;
+    closeProdModal(); renderAdminCatalogo(); showNotif('Producto guardado (recuerda guardar todo)');
+  }
+  const TEMAS_DISPONIBLES=['Anime','Fútbol','Cine','Videojuegos','Memes','Series','Música','Otros'];
+  function renderTipoDropdown(selected){
+    const sel = document.getElementById('pm-tipo'); if(!sel) return;
+    const tipos = new Set((window.FILTROS_GLOBALES_D && window.FILTROS_GLOBALES_D.tipos) || []);
+    // También agregar tipos que ya existen en los productos
+    (CATALOGO_D||[]).forEach(cat=>(cat.productos||[]).forEach(p=>{ if(p.tipo&&p.tipo.trim()) tipos.add(p.tipo.trim()); }));
+    const lista = Array.from(tipos).sort();
+    sel.innerHTML = '<option value="">Sin tipo</option>' + lista.map(t=>`<option value="${t}" ${t===selected?'selected':''}>${t}</option>`).join('');
+  }
+
+  function renderTemasCheckboxes(selected){ const w=document.getElementById('pm-temas-checkboxes'); if(!w) return; const all=[...new Set([...TEMAS_DISPONIBLES,...(selected||[])])]; w.innerHTML=all.map(t=>`<label><input type="checkbox" value="${t}" ${(selected||[]).includes(t)?'checked':''}> ${t}</label>`).join(''); }
+  function getTemasSeleccionados(){ const boxes=document.querySelectorAll('#pm-temas-checkboxes input'); return Array.from(boxes).filter(b=>b.checked).map(b=>b.value); }
+  function agregarTemaCustom(){
+    const input=document.getElementById('pm-tema-custom');
+    const val=input.value.trim();
+    if(!val) return;
+    if(!TEMAS_DISPONIBLES.includes(val)) TEMAS_DISPONIBLES.push(val);
+    const actuales=getTemasSeleccionados();
+    actuales.push(val);
+    renderTemasCheckboxes([...new Set(actuales)]);
+    input.value='';
+  }
+  function renderDisenosAdmin(){ const w=document.getElementById('pm-disenos-list'); if(!w) return; w.innerHTML=_disenosTemp.map((d,i)=>`<div class="diseno-admin-row">${d.imagen?`<img src="${d.imagen}">`:'<div style="width:40px;height:40px;background:#222">🖼️</div>'}<input class="admin-input" value="${d.nombre||''}" placeholder="Nombre diseño" oninput="_disenosTemp[${i}].nombre=this.value"><label style="padding:.2rem .5rem;background:#1a1a1a;cursor:pointer">📷<input type="file" style="display:none" onchange="uploadDisenoImg(this,${i})"></label><button class="admin-btn-sm danger" onclick="_disenosTemp.splice(${i},1);renderDisenosAdmin()">🗑️</button></div>`).join(''); }
+  function addDiseno(){ _disenosTemp.push({nombre:'',imagen:''}); renderDisenosAdmin(); }
+
+  async function uploadMasivoDisenos(input) {
+    const files = Array.from(input.files);
+    if(!files.length) return;
+    showNotif(`Subiendo ${files.length} imagen(es)...`);
+    let subidos = 0;
+    for(const file of files) {
+      try {
+        const url = await uploadToStorage(file, 'disenos');
+        const nombre = file.name.replace(/\.[^.]+$/, '').replace(/[-_]/g,' ');
+        _disenosTemp.push({ nombre: nombre.charAt(0).toUpperCase()+nombre.slice(1), imagen: url });
+        subidos++;
+        showNotif(`Subiendo... ${subidos}/${files.length}`);
+      } catch(e) { showNotif('Error: '+file.name); }
+    }
+    renderDisenosAdmin();
+    showNotif(`✅ ${subidos} diseños agregados`);
+  }
+
+  // PERSONAJES
+  let _personajesTemp = [];
+  function renderPersonajesAdmin(){
+    const w = document.getElementById('pm-personajes-list'); if(!w) return;
+    let html = '';
+    _personajesTemp.forEach((pj,i) => {
+      const imgHtml = pj.imagen
+        ? '<img src="'+pj.imagen+'" style="width:36px;height:36px;object-fit:cover;border-radius:3px">'
+        : '<div style="width:36px;height:36px;background:#1a1a1a;display:flex;align-items:center;justify-content:center;font-size:1.2rem">'+(pj.emoji||'🎨')+'</div>';
+      html += '<div style="background:#0d0d0d;border:1px solid #2a2a2a;padding:.8rem;margin-bottom:.5rem">'
+        + '<div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.5rem">'
+        + imgHtml
+        + '<input class="admin-input" value="'+(pj.nombre||'')+'" placeholder="Nombre del personaje (ej: Goku)" oninput="_personajesTemp['+i+'].nombre=this.value" style="flex:1">'
+        + '<label style="padding:.3rem .6rem;background:#1a1a1a;cursor:pointer;font-size:.6rem;border:1px solid #333">📷<input type="file" style="display:none" onchange="uploadPersonajeImg(this,'+i+')"></label>'
+        + '<input class="admin-input" value="'+(pj.imagen||'')+'" placeholder="URL imagen" oninput="_personajesTemp['+i+'].imagen=this.value" style="flex:1">'
+        + '<button class="admin-btn-sm danger" onclick="_personajesTemp.splice('+i+',1);renderPersonajesAdmin()">🗑️</button>'
+        + '</div>'
+        + '<div style="font-family:var(--font-mono);font-size:.5rem;color:var(--gray);margin-bottom:.4rem;letter-spacing:1px">DISEÑOS DE '+(pj.nombre||'este personaje').toUpperCase()+'</div>'
+        + '<div id="pj-disenos-'+i+'">'+renderPjDisenosHTML(i)+'</div>'
+        + '<div style="display:flex;gap:.5rem;margin-top:.3rem">'        + '<button class="admin-btn-sm" onclick="addPjDiseno('+i+')" style="flex:1;font-size:.55rem">+ Agregar diseño</button>'        + '<label class="admin-btn-sm" style="flex:1;cursor:pointer;text-align:center;font-size:.55rem;background:rgba(232,25,44,.15);border-color:rgba(232,25,44,.4)">📤 Varias imágenes<input type="file" multiple accept="image/*" style="display:none" onchange="uploadMasivoPjDisenos(this,'+i+')"></label>'        + '</div>'
+        + '</div>';
+    });
+    w.innerHTML = html;
+  }
+  function renderPjDisenosHTML(pi){
+    const disenos = _personajesTemp[pi]&&_personajesTemp[pi].disenos||[];
+    return disenos.map((d,di)=>`<div style="display:flex;align-items:center;gap:.4rem;margin-bottom:.3rem">
+      ${d.imagen?`<img src="${d.imagen}" style="width:28px;height:28px;object-fit:cover">`:'<div style="width:28px;height:28px;background:#222">🖼</div>'}
+      <input class="admin-input" value="${d.nombre||''}" placeholder="Nombre diseño" oninput="_personajesTemp[${pi}].disenos[${di}].nombre=this.value" style="flex:1">
+      <label style="padding:.2rem .5rem;background:#1a1a1a;cursor:pointer;font-size:.55rem;border:1px solid #333">📷<input type="file" style="display:none" onchange="uploadPjDisenoImg(this,${pi},${di})"></label>
+      <input class="admin-input" value="${d.imagen||''}" placeholder="URL" oninput="_personajesTemp[${pi}].disenos[${di}].imagen=this.value;document.getElementById('pj-disenos-${pi}').innerHTML=renderPjDisenosHTML(${pi})" style="flex:1">
+      <button class="admin-btn-sm danger" onclick="_personajesTemp[${pi}].disenos.splice(${di},1);document.getElementById('pj-disenos-${pi}').innerHTML=renderPjDisenosHTML(${pi})">✕</button>
+    </div>`).join('');
+  }
+  function addPersonaje(){ _personajesTemp.push({nombre:'',imagen:'',emoji:'🎨',disenos:[]}); renderPersonajesAdmin(); }
+  function addPjDiseno(pi){ _personajesTemp[pi].disenos=_personajesTemp[pi].disenos||[]; _personajesTemp[pi].disenos.push({nombre:'',imagen:''}); renderPersonajesAdmin(); }
+  async function uploadPersonajeImg(input,pi){
+    const f=input.files[0]; if(!f) return;
+    try{ const url=await uploadToStorage(f,'personajes'); _personajesTemp[pi].imagen=url; renderPersonajesAdmin(); }catch(e){showNotif('Error: '+e.message);}
+  }
+  async function uploadPjDisenoImg(input,pi,di){
+    const f=input.files[0]; if(!f) return;
+    try{ const url=await uploadToStorage(f,'personajes'); _personajesTemp[pi].disenos[di].imagen=url; renderPersonajesAdmin(); }catch(e){showNotif('Error: '+e.message);}
+  }
+
+  async function uploadMasivoPjDisenos(input, pi){
+    const files = Array.from(input.files);
+    if(!files.length) return;
+    showNotif('Subiendo '+files.length+' imagen(es)...');
+    let subidos = 0;
+    _personajesTemp[pi].disenos = _personajesTemp[pi].disenos || [];
+    for(const file of files){
+      try{
+        const url = await uploadToStorage(file, 'personajes');
+        const nombre = file.name.replace(/\.[^.]+$/, '').replace(/[-_]/g,' ');
+        _personajesTemp[pi].disenos.push({ nombre: nombre.charAt(0).toUpperCase()+nombre.slice(1), imagen: url });
+        subidos++;
+        showNotif('Subiendo... '+subidos+'/'+files.length);
+      } catch(e){ showNotif('Error: '+file.name); }
+    }
+    renderPersonajesAdmin();
+    showNotif('✅ '+subidos+' diseños agregados');
+  }
+
+  function renderAdminVendidos(){
+    const cont = document.getElementById('admin-vendidos-list'); if(!cont) return;
+    cont.innerHTML = '';
+    MAS_VENDIDOS_D.forEach((p,i)=>{
+      cont.innerHTML += `<div class="admin-card"><div class="admin-card-title">${p.nombre}<button class="admin-btn-sm danger" style="float:right" onclick="confirmDelete('¿Eliminar?',()=>{MAS_VENDIDOS_D.splice(${i},1);renderAdminVendidos()})">🗑️</button></div>
+        <div class="admin-grid-2"><div class="admin-field"><label>Nombre</label><input class="admin-input" value="${p.nombre}" oninput="MAS_VENDIDOS_D[${i}].nombre=this.value"></div>
+        <div class="admin-field"><label>Categoría</label><input class="admin-input" value="${p.categoria}" oninput="MAS_VENDIDOS_D[${i}].categoria=this.value"></div>
+        <div class="admin-field"><label>Precio</label><input type="number" class="admin-input" value="${p.precio}" oninput="MAS_VENDIDOS_D[${i}].precio=+this.value"></div>
+        <div class="admin-field"><label>Badge</label><input class="admin-input" value="${p.badge}" oninput="MAS_VENDIDOS_D[${i}].badge=this.value"></div></div>
+        <div class="admin-field"><label>Imagen</label><input class="admin-input" value="${p.imagen||''}" placeholder="URL de imagen" oninput="MAS_VENDIDOS_D[${i}].imagen=this.value">${p.imagen?`<img src="${p.imagen}" style="max-height:60px;margin-top:.3rem;display:block">`:''}<div class="admin-img-upload" style="margin-top:.3rem"><label style="cursor:pointer;display:flex;align-items:center;gap:.5rem;background:rgba(255,255,255,.05);border:1px dashed rgba(255,255,255,.2);padding:.5rem .8rem;font-size:.7rem;letter-spacing:2px">📤 SUBIR IMAGEN<input type="file" accept="image/*" style="display:none" onchange="uploadGenerico(this,MAS_VENDIDOS_D,'imagen',${i},renderAdminVendidos)"></label></div></div>
+        <div class="admin-field"><label>Emoji (si no hay imagen)</label><input class="admin-input" value="${p.emoji||'👕'}" oninput="MAS_VENDIDOS_D[${i}].emoji=this.value"></div></div>`;
+    });
+  }
+  function addVendido(){ MAS_VENDIDOS_D.push({nombre:"Nuevo",categoria:"General",precio:0,emoji:"👕",imagen:"",badge:"",tallas:[],colores:[]}); renderAdminVendidos(); }
+
+  function renderAdminResenas(){
+    const cont = document.getElementById('admin-resenas-list'); if(!cont) return;
+    cont.innerHTML = '';
+    RESENAS_D.forEach((r,i)=>{
+      cont.innerHTML += `<div class="admin-card"><div class="admin-card-title">Reseña ${i+1}<button class="admin-btn-sm danger" style="float:right" onclick="confirmDelete('¿Eliminar?',()=>{RESENAS_D.splice(${i},1);renderAdminResenas()})">🗑️</button></div>
+        <div class="admin-field"><label>Texto</label><textarea class="admin-textarea" oninput="RESENAS_D[${i}].texto=this.value">${r.texto}</textarea></div>
+        <div class="admin-field"><label>Autor</label><input class="admin-input" value="${r.autor}" oninput="RESENAS_D[${i}].autor=this.value"></div>
+        <div class="admin-field"><label>Estrellas (1-5)</label><input type="number" min="1" max="5" class="admin-input" value="${r.estrellas}" oninput="RESENAS_D[${i}].estrellas=+this.value"></div>
+        <div class="admin-field"><label>Activa</label><label class="admin-toggle"><input type="checkbox" ${r.activa?'checked':''} onchange="RESENAS_D[${i}].activa=this.checked"><div class="toggle-track"></div></label></div></div>`;
+    });
+  }
+  function addResena(){ RESENAS_D.push({texto:"Nueva reseña",autor:"Cliente",estrellas:5,activa:true}); renderAdminResenas(); }
+
+  function renderAdminLanzamientos(){
+    const cont = document.getElementById('admin-lanz-list'); if(!cont) return;
+    cont.innerHTML = '';
+    LANZAMIENTOS_D.forEach((l,i)=>{
+      cont.innerHTML += `<div class="admin-card"><div class="admin-card-title">${l.nombre}<button class="admin-btn-sm danger" style="float:right" onclick="confirmDelete('¿Eliminar?',()=>{LANZAMIENTOS_D.splice(${i},1);renderAdminLanzamientos()})">🗑️</button></div>
+        <div class="admin-grid-2"><div class="admin-field"><label>Nombre</label><input class="admin-input" value="${l.nombre}" oninput="LANZAMIENTOS_D[${i}].nombre=this.value"></div>
+        <div class="admin-field"><label>Fecha</label><input class="admin-input" value="${l.fecha}" oninput="LANZAMIENTOS_D[${i}].fecha=this.value"></div>
+        <div class="admin-field"><label>Descripción</label><textarea class="admin-textarea" oninput="LANZAMIENTOS_D[${i}].descripcion=this.value">${l.descripcion}</textarea></div>
+        <div class="admin-field"><label>Imagen</label><input class="admin-input" value="${l.imagen||''}" placeholder="URL de imagen" oninput="LANZAMIENTOS_D[${i}].imagen=this.value">${l.imagen?`<img src="${l.imagen}" style="max-height:60px;margin-top:.3rem;display:block">`:''}<div class="admin-img-upload" style="margin-top:.3rem"><label style="cursor:pointer;display:flex;align-items:center;gap:.5rem;background:rgba(255,255,255,.05);border:1px dashed rgba(255,255,255,.2);padding:.5rem .8rem;font-size:.7rem;letter-spacing:2px">📤 SUBIR IMAGEN<input type="file" accept="image/*" style="display:none" onchange="uploadGenerico(this,LANZAMIENTOS_D,'imagen',${i},renderAdminLanzamientos)"></label></div></div></div>
+        <div class="admin-field"><label>Activo</label><label class="admin-toggle"><input type="checkbox" ${l.activo?'checked':''} onchange="LANZAMIENTOS_D[${i}].activo=this.checked"><div class="toggle-track"></div></label></div></div>`;
+    });
+  }
+  function addLanzamiento(){ LANZAMIENTOS_D.push({nombre:"Nuevo lanzamiento",fecha:"Próximamente",descripcion:"Descripción",emoji:"🚀",imagen:"",activo:true}); renderAdminLanzamientos(); }
+
+  function renderAdminFaqs(){
+    const cont = document.getElementById('admin-faqs-list'); if(!cont) return;
+    cont.innerHTML = '';
+    FAQS_D.forEach((f,i)=>{
+      cont.innerHTML += `<div class="admin-card"><div class="admin-card-title">Pregunta ${i+1}<button class="admin-btn-sm danger" style="float:right" onclick="confirmDelete('¿Eliminar?',()=>{FAQS_D.splice(${i},1);renderAdminFaqs()})">🗑️</button></div>
+        <div class="admin-field"><label>Pregunta</label><input class="admin-input" value="${f.pregunta}" oninput="FAQS_D[${i}].pregunta=this.value"></div>
+        <div class="admin-field"><label>Respuesta</label><textarea class="admin-textarea" oninput="FAQS_D[${i}].respuesta=this.value">${f.respuesta}</textarea></div></div>`;
+    });
+  }
+  function addFaq(){ FAQS_D.push({pregunta:"Nueva pregunta",respuesta:"Respuesta"}); renderAdminFaqs(); }
+
+  function renderAdminFotosNosotros(){
+    const cont = document.getElementById('admin-fotos-list'); if(!cont) return;
+    cont.innerHTML = '';
+    (window.FOTOS_NOSOTROS_D||[]).forEach((f,i)=>{
+      cont.innerHTML += `<div class="admin-card"><div class="admin-card-title">Foto ${i+1}<button class="admin-btn-sm danger" style="float:right" onclick="confirmDelete('¿Eliminar?',()=>{window.FOTOS_NOSOTROS_D.splice(${i},1);renderAdminFotosNosotros()})">🗑️</button></div>
+        <div class="admin-field"><label>Emoji</label><input class="admin-input" value="${f.emoji}" oninput="window.FOTOS_NOSOTROS_D[${i}].emoji=this.value"></div>
+        <div class="admin-field"><label>Texto</label><input class="admin-input" value="${f.texto}" oninput="window.FOTOS_NOSOTROS_D[${i}].texto=this.value"></div>
+        <div class="admin-field"><label>Imagen</label><input class="admin-input" value="${f.imagen||''}" placeholder="URL de imagen" oninput="window.FOTOS_NOSOTROS_D[${i}].imagen=this.value">${f.imagen?`<img src="${f.imagen}" style="max-height:60px;margin-top:.3rem;display:block">`:''}<div class="admin-img-upload" style="margin-top:.3rem"><label style="cursor:pointer;display:flex;align-items:center;gap:.5rem;background:rgba(255,255,255,.05);border:1px dashed rgba(255,255,255,.2);padding:.5rem .8rem;font-size:.7rem;letter-spacing:2px">📤 SUBIR IMAGEN<input type="file" accept="image/*" style="display:none" onchange="uploadGenerico(this,window.FOTOS_NOSOTROS_D,'imagen',${i},renderAdminFotosNosotros)"></label></div></div></div>`;
+    });
+  }
+
+  function renderAdminPasos(){
+    const cont = document.getElementById('admin-pasos-list'); if(!cont) return;
+    cont.innerHTML = '';
+    (window.PASOS_D||[]).forEach((p,i)=>{
+      cont.innerHTML += `<div class="admin-card"><div class="admin-card-title">Paso ${i+1}<button class="admin-btn-sm danger" style="float:right" onclick="confirmDelete('¿Eliminar?',()=>{window.PASOS_D.splice(${i},1);renderAdminPasos()})">🗑️</button></div>
+        <div class="admin-field"><label>Emoji</label><input class="admin-input" value="${p.emoji}" oninput="window.PASOS_D[${i}].emoji=this.value"></div>
+        <div class="admin-field"><label>Título</label><input class="admin-input" value="${p.titulo}" oninput="window.PASOS_D[${i}].titulo=this.value"></div>
+        <div class="admin-field"><label>Descripción</label><textarea class="admin-textarea" oninput="window.PASOS_D[${i}].desc=this.value">${p.desc}</textarea></div></div>`;
+    });
+  }
+  function addPaso(){ if(!window.PASOS_D) window.PASOS_D=[]; window.PASOS_D.push({emoji:"📌",titulo:"Nuevo paso",desc:""}); renderAdminPasos(); }
+
+  function renderAdminEventos(){
+    const cont = document.getElementById('admin-eventos-list'); if(!cont) return;
+    cont.innerHTML = '';
+    (MAYOREO_D.eventos||[]).forEach((e,i)=>{
+      cont.innerHTML += `<div class="admin-card"><div class="admin-card-title">${e.nombre}<button class="admin-btn-sm danger" style="float:right" onclick="confirmDelete('¿Eliminar?',()=>{MAYOREO_D.eventos.splice(${i},1);renderAdminEventos()})">🗑️</button></div>
+        <div class="admin-field"><label>Nombre</label><input class="admin-input" value="${e.nombre}" oninput="MAYOREO_D.eventos[${i}].nombre=this.value"></div>
+        <div class="admin-field"><label>Emoji</label><input class="admin-input" value="${e.emoji}" oninput="MAYOREO_D.eventos[${i}].emoji=this.value"></div>
+        <div class="admin-field"><label>Descripción</label><textarea class="admin-textarea" oninput="MAYOREO_D.eventos[${i}].descripcion=this.value">${e.descripcion}</textarea></div></div>`;
+    });
+  }
+  function addEvento(){ if(!MAYOREO_D.eventos) MAYOREO_D.eventos=[]; MAYOREO_D.eventos.push({nombre:"Nuevo evento",emoji:"🎉",descripcion:""}); renderAdminEventos(); }
+
+  function renderAdminPaquetes(){
+    const cont = document.getElementById('admin-paquetes-list'); if(!cont) return;
+    cont.innerHTML = '';
+    (MAYOREO_D.paquetes||[]).forEach((p,i)=>{
+      cont.innerHTML += `<div class="admin-card"><div class="admin-card-title">${p.nombre}<button class="admin-btn-sm danger" style="float:right" onclick="confirmDelete('¿Eliminar?',()=>{MAYOREO_D.paquetes.splice(${i},1);renderAdminPaquetes()})">🗑️</button></div>
+        <div class="admin-field"><label>Nombre</label><input class="admin-input" value="${p.nombre}" oninput="MAYOREO_D.paquetes[${i}].nombre=this.value"></div>
+        <div class="admin-field"><label>Piezas</label><input class="admin-input" value="${p.piezas}" oninput="MAYOREO_D.paquetes[${i}].piezas=this.value"></div>
+        <div class="admin-field"><label>Precio</label><input class="admin-input" value="${p.precio}" oninput="MAYOREO_D.paquetes[${i}].precio=this.value"></div>
+        <div class="admin-field"><label>Incluye</label><input class="admin-input" value="${p.incluye}" oninput="MAYOREO_D.paquetes[${i}].incluye=this.value"></div>
+        <div class="admin-field"><label>Emoji</label><input class="admin-input" value="${p.emoji}" oninput="MAYOREO_D.paquetes[${i}].emoji=this.value"></div></div>`;
+    });
+  }
+  function addPaquete(){ if(!MAYOREO_D.paquetes) MAYOREO_D.paquetes=[]; MAYOREO_D.paquetes.push({nombre:"Nuevo paquete",piezas:"",precio:"",incluye:"",emoji:"📦"}); renderAdminPaquetes(); }
+
+  function renderAdminIgPosts(){
+    const cont = document.getElementById('admin-ig-posts-list'); if(!cont) return;
+    cont.innerHTML = '';
+    (window.IG_POSTS_D||[]).forEach((p,i)=>{
+      cont.innerHTML += `<div class="admin-card"><div class="admin-card-title">Post ${i+1}<button class="admin-btn-sm danger" style="float:right" onclick="confirmDelete('¿Eliminar?',()=>{window.IG_POSTS_D.splice(${i},1);renderAdminIgPosts()})">🗑️</button></div>
+        <div class="admin-field"><label>Título</label><input class="admin-input" value="${p.titulo}" oninput="window.IG_POSTS_D[${i}].titulo=this.value"></div>
+        <div class="admin-field"><label>Imagen</label><input class="admin-input" value="${p.imagen}" placeholder="URL de imagen" oninput="window.IG_POSTS_D[${i}].imagen=this.value">${p.imagen?`<img src="${p.imagen}" style="max-height:60px;margin-top:.3rem;display:block">`:''}<div class="admin-img-upload" style="margin-top:.3rem"><label style="cursor:pointer;display:flex;align-items:center;gap:.5rem;background:rgba(255,255,255,.05);border:1px dashed rgba(255,255,255,.2);padding:.5rem .8rem;font-size:.7rem;letter-spacing:2px">📤 SUBIR IMAGEN<input type="file" accept="image/*" style="display:none" onchange="uploadGenerico(this,window.IG_POSTS_D,'imagen',${i},renderAdminIgPosts)"></label></div></div>
+        <div class="admin-field"><label>Link del post</label><input class="admin-input" value="${p.url}" oninput="window.IG_POSTS_D[${i}].url=this.value"></div></div>`;
+    });
+  }
+  function addIgPost(){ if(!window.IG_POSTS_D) window.IG_POSTS_D=[]; window.IG_POSTS_D.push({titulo:"",imagen:"",url:""}); renderAdminIgPosts(); }
+
+  function renderAdminTtPosts(){
+    const cont = document.getElementById('admin-tt-posts-list'); if(!cont) return;
+    cont.innerHTML = '';
+    (window.TIKTOK_POSTS_D||[]).forEach((p,i)=>{
+      cont.innerHTML += `<div class="admin-card"><div class="admin-card-title">Video ${i+1}<button class="admin-btn-sm danger" style="float:right" onclick="confirmDelete('¿Eliminar?',()=>{window.TIKTOK_POSTS_D.splice(${i},1);renderAdminTtPosts()})">🗑️</button></div>
+        <div class="admin-field"><label>Título</label><input class="admin-input" value="${p.titulo}" oninput="window.TIKTOK_POSTS_D[${i}].titulo=this.value"></div>
+        <div class="admin-field"><label>Miniatura</label><input class="admin-input" value="${p.imagen}" placeholder="URL de imagen" oninput="window.TIKTOK_POSTS_D[${i}].imagen=this.value">${p.imagen?`<img src="${p.imagen}" style="max-height:60px;margin-top:.3rem;display:block">`:''}<div class="admin-img-upload" style="margin-top:.3rem"><label style="cursor:pointer;display:flex;align-items:center;gap:.5rem;background:rgba(255,255,255,.05);border:1px dashed rgba(255,255,255,.2);padding:.5rem .8rem;font-size:.7rem;letter-spacing:2px">📤 SUBIR IMAGEN<input type="file" accept="image/*" style="display:none" onchange="uploadGenerico(this,window.TIKTOK_POSTS_D,'imagen',${i},renderAdminTtPosts)"></label></div></div>
+        <div class="admin-field"><label>Link del video</label><input class="admin-input" value="${p.url}" oninput="window.TIKTOK_POSTS_D[${i}].url=this.value"></div></div>`;
+    });
+  }
+  function addTtPost(){ if(!window.TIKTOK_POSTS_D) window.TIKTOK_POSTS_D=[]; window.TIKTOK_POSTS_D.push({titulo:"",imagen:"",url:""}); renderAdminTtPosts(); }
+
+  // ── RESEÑAS CLIENTES (Supabase) ────────────────────────────────────────────
+  window._fcNewStars = 5;
+
+  function initFcStars(){
+    const stars = document.querySelectorAll('.admin-star');
+    stars.forEach(s => {
+      s.onclick = function(){
+        window._fcNewStars = parseInt(this.dataset.val);
+        stars.forEach((st,i) => st.textContent = i < window._fcNewStars ? '⭐' : '☆');
+      };
+    });
+    // Default 5 stars selected
+    stars.forEach(st => st.textContent = '⭐');
+  }
+
+  function prevFcNewFile(input){
+    const f = input.files[0];
+    if(!f) return;
+    const esVideo = f.type.startsWith('video/');
+    const reader = new FileReader();
+    reader.onload = e => {
+      const img = document.getElementById('fc-new-preview-img');
+      const vid = document.getElementById('fc-new-preview-vid');
+      if(esVideo){
+        img.style.display='none'; img.src='';
+        vid.src = e.target.result; vid.style.display='block';
+      } else {
+        vid.style.display='none'; vid.src='';
+        img.src = e.target.result; img.style.display='block';
+      }
+    };
+    reader.readAsDataURL(f);
+  }
+
+  async function agregarResenaAdmin(){
+    const nombre   = (document.getElementById('fc-new-nombre')||{}).value?.trim();
+    const producto = (document.getElementById('fc-new-producto')||{}).value?.trim();
+    const resena   = (document.getElementById('fc-new-resena')||{}).value?.trim();
+    const estrellas = window._fcNewStars || 5;
+    const file     = (document.getElementById('fc-new-file')||{}).files?.[0];
+
+    if(!nombre)  { showNotif('Escribe el nombre del cliente'); return; }
+    if(!producto){ showNotif('Escribe el producto'); return; }
+
+    const btn = document.querySelector('#fc-add-form .admin-btn-add');
+    if(btn){ btn.disabled=true; btn.textContent='⏳ Publicando...'; }
+
+    try {
+      let imagen_url = '';
+      if(file){
+        const prog = document.getElementById('fc-new-upload-prog');
+        const bar  = document.getElementById('fc-new-prog-bar');
+        if(prog) prog.style.display='block';
+        if(bar) bar.style.width='40%';
+        imagen_url = await uploadToStorage(file, 'fotos-clientes');
+        if(bar) bar.style.width='85%';
+      }
+
+      const { error } = await sb.from('fotos_clientes').insert([{ nombre, producto, resena, estrellas, imagen_url }]);
+      if(error) throw error;
+
+      // Reset form
+      document.getElementById('fc-new-nombre').value='';
+      document.getElementById('fc-new-producto').value='';
+      document.getElementById('fc-new-resena').value='';
+      document.getElementById('fc-new-file').value='';
+      document.getElementById('fc-new-preview-img').style.display='none';
+      document.getElementById('fc-new-preview-vid').style.display='none';
+      const prog = document.getElementById('fc-new-upload-prog');
+      if(prog) prog.style.display='none';
+      window._fcNewStars=5;
+      document.querySelectorAll('.admin-star').forEach(s=>s.textContent='⭐');
+
+      showNotif('✅ Reseña publicada');
+      cargarFotosClientesAdmin();
+    } catch(e){
+      showNotif('Error: ' + e.message);
+    } finally {
+      if(btn){ btn.disabled=false; btn.textContent='✅ PUBLICAR RESEÑA'; }
+    }
+  }
+
+  async function cargarFotosClientesAdmin(){
+    const cont = document.getElementById('admin-fotos-clientes-list');
+    if(!cont) return;
+    const cfg = APP_DATA.FOTOS_CLIENTES_CFG || {activo:true};
+    const fcActivo = document.getElementById('fc-activo');
+    if(fcActivo) fcActivo.checked = cfg.activo !== false;
+    // Init stars if not done yet
+    if(!document.querySelector('.admin-star[data-val="1"]')?.onclick) initFcStars();
+    else initFcStars();
+
+    cont.innerHTML = '<div style="font-family:var(--font-mono);font-size:.6rem;color:var(--gray);padding:.5rem 0">Cargando...</div>';
+    try {
+      const { data, error } = await sb
+        .from('fotos_clientes')
+        .select('*')
+        .order('created_at', { ascending: false });
+      if(error) throw error;
+      renderFotosClientesAdmin(data || []);
+    } catch(e){
+      cont.innerHTML = `<div style="font-family:var(--font-mono);font-size:.6rem;color:var(--neon);padding:.5rem 0">Error: ${e.message}</div>`;
+    }
+  }
+
+  function renderFotosClientesAdmin(rows){
+    const cont = document.getElementById('admin-fotos-clientes-list');
+    if(!cont) return;
+    if(!rows.length){
+      cont.innerHTML = '<div style="font-family:var(--font-mono);font-size:.6rem;color:var(--gray);padding:1rem 0">Aún no hay reseñas. Agrega la primera arriba.</div>';
+      return;
+    }
+    cont.innerHTML = rows.map(r => {
+      const esVideo = r.imagen_url && /\.(mp4|mov|webm|ogg)(\?|$)/i.test(r.imagen_url);
+      const mediaEl = r.imagen_url
+        ? (esVideo
+          ? `<video src="${r.imagen_url}" style="width:80px;height:80px;object-fit:cover;flex-shrink:0;border:1px solid var(--border)" muted playsinline></video>`
+          : `<img src="${r.imagen_url}" style="width:80px;height:80px;object-fit:cover;flex-shrink:0;border:1px solid var(--border)">`)
+        : `<div style="width:80px;height:80px;flex-shrink:0;background:var(--card2);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:1.8rem">⭐</div>`;
+      const estrellas = '⭐'.repeat(Math.min(5, r.estrellas||5));
+      const resenaTxt = r.resena ? `<div style="font-size:.8rem;color:var(--light);font-style:italic;margin-bottom:.3rem;line-height:1.5">"${r.resena}"</div>` : '';
+      const fecha = r.created_at ? new Date(r.created_at).toLocaleDateString('es-MX',{day:'2-digit',month:'short',year:'numeric'}) : '';
+      return `<div class="admin-card" style="display:flex;gap:1rem;align-items:flex-start">
+        ${mediaEl}
+        <div style="flex:1;min-width:0">
+          <div class="admin-card-title" style="margin-bottom:.3rem">${r.nombre}</div>
+          <div style="font-family:var(--font-mono);font-size:.55rem;color:var(--neon);margin-bottom:.3rem">${r.producto}</div>
+          <div style="font-size:.9rem;margin-bottom:.3rem">${estrellas}</div>
+          ${resenaTxt}
+          <div style="font-family:var(--font-mono);font-size:.45rem;color:rgba(255,255,255,.25)">${fecha}</div>
+        </div>
+        <button class="admin-btn-sm danger" onclick="eliminarFotoCliente('${r.id}')">🗑️</button>
+        <button class="admin-btn-sm" style="margin-left:.3rem" onclick="editarResenaAdmin('${r.id}','${(r.nombre||'').replace(/'/g,"\\'")}','${(r.producto||'').replace(/'/g,"\\'")}','${(r.resena||'').replace(/'/g,"\\'").replace(/\n/g,' ')}',${r.estrellas||5})">✏️</button>
+      </div>`;
+    }).join('');
+  }
+
+  async function eliminarFotoCliente(id){
+    confirmDelete('¿Eliminar esta reseña?', async () => {
+      try {
+        const { data } = await sb.from('fotos_clientes').select('imagen_url').eq('id', id).single();
+        const { error } = await sb.from('fotos_clientes').delete().eq('id', id);
+        if(error) throw error;
+        if(data && data.imagen_url){
+          try {
+            const path = data.imagen_url.split('/images/')[1];
+            if(path) await sb.storage.from('images').remove([path]);
+          } catch(e){}
+        }
+        showNotif('✅ Reseña eliminada');
+        cargarFotosClientesAdmin();
+      } catch(e){
+        showNotif('Error al eliminar: ' + e.message);
+      }
+    });
+  }
+
+  // ── Editar reseña ──────────────────────────────────────────────────────────
+  let _editResenaStars = 5;
+
+  function initEditStars(){
+    const stars = document.querySelectorAll('#edit-resena-stars .edit-star');
+    stars.forEach(s => {
+      s.onclick = () => {
+        _editResenaStars = parseInt(s.dataset.val);
+        stars.forEach(x => x.textContent = parseInt(x.dataset.val) <= _editResenaStars ? '⭐' : '☆');
+      };
+    });
+  }
+
+  function editarResenaAdmin(id, nombre, producto, resena, estrellas){
+    document.getElementById('edit-resena-id').value = id;
+    document.getElementById('edit-resena-nombre').value = nombre;
+    document.getElementById('edit-resena-producto').value = producto;
+    document.getElementById('edit-resena-texto').value = resena;
+    _editResenaStars = parseInt(estrellas) || 5;
+    initEditStars();
+    // Pintar estrellas
+    document.querySelectorAll('#edit-resena-stars .edit-star').forEach(s => {
+      s.textContent = parseInt(s.dataset.val) <= _editResenaStars ? '⭐' : '☆';
+    });
+    document.getElementById('editResenaModal').classList.add('show');
+  }
+
+  function cerrarEditResena(){
+    document.getElementById('editResenaModal').classList.remove('show');
+  }
+
+  async function guardarEdicionResena(){
+    const id       = document.getElementById('edit-resena-id').value;
+    const nombre   = document.getElementById('edit-resena-nombre').value.trim();
+    const producto = document.getElementById('edit-resena-producto').value.trim();
+    const resena   = document.getElementById('edit-resena-texto').value.trim();
+    const estrellas = _editResenaStars;
+    if(!nombre){ showNotif('El nombre es requerido'); return; }
+    try {
+      const { error } = await sb.from('fotos_clientes').update({ nombre, producto, resena, estrellas }).eq('id', id);
+      if(error) throw error;
+      showNotif('✅ Reseña actualizada');
+      cerrarEditResena();
+      cargarFotosClientesAdmin();
+    } catch(e){
+      showNotif('Error: ' + e.message);
+    }
+  }
+  // ── Fin editar reseña ──────────────────────────────────────────────────────
+
+  async function guardarCfgFotos(){
+    if(!APP_DATA.FOTOS_CLIENTES_CFG) APP_DATA.FOTOS_CLIENTES_CFG = {};
+    APP_DATA.FOTOS_CLIENTES_CFG.activo = !!(document.getElementById('fc-activo')||{}).checked;
+  }
+
+  function quitarIconoRed(key){
+    NEGOCIO[key]=''; const prev=document.getElementById('prev-icono-'+key.replace('icono_',''));
+    if(prev) prev.innerHTML=''; showNotif('Ícono eliminado.');
+  }
+
+  function setGridCols(key, cols, btn){
+    GRID_CONFIG[key]=cols;
+    btn.closest('.grid-cols-btns').querySelectorAll('.grid-col-btn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+  }
+  function setCardRatio(ratio, btn){
+    CARD_RATIO=ratio;
+    document.querySelectorAll('#gc-ratio .grid-col-btn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+  }
+  function setCardFit(fit, btn){
+    CARD_FIT=fit;
+    document.querySelectorAll('#gc-fit .grid-col-btn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+  }
+  function syncGridButtons(){
+    const map={productos:'gc-productos', masVendidos:'gc-masVendidos', promos:'gc-promos', lanzamientos:'gc-lanzamientos'};
+    Object.entries(map).forEach(([k,id])=>{ const c=document.getElementById(id); if(c){ const t=GRID_CONFIG[k]; c.querySelectorAll('.grid-col-btn').forEach(b=>{ if(parseInt(b.textContent)===t) b.classList.add('active'); else b.classList.remove('active'); }); } });
+    document.querySelectorAll('#gc-ratio .grid-col-btn').forEach(b=>{ if(b.getAttribute('onclick')?.includes(CARD_RATIO.replace('/',''))) b.classList.add('active'); else b.classList.remove('active'); });
+    document.querySelectorAll('#gc-fit .grid-col-btn').forEach(b=>{ if(b.getAttribute('onclick')?.includes(CARD_FIT)) b.classList.add('active'); else b.classList.remove('active'); });
+  }
+
+  async function guardarTodo() {
+    APP_DATA.NEGOCIO = {
+      nombre: document.getElementById('a-nombre').value,
+      descripcion: document.getElementById('a-descripcion').value,
+      whatsapp: document.getElementById('a-whatsapp').value,
+      instagram: document.getElementById('a-instagram').value,
+      facebook: document.getElementById('a-facebook').value,
+      tiktok: document.getElementById('a-tiktok').value,
+      tiktok_user: document.getElementById('a-tiktok-user').value,
+      hero_frase1: document.getElementById('h-frase1').value,
+      hero_frase2: document.getElementById('h-frase2').value,
+      hero_frase3: document.getElementById('h-frase3').value,
+      icono_instagram: NEGOCIO.icono_instagram,
+      icono_whatsapp: NEGOCIO.icono_whatsapp,
+      icono_facebook: NEGOCIO.icono_facebook,
+      icono_tiktok: NEGOCIO.icono_tiktok
+    };
+
+    APP_DATA.COLORES = {
+      fondo: document.getElementById('c-fondo').value,
+      tarjetas: document.getElementById('c-tarjetas').value,
+      acento: document.getElementById('c-acento').value,
+      acento2: document.getElementById('c-acento2').value,
+      texto: document.getElementById('c-texto').value,
+      gris: document.getElementById('c-gris').value
+    };
+
+    APP_DATA.FUENTES = {
+      display: document.getElementById('f-display').value,
+      mono: document.getElementById('f-mono').value,
+      body: document.getElementById('f-body').value
+    };
+
+    APP_DATA.POPUP = {
+      activo: document.getElementById('p-activo').checked,
+      emoji: document.getElementById('p-emoji').value,
+      titulo: document.getElementById('p-titulo').value,
+      descripcion: document.getElementById('p-desc').value,
+      boton: document.getElementById('p-boton').value
+    };
+
+    APP_DATA.TICKER = document.getElementById('a-ticker').value.split('\n').filter(s => s.trim());
+    APP_DATA.LOGO = LOGO_D;
+
+    APP_DATA.MAYOREO = {
+      activo: document.getElementById('my-activo').checked,
+      subtitulo: document.getElementById('my-subtitulo').value,
+      descripcion: document.getElementById('my-descripcion').value,
+      minimo: document.getElementById('my-minimo').value,
+      descuento: document.getElementById('my-descuento').value,
+      entrega: document.getElementById('my-entrega').value,
+      whatsapp_msg: document.getElementById('my-msg').value,
+      eventos: MAYOREO_D.eventos,
+      paquetes: MAYOREO_D.paquetes
+    };
+
+    APP_DATA.NOSOTROS = {
+      titulo: document.getElementById('n-titulo').value,
+      parrafo1: document.getElementById('n-p1').value,
+      parrafo2: document.getElementById('n-p2').value,
+      parrafo3: document.getElementById('n-p3').value
+    };
+
+    APP_DATA.PASOS_LABEL = document.getElementById('pasos-label-inp').value;
+    APP_DATA.PASOS_TITULO = document.getElementById('pasos-titulo-inp').value;
+
+    APP_DATA.PROMOCIONES = PROMOCIONES_D;
+    APP_DATA.MAS_VENDIDOS = MAS_VENDIDOS_D;
+    APP_DATA.CATALOGO = CATALOGO_D;
+    APP_DATA.LANZAMIENTOS = LANZAMIENTOS_D;
+    APP_DATA.FAQS = FAQS_D;
+    APP_DATA.RESENAS = RESENAS_D;
+    APP_DATA.PASOS = window.PASOS_D;
+    APP_DATA.FOTOS_NOSOTROS = window.FOTOS_NOSOTROS_D;
+    APP_DATA.IG_POSTS = window.IG_POSTS_D;
+    APP_DATA.TIKTOK_POSTS = window.TIKTOK_POSTS_D;
+    APP_DATA.FILTROS_GLOBALES = window.FILTROS_GLOBALES_D || {tipos:[],categorias:[],disenos:[]};
+    APP_DATA.GRID_CONFIG = GRID_CONFIG;
+    APP_DATA.CARD_RATIO = CARD_RATIO;
+    APP_DATA.CARD_FIT = CARD_FIT;
+    APP_DATA.IMAGENES_PERSONALIZACION = IMAGENES_PERSONALIZACION;
+    APP_DATA.IMAGEN_LLUVIA = IMAGEN_LLUVIA;
+    APP_DATA.LLUVIA_CONFIG = {
+      activa: document.getElementById('lluvia-activa').checked,
+      cantidad: parseInt(document.getElementById('lluvia-cantidad').value) || 20,
+      velocidad: parseFloat(document.getElementById('lluvia-velocidad').value) || 2,
+      espera: parseInt(document.getElementById('lluvia-espera').value) || 0
+    };
+    // Config fotos clientes
+    if(!APP_DATA.FOTOS_CLIENTES_CFG) APP_DATA.FOTOS_CLIENTES_CFG = {};
+    APP_DATA.FOTOS_CLIENTES_CFG.activo = !!(document.getElementById('fc-activo')||{}).checked;
+
+    syncGlobalsFromAppData();
+    applyStyles();
+    await saveAllToSupabase();
+
+    const btn = document.getElementById('saveFloatBtn');
+    btn.textContent = '✅ GUARDADO';
+    setTimeout(() => { btn.textContent = '💾 GUARDAR TODO'; }, 2000);
+  }
+
+  function loadIconoPreview(red){
+    const key='icono_'+red; const url=NEGOCIO[key]; const prev=document.getElementById('prev-icono-'+red);
+    if(prev && url) prev.innerHTML=`<img src="${url}" style="width:32px;height:32px;object-fit:contain">`;
+    else if(prev) prev.innerHTML='';
+  }
+
+  function loadAllAdminFields(){
+    document.getElementById('a-nombre').value = NEGOCIO.nombre || '';
+    document.getElementById('a-descripcion').value = NEGOCIO.descripcion || '';
+    document.getElementById('a-whatsapp').value = NEGOCIO.whatsapp || '';
+    document.getElementById('a-instagram').value = NEGOCIO.instagram || '';
+    document.getElementById('a-facebook').value = NEGOCIO.facebook || '';
+    document.getElementById('a-tiktok').value = NEGOCIO.tiktok || '';
+    document.getElementById('a-tiktok-user').value = NEGOCIO.tiktok_user || '';
+    loadIconoPreview('instagram'); loadIconoPreview('facebook'); loadIconoPreview('tiktok'); loadIconoPreview('whatsapp');
+    document.getElementById('logoPreview').src = getLogoSrc();
+    document.getElementById('c-fondo').value = COLORES.fondo; document.getElementById('ct-fondo').value = COLORES.fondo; document.getElementById('dp-fondo').style.background=COLORES.fondo;
+    document.getElementById('c-tarjetas').value = COLORES.tarjetas; document.getElementById('ct-tarjetas').value = COLORES.tarjetas; document.getElementById('dp-tarjetas').style.background=COLORES.tarjetas;
+    document.getElementById('c-acento').value = COLORES.acento; document.getElementById('ct-acento').value = COLORES.acento; document.getElementById('dp-acento').style.background=COLORES.acento;
+    document.getElementById('c-acento2').value = COLORES.acento2; document.getElementById('ct-acento2').value = COLORES.acento2; document.getElementById('dp-acento2').style.background=COLORES.acento2;
+    document.getElementById('c-texto').value = COLORES.texto; document.getElementById('ct-texto').value = COLORES.texto; document.getElementById('dp-texto').style.background=COLORES.texto;
+    document.getElementById('c-gris').value = COLORES.gris; document.getElementById('ct-gris').value = COLORES.gris; document.getElementById('dp-gris').style.background=COLORES.gris;
+    document.getElementById('f-display').value = FUENTES.display;
+    document.getElementById('f-mono').value = FUENTES.mono;
+    document.getElementById('f-body').value = FUENTES.body;
+    previewFonts();
+    document.getElementById('h-frase1').value = NEGOCIO.hero_frase1 || '';
+    document.getElementById('h-frase2').value = NEGOCIO.hero_frase2 || '';
+    document.getElementById('h-frase3').value = NEGOCIO.hero_frase3 || '';
+    document.getElementById('p-activo').checked = POPUP_D.activo;
+    document.getElementById('p-emoji').value = POPUP_D.emoji || '';
+    document.getElementById('p-titulo').value = POPUP_D.titulo || '';
+    document.getElementById('p-desc').value = POPUP_D.descripcion || '';
+    document.getElementById('p-boton').value = POPUP_D.boton || '';
+    document.getElementById('a-ticker').value = TICKER_D.join('\n');
+    document.getElementById('my-activo').checked = MAYOREO_D.activo;
+    document.getElementById('my-subtitulo').value = MAYOREO_D.subtitulo || '';
+    document.getElementById('my-descripcion').value = MAYOREO_D.descripcion || '';
+    document.getElementById('my-minimo').value = MAYOREO_D.minimo || '';
+    document.getElementById('my-descuento').value = MAYOREO_D.descuento || '';
+    document.getElementById('my-entrega').value = MAYOREO_D.entrega || '';
+    document.getElementById('my-msg').value = MAYOREO_D.whatsapp_msg || '';
+    document.getElementById('n-titulo').value = NOSOTROS_D.titulo || '';
+    document.getElementById('n-p1').value = NOSOTROS_D.parrafo1 || '';
+    document.getElementById('n-p2').value = NOSOTROS_D.parrafo2 || '';
+    document.getElementById('n-p3').value = NOSOTROS_D.parrafo3 || '';
+    document.getElementById('pasos-label-inp').value = window.PASOS_LABEL_D || '';
+    document.getElementById('pasos-titulo-inp').value = window.PASOS_TITULO_D || '';
+    renderAdminPromos(); renderAdminCatalogo(); renderAdminVendidos(); renderAdminResenas(); renderAdminLanzamientos();
+    renderAdminFaqs(); renderAdminFotosNosotros(); renderAdminPasos(); renderAdminEventos(); renderAdminPaquetes();
+    renderAdminIgPosts(); renderAdminTtPosts();
+    syncGridButtons();
+    renderAdminImagenesPersonalizacion();
+    if (IMAGEN_LLUVIA) {
+      document.getElementById('lluviaPreview').src = IMAGEN_LLUVIA;
+      document.getElementById('lluviaPreview').style.display = 'block';
+      document.getElementById('lluviaUrl').value = IMAGEN_LLUVIA;
+    } else {
+      document.getElementById('lluviaPreview').style.display = 'none';
+    }
+    document.getElementById('lluvia-activa').checked = LLUVIA_CONFIG.activa !== false;
+    document.getElementById('lluvia-cantidad').value = LLUVIA_CONFIG.cantidad || 20;
+    document.getElementById('lluvia-velocidad').value = LLUVIA_CONFIG.velocidad || 2;
+    document.getElementById('lluvia-espera').value = LLUVIA_CONFIG.espera || 0;
+  }
+
+  //  INICIALIZACIÓN 
+  window.addEventListener('DOMContentLoaded', async () => {
+    document.getElementById('adminMain').innerHTML = buildSectionsHTML();
+    await initAuth();
+  });
+</script>
+</body>
+</html>

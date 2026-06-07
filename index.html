@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="description" id="page-desc" content="SARUX en Puebla Centro. Diseños originales en playeras, tazas, termos, cilindros, sudaderas y más. Personalización para bodas, XV años, graduaciones y empresas. ¡Envíos a todo México!">
+<meta name="keywords" content="SARUX, playeras personalizadas Puebla, tazas sublimación Puebla, termos personalizados, diseño gráfico Puebla, sublimación Puebla, regalos personalizados, bodas Puebla, XV años Puebla, graduaciones Puebla">
+<meta name="author" content="SARUX">
+<meta name="robots" content="index, follow">
+<meta name="googlebot" content="index, follow">
+<meta name="geo.region" content="MX-PUE">
+<meta name="geo.placename" content="Puebla, México">
+<meta name="geo.position" content="19.0414;-98.2063">
+<meta name="ICBM" content="19.0414, -98.2063">
+<meta property="og:title" content="SARUX | Diseño y Sublimación en Puebla">
+<meta property="og:description" content="Diseños originales en playeras, tazas, termos y más. Personalización para eventos en Puebla.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://saruxcatalogo.pages.dev">
+<meta property="og:site_name" content="SARUX">
+<meta property="og:locale" content="es_MX">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="SARUX | Diseño y Sublimación en Puebla">
+<meta name="twitter:description" content="Diseños originales en playeras, tazas, termos y más. Personalización para eventos en Puebla.">
+<link rel="canonical" href="https://saruxcatalogo.pages.dev/">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32'%3E%3Crect width='32' height='32' fill='%23060606'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' fill='%23e8192c' font-family='Arial Black' font-size='14'%3ES%3C/text%3E%3C/svg%3E">
+<title id="page-title">SARUX | Diseño y Sublimación en Puebla — Playeras, Tazas, Termos Personalizados</title>
+<meta name="description" id="page-desc" content="SARUX — Diseños originales en playeras, tazas, termos y más.">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Space+Mono:wght@400;700&family=Rajdhani:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+
+<!-- PANTALLA DE CARGA -->
+<div id="sarux-loader">
+  <div class="loader-logo">SARUX</div>
+  <div class="loader-barra-wrap"><div class="loader-barra"></div></div>
+  <div class="loader-texto">Cargando...</div>
+</div>
+<script src="config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"LocalBusiness","name":"SARUX","description":"Diseño y sublimación de alta calidad en Puebla. Playeras, tazas, termos, cilindros, sudaderas y más productos personalizados.","url":"https://saruxcatalogo.pages.dev","telephone":"+52-222-925-0603","address":{"@type":"PostalAddress","addressLocality":"Puebla","addressRegion":"Puebla","addressCountry":"MX"},"geo":{"@type":"GeoCoordinates","latitude":"19.0414","longitude":"-98.2063"},"openingHours":"Mo-Sa 09:00-18:00","priceRange":"$","sameAs":["https://www.facebook.com/sarux","https://www.instagram.com/sarux.oficial","https://www.tiktok.com/@sarux.oficial"]}
+</script>
+</head>
+<body>
+
+<!-- MODAL PAQUETE MAYOREO -->
+<!-- LIGHTBOX -->
+<div id="lightbox" onclick="cerrarLightbox()">
+  <button id="lightbox-close" onclick="cerrarLightbox()">✕</button>
+  <img id="lightbox-img" src="" alt="">
+</div>
+
+<div id="paqueteModalOverlay" class="modal-overlay" onclick="if(event.target===this)cerrarPaqueteModal()">
+  <div class="modal-box">
+    <button class="modal-close" onclick="cerrarPaqueteModal()">✕</button>
+    <div class="modal-img" id="paqueteModalEmoji" style="font-size:5rem;min-height:120px"></div>
+    <div class="modal-body">
+      <div class="modal-cat" id="paqueteModalCat">Paquete Mayoreo</div>
+      <div class="modal-name" id="paqueteModalNombre"></div>
+      <div class="modal-price" id="paqueteModalPrecio"></div>
+      <div class="modal-sec-title">Piezas</div>
+      <div id="paqueteModalPiezas" style="color:var(--neon);font-family:var(--font-mono);font-size:.75rem;letter-spacing:2px;margin-bottom:1rem"></div>
+      <div class="modal-sec-title">Incluye</div>
+      <div id="paqueteModalIncluye" style="color:var(--gray);font-size:.95rem;font-weight:300;line-height:1.7;margin-bottom:1.5rem"></div>
+      <button class="modal-buy" id="paqueteModalBuyBtn">📱 Cotizar por WhatsApp</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL PROMOCIÓN -->
+<div id="promoModalOverlay" class="modal-overlay" onclick="if(event.target===this)cerrarPromoModal()">
+  <div class="modal-box">
+    <button class="modal-close" onclick="cerrarPromoModal()">✕</button>
+    <div class="modal-img" id="promoModalImg" style="font-size:5rem;min-height:180px"></div>
+    <div class="modal-body">
+      <div class="modal-cat" id="promoModalBadge"></div>
+      <div class="modal-name" id="promoModalNombre"></div>
+      <div class="modal-price" id="promoModalPrecio"></div>
+      <div id="promoModalDescWrap" style="display:none">
+        <div class="modal-sec-title">Descripción</div>
+        <div id="promoModalDesc" class="modal-desc"></div>
+      </div>
+      <div class="modal-stock" id="promoModalCountdown"></div>
+      <button class="modal-buy" id="promoModalBuyBtn">📱 Aprovechar oferta por WhatsApp</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL PRODUCTO -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal-box">
+    <button class="modal-close" onclick="cerrarModal()">✕</button>
+    <div class="modal-img" id="modalImg" style="position:relative">
+      <button id="zoom-btn" onclick="abrirLightbox()" style="display:none;position:absolute;bottom:.6rem;right:.6rem;background:rgba(0,0,0,.7);border:1px solid rgba(255,255,255,.2);color:#fff;padding:.4rem .7rem;cursor:pointer;font-size:.65rem;letter-spacing:2px;z-index:2">🔍 VER GRANDE</button>
+    </div>
+    <div class="modal-body">
+      <div class="modal-cat" id="modalCat"></div>
+      <div class="modal-name" id="modalName"></div>
+      <div class="modal-desc" id="modalDesc"></div>
+      <div class="modal-price" id="modalPrice"></div>
+      <div id="modalTallasWrap"><div class="modal-sec-title">Tallas disponibles</div><div class="sizes-wrap" id="modalTallas"></div></div>
+      <div id="modalColoresWrap"><div class="modal-sec-title">Colores disponibles</div><div class="colors-wrap" id="modalColores"></div></div>
+      <div class="modal-stock" id="modalStock"></div>
+      <button class="modal-buy" id="modalBuyBtn">📱 Comprar por WhatsApp</button>
+      <button class="modal-buy" id="modalAddCarritoBtn" style="background:var(--card);color:var(--neon);border:1px solid rgba(232,25,44,.35);margin-top:.6rem;font-size:.6rem" onclick="agregarDesdeModal()">🛒 Guardar en carrito</button>
+      <button class="modal-buy" id="modalShareBtn" style="background:var(--card);color:var(--light);border:1px solid var(--border);margin-top:.6rem;font-size:.6rem" onclick="compartirImagenActiva()">🔗 Compartir diseño</button>
+      <div class="modal-reviews">
+        <div class="modal-sec-title">Reseñas del producto</div>
+        <div id="modalReviewsList" style="color:var(--gray);font-size:.85rem;font-weight:300;line-height:1.8">
+          <span style="font-family:var(--font-mono);font-size:.6rem;letter-spacing:2px;opacity:.5">Cargando reseñas...</span>
+        </div>
+        <button class="modal-buy" id="modalWriteReviewBtn" style="background:var(--card);color:var(--neon);border:1px solid rgba(232,25,44,.35);margin-top:1.2rem;font-size:.6rem" onclick="abrirFrModalDesdeProducto()">✍️ Escribir reseña</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL PERSONAJES -->
+<div id="personajesOverlay">
+  <div class="pj-header">
+    <button class="pj-back" onclick="cerrarPersonajes()">← Volver</button>
+    <div>
+      <div class="pj-title" id="pjTitle"></div>
+      <div class="pj-subtitle" id="pjSubtitle"></div>
+    </div>
+  </div>
+  <div class="pj-body">
+    <div class="pj-grid" id="pjGrid"></div>
+  </div>
+</div>
+
+<!-- POPUP BIENVENIDA -->
+<div id="popup"></div>
+
+<!-- CHAT -->
+<div class="chat-widget" id="chatWidget">
+  <div class="chat-header"><span class="chat-title">🤖 Asistente Sarux</span><button class="chat-close" onclick="toggleChat()">✕</button></div>
+  <div class="chat-messages" id="chatMessages"><div class="chat-msg bot">¡Hola! 👋 Soy el asistente de Sarux. ¿En qué te puedo ayudar?</div></div>
+  <div class="chat-suggestions">
+    <button class="chat-sug" onclick="chatReply('precios')">Precios</button>
+    <button class="chat-sug" onclick="chatReply('envios')">Envíos</button>
+    <button class="chat-sug" onclick="chatReply('pedido')">Cómo pedir</button>
+    <button class="chat-sug" onclick="chatReply('mayoreo')">Mayoreo</button>
+  </div>
+  <div class="chat-input-wrap">
+    <input class="chat-input" id="chatInput" placeholder="Escribe tu pregunta..." onkeypress="chatEnter(event)">
+    <button class="chat-send" onclick="enviarChat()">→</button>
+  </div>
+</div>
+
+<!-- NAV -->
+<nav>
+  <div class="topbar" id="topbar"></div>
+  <div class="navbar">
+    <a href="#" class="logo-link" id="navLogo"></a>
+    <ul class="nav-links">
+      <li><a href="#promociones">Promociones</a></li>
+      <li><a href="#catalogo">Catálogo</a></li>
+      <li><a href="#mayoreo">Mayoreo</a></li>
+      <li><a href="#nosotros">Nosotros</a></li>
+      <li><a href="#contacto">Contacto</a></li>
+    </ul>
+    <div style="display:flex;align-items:center;gap:1rem">
+      <div class="search-bar">
+        <span>🔍</span>
+        <input type="text" placeholder="Buscar producto..." id="searchInput" oninput="buscarProducto(this.value)">
+        <button class="search-clear-btn" id="searchClearBtn" onclick="limpiarBusqueda()" title="Limpiar búsqueda">✕</button>
+      </div>
+      <button id="carritoBtn" onclick="toggleCarrito()">🛒 Carrito <span id="carritoBadge">0</span></button>
+    </div>
+  </div>
+</nav>
+
+<!-- HERO -->
+<section class="hero" id="inicio">
+  <div class="hero-bg"></div><div class="hero-grid"></div>
+  <div class="hero-content" id="heroContent"></div>
+</section>
+
+<!-- TICKER -->
+<div class="ticker"><div class="ticker-track" id="tickerTrack"></div></div>
+
+<!-- PROMOCIONES -->
+<section class="promo-section" id="promociones">
+  <div class="sec-header"><div><div class="sec-label">Ofertas de hoy</div><h2 class="sec-title">PROMOCIONES</h2></div><div style="font-family:var(--font-mono);font-size:.55rem;letter-spacing:2px;color:var(--gray)">Tiempo limitado</div></div>
+  <div class="promo-grid" id="promoGrid"></div>
+</section>
+
+<!-- MÁS VENDIDOS -->
+<section id="masVendidos">
+  <div class="sec-header"><div><div class="sec-label">Los favoritos</div><h2 class="sec-title">MÁS VENDIDOS</h2></div></div>
+  <div class="product-grid" id="masVendidosGrid"></div>
+</section>
+
+<!-- NOSOTROS -->
+<section id="nosotros">
+  <div class="sec-header"><div><div class="sec-label">Nuestra historia</div><h2 class="sec-title">SOBRE NOSOTROS</h2></div></div>
+  <div class="about-grid">
+    <div class="about-text" id="aboutText"></div>
+    <div class="about-media" id="aboutMedia"></div>
+  </div>
+</section>
+
+<!-- CÓMO PEDIR -->
+<section style="background:var(--dark)" id="como-pedir-sec">
+  <div class="sec-header"><div><div class="sec-label" id="pasos-label">Es muy fácil</div><h2 class="sec-title" id="pasos-titulo">CÓMO PEDIR</h2></div></div>
+  <div class="steps-grid" id="stepsGrid"></div>
+</section>
+
+<!-- CATÁLOGO -->
+<section class="catalog-section" id="catalogo">
+  <div class="sec-header"><div><div class="sec-label">Todos nuestros productos</div><h2 class="sec-title">CATÁLOGO</h2></div></div>
+  <div class="cat-tabs" id="catTabs"></div>
+  <div class="cat-search-bar">
+    <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+    <input type="text" id="catSearchInput" placeholder="Buscar por tipo, temática o diseño..." oninput="onCatSearch(this.value)">
+    <button class="cat-search-clear" id="catSearchClear" onclick="onCatSearchClear()">✕</button>
+  </div>
+
+  <div id="cat-sub-filters" class="cat-sub-filters" style="display:none"></div>
+
+  <div class="search-results-banner" id="searchResultsBanner">
+    <span class="search-results-info" id="searchResultsInfo"></span>
+    <button class="search-results-clear" onclick="limpiarBusqueda()">✕ Limpiar búsqueda</button>
+  </div>
+  <div class="catalogo-count" id="catalogoCount" style="padding-top:1rem"></div>
+  <div class="product-grid" id="catalogGrid"></div>
+</section>
+
+<!-- MAYOREO -->
+<section class="mayoreo-section" id="mayoreo"></section>
+
+<!-- LANZAMIENTOS -->
+<section>
+  <div class="sec-header"><div><div class="sec-label">Lo que viene</div><h2 class="sec-title">PRÓXIMOS LANZAMIENTOS</h2></div></div>
+  <div class="launch-grid" id="launchGrid"></div>
+</section>
+
+<!-- RESEÑAS UNIFICADAS (fotos + texto) -->
+<!-- (sección unificada más abajo, reemplaza fotos reales) -->
+
+<!-- TIKTOK -->
+<section class="tiktok-section" id="tiktok-section">
+  <div class="sec-header">
+    <div><div class="sec-label">Síguenos en TikTok</div><h2 class="sec-title">NUESTRO TIKTOK</h2></div>
+    <a id="tiktokBtn" href="#" target="_blank" class="tiktok-btn">🎵 <span id="tiktok-user-display">@sarux.oficial</span> →</a>
+  </div>
+  <div class="tiktok-grid" id="tiktokGrid"></div>
+</section>
+
+<!-- INSTAGRAM -->
+<section>
+  <div class="sec-header">
+    <div><div class="sec-label">Síguenos en Instagram</div><h2 class="sec-title">NUESTRO INSTAGRAM</h2></div>
+    <a id="igBtn" href="#" target="_blank" class="btn-outline" style="font-family:var(--font-mono);font-size:.6rem;letter-spacing:2px;padding:.8rem 1.5rem;text-decoration:none">@sarux.oficial →</a>
+  </div>
+  <div class="ig-grid" id="igGrid"></div>
+</section>
+
+<!-- FAQ -->
+<section style="background:var(--dark)">
+  <div class="sec-header"><div><div class="sec-label">Dudas frecuentes</div><h2 class="sec-title">PREGUNTAS</h2></div></div>
+  <div class="faq-list" id="faqList"></div>
+</section>
+
+<!-- RESEÑAS UNIFICADAS -->
+<section class="fotos-reales-section" id="fotos-reales-sec">
+  <div class="sec-header">
+    <div>
+      <h2 class="sec-title" id="frSecTitulo">RESEÑAS</h2>
+    </div>
+    <button class="btn-subir-foto" onclick="abrirFrModal()">📸 Subir mi reseña</button>
+  </div>
+  <div class="resenas-unificadas-grid" id="fotosRealesGrid">
+    <div class="foto-real-nueva">📷<span>Cargando...</span></div>
+  </div>
+</section>
+
+<!-- MODAL SUBIR RESEÑA -->
+<div id="frModalOverlay" onclick="if(event.target===this)cerrarFrModal()">
+  <div id="frModalBox">
+    <button class="modal-close" onclick="cerrarFrModal()" style="top:.8rem;right:1rem;position:absolute">✕</button>
+    <div class="frm-title">TU RESEÑA ⭐</div>
+    <div class="frm-field"><label>Tu nombre</label><input id="frNombre" placeholder="Ej: María G." maxlength="40"></div>
+    <div class="frm-field"><label>Producto que compraste</label><input id="frProducto" placeholder="Ej: Taza Dragon Ball" maxlength="60"></div>
+    <div class="frm-field">
+      <label>Tu reseña</label>
+      <textarea id="frResena" placeholder="¿Qué te pareció el producto?" maxlength="280" style="width:100%;background:rgba(255,255,255,.04);border:1px solid var(--border);color:var(--white);padding:.75rem;font-family:var(--font-body);font-size:.9rem;box-sizing:border-box;resize:vertical;min-height:80px;transition:border-color .2s;outline:none"></textarea>
+    </div>
+    <div class="frm-field">
+      <label>Calificación</label>
+      <div id="frStarsInput" style="display:flex;gap:.4rem;font-size:1.6rem;cursor:pointer;margin-top:.2rem">
+        <span class="star-opt" data-val="1">☆</span>
+        <span class="star-opt" data-val="2">☆</span>
+        <span class="star-opt" data-val="3">☆</span>
+        <span class="star-opt" data-val="4">☆</span>
+        <span class="star-opt" data-val="5">☆</span>
+      </div>
+    </div>
+    <div class="frm-field">
+      <label>Foto o video con el producto</label>
+      <div class="frm-upload" onclick="document.getElementById('frFile').click()">
+        <div class="frm-upload-label" id="frUploadLabel">📷 TAP PARA ELEGIR FOTO O VIDEO</div>
+        <img id="frPreviewImg" style="max-height:90px;margin:.6rem auto 0;display:none;border:1px solid var(--border)">
+        <video id="frPreviewVid" style="max-height:90px;margin:.6rem auto 0;display:none;border:1px solid var(--border);max-width:100%" muted playsinline></video>
+        <input type="file" id="frFile" accept="image/*,video/*" onchange="prevFrFoto(this)">
+      </div>
+    </div>
+    <div class="frm-progress" id="frProgress"><div class="frm-progress-bar" id="frProgressBar"></div></div>
+    <button class="frm-submit" id="frSubmitBtn" onclick="subirFotoCliente()">📤 PUBLICAR MI RESEÑA</button>
+  </div>
+</div>
+
+<!-- CONTACTO -->
+<section class="contact-section" id="contacto">
+  <div class="contact-bg-text">SARUX</div>
+  <h2>¿TE GUSTÓ<br>ALGO?</h2>
+  <p>Escríbenos para hacer tu pedido. Fácil, rápido y sin complicaciones.</p>
+  <div class="contact-btns" id="contactBtns"></div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-logo" id="footerLogo"></div>
+  <ul class="footer-links">
+    <li><a href="#catalogo">Catálogo</a></li>
+    <li><a href="#mayoreo">Mayoreo</a></li>
+    <li><a href="#nosotros">Nosotros</a></li>
+    <li><a href="#contacto">Contacto</a></li>
+    <li><a href="#" id="footerIg">Instagram</a></li>
+    <li><a href="#" id="footerTt">TikTok</a></li>
+  </ul>
+  <div class="footer-copy" id="footerCopy"></div>
+</footer>
+
+<a id="floatWa" href="#" target="_blank" class="float-wa">📱</a>
+<button class="chat-btn" onclick="toggleChat()">🤖</button>
+
+<!-- LLUVIA DE IMÁGENES -->
+<canvas id="rainCanvas" style="position:fixed; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index:999;"></canvas>
+
+<!-- CARRITO OVERLAY -->
+<div id="carritoOverlay" onclick="toggleCarrito()"></div>
+<div id="carritoPanel">
+  <div class="carrito-header">
+    <div class="carrito-title">MI CARRITO</div>
+    <button class="carrito-close" onclick="toggleCarrito()">✕</button>
+  </div>
+  <div class="carrito-items" id="carritoItems"></div>
+  <div id="carritoHistorial">
+    <div class="hist-label">TAMBIÉN TE INTERESÓ</div>
+    <div id="carritoHistorialItems"></div>
+  </div>
+  <div class="carrito-footer">
+    <div class="carrito-total">
+      <span class="carrito-total-label">TOTAL</span>
+      <span class="carrito-total-num" id="carritoTotal">$0</span>
+    </div>
+    <button class="carrito-wa-btn" onclick="pedirPorWhatsApp()">📱 PEDIR POR WHATSAPP</button>
+    <button class="carrito-clear-btn" onclick="vaciarCarrito()">Vaciar carrito</button>
+  </div>
+</div>
+<!-- TOAST -->
+<div id="toastWrap"></div>
+<script>
+
+// ─── MANEJO DE NAVEGACIÓN CON HASH (botón atrás del celular) ───────────────
+(function(){
+  const secciones = ['inicio','promociones','catalogo','mayoreo','nosotros','contacto','tiktok-section'];
+  let scrollManual = false;
+
+  // Al hacer clic en enlaces del menú, actualizar hash sin saltar bruscamente
+  document.querySelectorAll('a[href^="#"]').forEach(link => {
+    link.addEventListener('click', function(e){
+      const target = this.getAttribute('href').replace('#','');
+      if(secciones.includes(target)){
+        e.preventDefault();
+        history.pushState(null, null, '#'+target);
+        scrollToSection(target);
+      }
+    });
+  });
+
+  function scrollToSection(id){
+    scrollManual = true;
+    const el = document.getElementById(id);
+    if(el){
+      el.scrollIntoView({behavior:'smooth', block:'start'});
+    }
+    setTimeout(()=>{ scrollManual = false; }, 800);
+  }
+
+  // Manejar botón "atrás" del navegador/celular
+  window.addEventListener('popstate', function(){
+    if(scrollManual) return;
+    const hash = window.location.hash.replace('#','');
+    if(hash && secciones.includes(hash)){
+      const el = document.getElementById(hash);
+      if(el) el.scrollIntoView({behavior:'smooth', block:'start'});
+    } else {
+      // Si no hay hash, volver al inicio
+      window.scrollTo({top:0, behavior:'smooth'});
+    }
+  });
+
+  // Al cargar la página, si hay hash en la URL, ir a esa sección
+  window.addEventListener('DOMContentLoaded', function(){
+    const hash = window.location.hash.replace('#','');
+    if(hash && secciones.includes(hash)){
+      setTimeout(()=>{
+        const el = document.getElementById(hash);
+        if(el) el.scrollIntoView({behavior:'smooth', block:'start'});
+      }, 500);
+    }
+  });
+})();
+</script>
+<script src="main.js"></script>
+
+</body>
+</html>

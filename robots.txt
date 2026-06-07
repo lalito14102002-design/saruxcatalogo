@@ -1,0 +1,11 @@
+User-agent: *
+Allow: /
+
+# Sitemap
+Sitemap: https://saruxcatalogo.pages.dev/sitemap.xml
+
+# No indexar el admin
+Disallow: /admin.html
+
+# No indexar archivos de verificación
+Disallow: /google6460df2233f64aee.html
