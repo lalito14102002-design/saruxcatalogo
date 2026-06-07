@@ -239,6 +239,19 @@
 <!-- RESEÑAS UNIFICADAS (fotos + texto) -->
 <!-- (sección unificada más abajo, reemplaza fotos reales) -->
 
+<!-- RESEÑAS UNIFICADAS -->
+<section class="fotos-reales-section" id="fotos-reales-sec">
+  <div class="sec-header">
+    <div>
+      <h2 class="sec-title" id="frSecTitulo">RESEÑAS</h2>
+    </div>
+    <button class="btn-subir-foto" onclick="abrirFrModal()">📸 Subir mi reseña</button>
+  </div>
+  <div class="resenas-unificadas-grid" id="fotosRealesGrid">
+    <div class="foto-real-nueva">📷<span>Cargando...</span></div>
+  </div>
+</section>
+
 <!-- TIKTOK -->
 <section class="tiktok-section" id="tiktok-section">
   <div class="sec-header">
@@ -263,18 +276,7 @@
   <div class="faq-list" id="faqList"></div>
 </section>
 
-<!-- RESEÑAS UNIFICADAS -->
-<section class="fotos-reales-section" id="fotos-reales-sec">
-  <div class="sec-header">
-    <div>
-      <h2 class="sec-title" id="frSecTitulo">RESEÑAS</h2>
-    </div>
-    <button class="btn-subir-foto" onclick="abrirFrModal()">📸 Subir mi reseña</button>
-  </div>
-  <div class="resenas-unificadas-grid" id="fotosRealesGrid">
-    <div class="foto-real-nueva">📷<span>Cargando...</span></div>
-  </div>
-</section>
+
 
 <!-- MODAL SUBIR RESEÑA -->
 <div id="frModalOverlay" onclick="if(event.target===this)cerrarFrModal()">
