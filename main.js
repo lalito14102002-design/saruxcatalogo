@@ -27,7 +27,7 @@ const DEFAULTS = {
   TIKTOK_POSTS:[{titulo:"Video 1",imagen:"",url:""},{titulo:"Video 2",imagen:"",url:""},{titulo:"Video 3",imagen:"",url:""},{titulo:"Video 4",imagen:"",url:""},{titulo:"Video 5",imagen:"",url:""},{titulo:"Video 6",imagen:"",url:""}],
   IMAGENES_PERSONALIZACION:[], 
   IMAGEN_LLUVIA:"",
-  LLUVIA_CONFIG:{activa:true,cantidad:20,velocidad:2,espera:0},
+  LLUVIA_CONFIG:{activa:false,cantidad:20,velocidad:2,espera:0},
   FOTOS_CLIENTES_CFG:{activo:true,titulo:"FOTOS REALES",subtitulo:"Clientes reales, resultados reales"}
 };
 
@@ -39,7 +39,7 @@ let CARD_RATIO = '4/5';
 let CARD_FIT = 'contain';
 let IMAGENES_PERSONALIZACION = [];
 let IMAGEN_LLUVIA = "";
-let LLUVIA_CONFIG = {activa:true,cantidad:20,velocidad:2,espera:0};
+let LLUVIA_CONFIG = {activa:false,cantidad:20,velocidad:2,espera:0};
 
 function syncGlobalsFromAppData(){
   NEGOCIO = APP_DATA.NEGOCIO;
