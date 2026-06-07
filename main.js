@@ -216,10 +216,9 @@ function renderPage(){
 
   document.getElementById('contactBtns').innerHTML=`<a href="https://wa.me/${NEGOCIO.whatsapp}?text=${encodeURIComponent('Hola! Quiero hacer un pedido en Sarux 🛍️')}" target="_blank" class="btn-wa">📱 WhatsApp</a><a href="${NEGOCIO.instagram||'#'}" target="_blank" class="btn-ig">📸 Instagram</a><a href="${NEGOCIO.tiktok||'#'}" target="_blank" class="btn-tt">🎵 TikTok</a>`;
 
-  // Fotos reales (reseñas unificadas): configurar sección y cargar de Supabase
-  const frcfg = window.FOTOS_CLIENTES_CFG || DEFAULTS.FOTOS_CLIENTES_CFG;
+  // Fotos reales (reseñas): siempre visible
   const frSec = document.getElementById('fotos-reales-sec');
-  if(frSec) frSec.style.display = frcfg.activo === false ? 'none' : '';
+  if(frSec) frSec.style.display = '';
   const frTit = document.getElementById('frSecTitulo');
   if(frTit) frTit.textContent = 'RESEÑAS';
   cargarFotosClientes();
