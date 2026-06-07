@@ -1143,7 +1143,7 @@ function cerrarLightbox() {
 }
 document.addEventListener('keydown', e => { if(e.key==='Escape') cerrarLightbox(); });
 
-// INIT
+// INIT — carga instantánea: muestra con DEFAULTS al instante, Supabase en segundo plano
 (async function(){
   const ocultarLoader = () => {
     const loader = document.getElementById('sarux-loader');
@@ -1155,21 +1155,33 @@ document.addEventListener('keydown', e => { if(e.key==='Escape') cerrarLightbox(
     ocultarLoader();
     try { iniciarLluviaImagen(); } catch(e){}
   };
-  let cargado = false;
-  const timer = setTimeout(() => {
-    if(!cargado){
-      cargado = true;
-      APP_DATA = JSON.parse(JSON.stringify(DEFAULTS));
-      syncGlobalsFromAppData();
-      mostrarPagina();
-    }
-  }, 3000);
+
+  // PASO 1: Mostrar página con DEFAULTS inmediatamente (0 espera)
+  APP_DATA = JSON.parse(JSON.stringify(DEFAULTS));
+  syncGlobalsFromAppData();
+  mostrarPagina();
+
+  // PASO 2: Cargar datos reales de Supabase en segundo plano sin bloquear
   try {
-    await cargarConfigDesdeSupabase();
-    if(!cargado){ cargado = true; clearTimeout(timer); mostrarPagina(); }
-  } catch(e) {
-    if(!cargado){ cargado = true; clearTimeout(timer); APP_DATA = JSON.parse(JSON.stringify(DEFAULTS)); syncGlobalsFromAppData(); mostrarPagina(); }
-  }
+    const cached = localStorage.getItem('sarux_cfg');
+    if(cached){
+      const parsed = JSON.parse(cached);
+      APP_DATA = { ...DEFAULTS, ...parsed };
+      syncGlobalsFromAppData();
+      try { applyStyles(); } catch(e){}
+      try { renderPage(); } catch(e){}
+    }
+    // Actualizar desde Supabase sin bloquear la UI
+    sb.from('site_config').select('config_data').eq('id',1).single().then(({data,error})=>{
+      if(!error && data){
+        try{ localStorage.setItem('sarux_cfg', JSON.stringify(data.config_data)); }catch(e){}
+        APP_DATA = { ...DEFAULTS, ...data.config_data };
+        syncGlobalsFromAppData();
+        try { applyStyles(); } catch(e){}
+        try { renderPage(); } catch(e){}
+      }
+    });
+  } catch(e) {}
 })();
 
 // ─── FOTOS REALES (Supabase) ──────────────────────────────────────────────────
@@ -1391,22 +1403,34 @@ async function subirFotoCliente(){
 (function(){
   const secciones = ['inicio','promociones','catalogo','mayoreo','nosotros','contacto','tiktok-section'];
   let ultimaSeccion = '';
-  let scrollManual = false;
 
   const obs = new IntersectionObserver((entries) => {
-    if(scrollManual) return;
     entries.forEach(entry => {
       if(entry.isIntersecting){
         const id = entry.target.id;
         if(id && secciones.includes(id) && id !== ultimaSeccion){
+          // pushState para que el botón "atrás" del celular tenga historial
+          if(ultimaSeccion !== '') {
+            history.pushState({ seccion: id }, '', '#' + id);
+          } else {
+            history.replaceState({ seccion: id }, '', '#' + id);
+          }
           ultimaSeccion = id;
-          // replaceState para no llenar el historial con cada scroll
-          // pushState solo al dar clic en menú (ya existe arriba)
-          history.replaceState(null, null, '#' + id);
         }
       }
     });
-  }, { threshold: 0.35 });
+  }, { threshold: 0.4, rootMargin: '-10% 0px -10% 0px' });
+
+  // Manejar botón atrás
+  window.addEventListener('popstate', function(e){
+    const hash = window.location.hash.replace('#','');
+    if(hash && secciones.includes(hash)){
+      const el = document.getElementById(hash);
+      if(el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } else {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  });
 
   function iniciarObservador(){
     secciones.forEach(id => {
