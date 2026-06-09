@@ -240,7 +240,10 @@
         <span id="catPanelBackLabel">Catálogo</span>
       </button>
       <div class="cat-panel-title" id="catPanelTitle"></div>
-      <div style="width:80px"></div>
+      <div style="display:flex;align-items:center;gap:.5rem">
+        <button id="catPanelShareBtn" onclick="compartirCategoria()" title="Copiar enlace de esta categoría" style="background:none;border:1px solid rgba(255,255,255,.12);color:var(--gray);font-size:.8rem;width:32px;height:32px;display:flex;align-items:center;justify-content:center;cursor:pointer;border-radius:4px;flex-shrink:0">🔗</button>
+        <button onclick="toggleCarrito()" style="background:none;border:1px solid rgba(232,25,44,.3);color:var(--light);font-family:var(--font-mono);font-size:.6rem;letter-spacing:1px;padding:.45rem .8rem;cursor:pointer;display:flex;align-items:center;gap:.4rem;white-space:nowrap">🛒 <span id="catPanelCarritoBadge">0</span></button>
+      </div>
     </div>
     <div class="cat-panel-body">
       <div class="cat-search-bar" style="margin-bottom:1rem">

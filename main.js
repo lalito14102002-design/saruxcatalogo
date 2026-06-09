@@ -274,6 +274,43 @@ function renderPortadas(){
 let _panelCatIdx = 0;
 let _panelSearchQ = '';
 
+// ─── LINKS COMPARTIBLES DE CATEGORÍA ─────────────────────────────────────────
+function slugCat(nombre){ return nombre.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,''); }
+
+function compartirCategoria(){
+  const cf=getCatsFilt();
+  const c=cf[_panelCatIdx];
+  if(!c) return;
+  const slug=slugCat(c.nombre);
+  const url=`${location.origin}${location.pathname}?cat=${encodeURIComponent(slug)}#catalogo`;
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(url).then(()=>showToast('🔗 Enlace copiado: '+c.nombre));
+  } else {
+    // Fallback para navegadores sin clipboard API
+    const ta=document.createElement('textarea'); ta.value=url;
+    ta.style.cssText='position:fixed;opacity:0'; document.body.appendChild(ta);
+    ta.select(); document.execCommand('copy'); document.body.removeChild(ta);
+    showToast('🔗 Enlace copiado: '+c.nombre);
+  }
+}
+
+// Al cargar la página, leer ?cat= y abrir esa categoría automáticamente
+function checkCatParam(){
+  const params = new URLSearchParams(location.search);
+  const catParam = params.get('cat');
+  if(!catParam) return;
+  const cf=getCatsFilt();
+  const idx=cf.findIndex(c=>slugCat(c.nombre)===catParam.toLowerCase());
+  if(idx>=0){
+    setTimeout(()=>{
+      abrirCatPanel(idx);
+      // Scroll a la sección catálogo
+      const sec=document.getElementById('catalogo');
+      if(sec) sec.scrollIntoView({behavior:'smooth',block:'start'});
+    }, 400);
+  }
+}
+
 function abrirCatPanel(idx){
   _panelCatIdx = idx;
   _panelSearchQ = '';
@@ -699,7 +736,13 @@ function abrirModal(p,catNombre,catEmoji){
   // Cargar reseñas de clientes desde Supabase
   cargarResenasModal();
 }
-function cerrarModal(){document.getElementById('modalOverlay').classList.remove('open');document.body.style.overflow='';}
+function cerrarModal(){
+  document.getElementById('modalOverlay').classList.remove('open');
+  // Si el panel de categoría sigue abierto, mantener overflow hidden
+  const panel=document.getElementById('catPanel');
+  if(panel && panel.classList.contains('open')) return;
+  document.body.style.overflow='';
+}
 
 async function cargarResenasModal(){
   const el = document.getElementById('modalReviewsList');
@@ -1062,6 +1105,8 @@ function actualizarBadge(){
   const total = carrito.reduce((s,i)=>s+i.qty,0);
   const badge = document.getElementById('carritoBadge');
   if(badge){ badge.textContent = total; badge.style.display = total > 0 ? 'inline-block' : 'none'; }
+  const panelBadge = document.getElementById('catPanelCarritoBadge');
+  if(panelBadge){ panelBadge.textContent = total; }
 }
 
 function toggleCarrito(){
@@ -1156,6 +1201,8 @@ function compartirImagenActiva(){
 
 // Al cargar la página, si hay ?prod= y ?img= en la URL, abre ese producto en esa imagen
 function checkDeepLink(){
+  // Checa ?cat= para abrir categoría directa
+  checkCatParam();
   const params = new URLSearchParams(window.location.search);
   const prodNombre = params.get('prod');
   const imgIdx = parseInt(params.get('img')||'0');
