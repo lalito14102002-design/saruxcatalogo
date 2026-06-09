@@ -1,0 +1,8 @@
+Se aplicaron optimizaciones básicas al código.
+La mayor causa probable de lentitud sigue siendo el tamaño de las imágenes almacenadas en Supabase.
+
+Para una mejora fuerte:
+- Convertir imágenes a WebP.
+- Mantenerlas debajo de 300 KB.
+- Generar miniaturas.
+- Activar Brotli y Auto Minify en Cloudflare.
