@@ -1351,11 +1351,12 @@ async function subirFotoCliente(){
     showToast('✅ ¡Tu reseña ya está publicada!', 3500);
 
   } catch(e){
-    console.error(e);
+    console.error('Error reseña:', e);
     btn.disabled = false;
     btn.innerHTML = '📤 PUBLICAR MI RESEÑA';
     prog.style.display = 'none';
-    showToast('Error al subir. Intenta de nuevo.');
+    const msg = e.message || e.error_description || JSON.stringify(e);
+    showToast('Error: ' + msg, 5000);
   }
 }
 

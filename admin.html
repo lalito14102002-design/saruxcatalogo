@@ -1367,7 +1367,9 @@
       showNotif('✅ Reseña publicada');
       cargarFotosClientesAdmin();
     } catch(e){
-      showNotif('Error: ' + e.message);
+      const msg = e.message || e.error_description || e.details || JSON.stringify(e);
+      showNotif('❌ Error Supabase: ' + msg);
+      console.error('Error reseña admin:', e);
     } finally {
       if(btn){ btn.disabled=false; btn.textContent='✅ PUBLICAR RESEÑA'; }
     }
