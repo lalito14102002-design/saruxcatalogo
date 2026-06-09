@@ -747,21 +747,34 @@ function cerrarModal(){
 async function cargarResenasModal(){
   const el = document.getElementById('modalReviewsList');
   if(!el) return;
-  el.innerHTML = '<span style="font-family:var(--font-mono);font-size:.6rem;letter-spacing:2px;opacity:.5">Cargando reseñas...</span>';
+  // Reusar caché de fotos si ya existe, evita query extra
+  if(_fotosClientesCache && _fotosClientesCache.length){
+    const data = _fotosClientesCache.slice(0,8);
+    el.innerHTML = data.map(function(r){
+      const estrellas = '\u2B50'.repeat(Math.min(5, Math.max(1, r.estrellas || 5)));
+      const texto = r.resena || r.producto || '';
+      return estrellas + ' \u2014 "' + texto + '" \u2014 <span style="color:var(--neon);font-family:var(--font-mono);font-size:.6rem">' + (r.nombre||'CLIENTE').toUpperCase() + '</span>';
+    }).join('<br><br>');
+    return;
+  }
+  el.innerHTML = '<span style="font-family:var(--font-mono);font-size:.6rem;letter-spacing:2px;opacity:.5">Cargando rese\xf1as...</span>';
   try {
-    const { data, error } = await sb.from('fotos_clientes').select('*').order('created_at', { ascending: false });
+    const { data, error } = await sb.from('fotos_clientes')
+      .select('nombre, producto, resena, estrellas')
+      .order('created_at', { ascending: false })
+      .limit(8);
     if(error) throw error;
     if(!data || !data.length){
-      el.innerHTML = '<span style="font-family:var(--font-mono);font-size:.6rem;letter-spacing:2px;opacity:.5">Sé el primero en dejar tu reseña ✨</span>';
+      el.innerHTML = '<span style="font-family:var(--font-mono);font-size:.6rem;letter-spacing:2px;opacity:.5">S\xe9 el primero en dejar tu rese\xf1a \u2728</span>';
       return;
     }
-    el.innerHTML = data.map(r => {
-      const estrellas = '⭐'.repeat(Math.min(5, Math.max(1, r.estrellas || 5)));
+    el.innerHTML = data.map(function(r){
+      const estrellas = '\u2B50'.repeat(Math.min(5, Math.max(1, r.estrellas || 5)));
       const texto = r.resena || r.producto || '';
-      return `${estrellas} — "${texto}" — <span style="color:var(--neon);font-family:var(--font-mono);font-size:.6rem">${(r.nombre||'CLIENTE').toUpperCase()}</span>`;
+      return estrellas + ' \u2014 "' + texto + '" \u2014 <span style="color:var(--neon);font-family:var(--font-mono);font-size:.6rem">' + (r.nombre||'CLIENTE').toUpperCase() + '</span>';
     }).join('<br><br>');
   } catch(e){
-    el.innerHTML = '<span style="opacity:.4;font-size:.75rem">No se pudieron cargar las reseñas.</span>';
+    el.innerHTML = '<span style="opacity:.4;font-size:.75rem">No se pudieron cargar las rese\xf1as.</span>';
   }
 }
 function selBtn(btn,wrap){btn.closest(wrap).querySelectorAll('button').forEach(b=>b.classList.remove('active'));btn.classList.add('active');}
@@ -1045,19 +1058,23 @@ function mkSkeletons(n=6){
 }
 
 function initLazyImages(){
-  if(!('IntersectionObserver' in window)) return;
-  const obs = new IntersectionObserver((entries)=>{
-    entries.forEach(e=>{
+  if(!('IntersectionObserver' in window)){
+    // Fallback: cargar todas si no hay IntersectionObserver
+    document.querySelectorAll('img.lazy').forEach(function(img){ if(img.dataset.src){ img.src=img.dataset.src; } });
+    return;
+  }
+  const obs = new IntersectionObserver(function(entries){
+    entries.forEach(function(e){
       if(e.isIntersecting){
         const img = e.target;
         if(img.dataset.src){ img.src = img.dataset.src; }
-        img.onload = ()=>img.classList.add('loaded');
-        img.onerror = ()=>img.classList.add('loaded');
+        img.onload = function(){ img.classList.add('loaded'); };
+        img.onerror = function(){ img.classList.add('loaded'); };
         obs.unobserve(img);
       }
     });
-  },{rootMargin:'100px'});
-  document.querySelectorAll('img.lazy').forEach(img=>obs.observe(img));
+  },{rootMargin:'300px'}); // 300px de anticipación
+  document.querySelectorAll('img.lazy').forEach(function(img){ obs.observe(img); });
 }
 
 // ─── TOAST ────────────────────────────────────────────────────────────────────
@@ -1370,68 +1387,98 @@ function reproducirVideoResena(wrapper, url){
 
 // ─── FOTOS REALES (Supabase) ──────────────────────────────────────────────────
 
+// Caché en memoria para fotos de clientes (evita re-fetch en la misma sesión)
+let _fotosClientesCache = null;
+let _fotosClientesCacheTs = 0;
+const FOTOS_CACHE_TTL = 5 * 60 * 1000; // 5 minutos
+
 async function cargarFotosClientes(){
   const grid = document.getElementById('fotosRealesGrid');
   if(!grid) return;
   try {
+    const ahora = Date.now();
+    // Usar caché si es reciente
+    if(_fotosClientesCache && (ahora - _fotosClientesCacheTs) < FOTOS_CACHE_TTL){
+      renderFotosClientes(_fotosClientesCache);
+      return;
+    }
     const { data, error } = await sb
       .from('fotos_clientes')
-      .select('*')
-      .order('created_at', { ascending: false });
+      .select('id, nombre, producto, imagen_url, resena, estrellas, created_at')
+      .order('created_at', { ascending: false })
+      .limit(20); // Máximo 20 fotos para no sobrecargar
     if(error) throw error;
-    renderFotosClientes(data || []);
+    _fotosClientesCache = data || [];
+    _fotosClientesCacheTs = ahora;
+    renderFotosClientes(_fotosClientesCache);
   } catch(e){
     console.warn('fotos_clientes:', e);
     grid.innerHTML = '<div class="foto-real-nueva">📷<span>Sin fotos aún</span></div>';
   }
 }
 
+function supabaseImgOpt(url, w){
+  w = w || 400;
+  if(!url || url.indexOf('/storage/v1/object/public/') === -1) return url;
+  return url + '?width=' + w + '&quality=75&resize=cover';
+}
+
 function renderFotosClientes(rows){
   const grid = document.getElementById('fotosRealesGrid');
   if(!grid) return;
   if(!rows.length){
-    grid.innerHTML = '<div class="foto-real-nueva">📷<span>¡Sé el primero en dejar tu reseña!</span></div>';
+    grid.innerHTML = '<div class="foto-real-nueva">\uD83D\uDCF7<span>\xA1S\xe9 el primero en dejar tu rese\xf1a!</span></div>';
     return;
   }
-  grid.innerHTML = rows.map(r => {
+  grid.innerHTML = rows.map(function(r){
     const esVideo = r.imagen_url && /\.(mp4|mov|webm|ogg)(\?|$)/i.test(r.imagen_url);
-    const estrellas = '⭐'.repeat(Math.min(5, Math.max(1, r.estrellas || 5)));
-    // Si tiene imagen o video
+    const estrellas = '\u2B50'.repeat(Math.min(5, Math.max(1, r.estrellas || 5)));
     let mediaEl = '';
     if(r.imagen_url){
+      const imgSrc = esVideo ? r.imagen_url : supabaseImgOpt(r.imagen_url, 400);
+      const imgFull = r.imagen_url;
       mediaEl = esVideo
-        ? `<div class="resena-media resena-media-video" onclick="reproducirVideoResena(this,'${r.imagen_url.replace(/'/g,"\\'")}');event.stopPropagation()" style="cursor:pointer;position:relative">
-            <video src="${r.imagen_url}#t=0.5" muted playsinline preload="metadata" class="resena-vid-thumb" style="width:100%;height:100%;object-fit:cover;display:block" onloadeddata="this.pause()"></video>
-            <div class="resena-play-overlay"><span class="resena-play-btn">▶</span></div>
-            <div class="resena-media-badge">▶ VIDEO</div>
-           </div>`
-        : `<div class="resena-media"><img src="${r.imagen_url}" alt="${r.nombre}" loading="lazy" onclick="abrirLightboxMedia('${r.imagen_url}','img');event.stopPropagation()"></div>`;
+        ? '<div class="resena-media resena-media-video" onclick="reproducirVideoResena(this,\'' + imgFull.replace(/'/g,"\\'") + '\');event.stopPropagation()" style="cursor:pointer;position:relative">' +
+            '<video muted playsinline preload="none" class="resena-vid-thumb" style="width:100%;height:100%;object-fit:cover;display:block"></video>' +
+            '<div class="resena-play-overlay"><span class="resena-play-btn">\u25B6</span></div>' +
+            '<div class="resena-media-badge">\u25B6 VIDEO</div>' +
+           '</div>'
+        : '<div class="resena-media"><img data-src="' + imgSrc + '" src="" alt="' + r.nombre + '" class="lazy" loading="lazy" style="width:100%;height:100%;object-fit:cover" onclick="abrirLightboxMedia(\'' + imgFull + '\',\'img\');event.stopPropagation()"></div>';
     }
-    const resenaTxt = r.resena ? `<div class="resena-texto">"${r.resena}"</div>` : `<div class="resena-texto">"${r.producto}"</div>`;
-    // Card sin foto: layout diferente más compacto
+    const resenaTxt = r.resena
+      ? '<div class="resena-texto">"' + r.resena + '"</div>'
+      : '<div class="resena-texto">"' + r.producto + '"</div>';
     if(!r.imagen_url){
-      return `<div class="resena-card resena-card-texto">
-        <div class="resena-body">
-          ${resenaTxt}
-          <div class="resena-estrellas">${estrellas}</div>
-          <div class="resena-nombre">— ${r.nombre}</div>
-        </div>
-      </div>`;
+      return '<div class="resena-card resena-card-texto"><div class="resena-body">' + resenaTxt +
+        '<div class="resena-estrellas">' + estrellas + '</div>' +
+        '<div class="resena-nombre">\u2014 ' + r.nombre + '</div></div></div>';
     }
-    return `<div class="resena-card">
-      ${mediaEl}
-      <div class="resena-body">
-        ${resenaTxt}
-        <div class="resena-estrellas">${estrellas}</div>
-        <div class="resena-nombre">— ${r.nombre}</div>
-      </div>
-    </div>`;
+    return '<div class="resena-card">' + mediaEl + '<div class="resena-body">' + resenaTxt +
+      '<div class="resena-estrellas">' + estrellas + '</div>' +
+      '<div class="resena-nombre">\u2014 ' + r.nombre + '</div></div></div>';
   }).join('');
-  // Seek to 0.5s para mostrar frame como portada
-  grid.querySelectorAll('.resena-vid-thumb').forEach(vid=>{
-    vid.addEventListener('loadedmetadata',()=>{ try{ vid.currentTime = 0.5; }catch(e){} });
-    if(vid.readyState >= 1) try{ vid.currentTime = 0.5; }catch(e){}
-  });
+
+  // Lazy loading para imágenes
+  initLazyImages();
+
+  // Videos: cargar solo cuando entren en viewport
+  if('IntersectionObserver' in window){
+    const vidObs = new IntersectionObserver(function(entries){
+      entries.forEach(function(e){
+        if(e.isIntersecting){
+          const vid = e.target;
+          const card = vid.closest('.resena-media-video');
+          if(card){
+            const srcFull = card.getAttribute('onclick').match(/reproducirVideoResena\(this,'([^']+)'\)/);
+            if(srcFull && srcFull[1]){ vid.src = srcFull[1] + '#t=0.5'; }
+          }
+          vid.addEventListener('loadedmetadata',function(){ try{ vid.currentTime=0.5; }catch(er){} },{once:true});
+          vidObs.unobserve(vid);
+        }
+      });
+    },{rootMargin:'200px'});
+    grid.querySelectorAll('.resena-vid-thumb').forEach(function(vid){ vidObs.observe(vid); });
+  }
 }
 
 // ── Abrir modal de reseña desde modal de producto ────────────────────────────
@@ -1549,6 +1596,7 @@ async function subirFotoCliente(){
     bar.style.width = '100%';
 
     await cargarFotosClientes();
+    _fotosClientesCache = null; // invalidar caché para mostrar la nueva reseña
     cerrarFrModal();
     showToast('✅ ¡Tu reseña ya está publicada!', 3500);
 
