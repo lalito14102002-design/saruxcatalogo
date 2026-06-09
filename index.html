@@ -207,25 +207,55 @@
   <div class="steps-grid" id="stepsGrid"></div>
 </section>
 
-<!-- CATÁLOGO -->
+<!-- CATÁLOGO — PORTADAS DE CATEGORÍAS -->
 <section class="catalog-section" id="catalogo">
   <div class="sec-header"><div><div class="sec-label">Todos nuestros productos</div><h2 class="sec-title">CATÁLOGO</h2></div></div>
-  <div class="cat-tabs" id="catTabs"></div>
-  <div class="cat-search-bar">
+  <!-- Buscador global (sigue funcionando) -->
+  <div class="cat-search-bar" id="catSearchBarGlobal">
     <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-    <input type="text" id="catSearchInput" placeholder="Buscar por tipo, temática o diseño..." oninput="onCatSearch(this.value)">
+    <input type="text" id="catSearchInput" placeholder="Buscar en todo el catálogo..." oninput="onCatSearch(this.value)">
     <button class="cat-search-clear" id="catSearchClear" onclick="onCatSearchClear()">✕</button>
   </div>
-
-  <div id="cat-sub-filters" class="cat-sub-filters" style="display:none"></div>
-
   <div class="search-results-banner" id="searchResultsBanner">
     <span class="search-results-info" id="searchResultsInfo"></span>
     <button class="search-results-clear" onclick="limpiarBusqueda()">✕ Limpiar búsqueda</button>
   </div>
-  <div class="catalogo-count" id="catalogoCount" style="padding-top:1rem"></div>
-  <div class="product-grid" id="catalogGrid"></div>
+
+  <!-- GRID DE PORTADAS -->
+  <div class="cat-portadas-grid" id="catPortadasGrid"></div>
+
+  <!-- Panel oculto para resultados de búsqueda global -->
+  <div id="catalogoBusquedaPanel" style="display:none">
+    <div class="catalogo-count" id="catalogoCount" style="padding-top:1rem"></div>
+    <div class="product-grid" id="catalogGrid"></div>
+  </div>
 </section>
+
+<!-- PANEL FULLSCREEN DE CATEGORÍA -->
+<div id="catPanel" class="cat-panel-overlay">
+  <div class="cat-panel-inner">
+    <div class="cat-panel-header">
+      <button class="cat-panel-back" onclick="cerrarCatPanel()">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+        <span id="catPanelBackLabel">Catálogo</span>
+      </button>
+      <div class="cat-panel-title" id="catPanelTitle"></div>
+      <div style="width:80px"></div>
+    </div>
+    <div class="cat-panel-body">
+      <div class="cat-search-bar" style="margin-bottom:1rem">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        <input type="text" id="catPanelSearch" placeholder="Buscar en esta categoría..." oninput="onCatPanelSearch(this.value)">
+        <button class="cat-search-clear" id="catPanelSearchClear" onclick="clearCatPanelSearch()" style="display:none">✕</button>
+      </div>
+      <!-- Tabs ocultos (para compatibilidad interna) -->
+      <div style="display:none" id="catTabs"></div>
+      <div id="cat-sub-filters" class="cat-sub-filters" style="display:none"></div>
+      <div class="catalogo-count" id="catPanelCount" style="padding:.5rem 0 1rem"></div>
+      <div class="product-grid" id="catPanelGrid"></div>
+    </div>
+  </div>
+</div>
 
 <!-- MAYOREO -->
 <section class="mayoreo-section" id="mayoreo"></section>
@@ -364,59 +394,6 @@
 </div>
 <!-- TOAST -->
 <div id="toastWrap"></div>
-<script>
-
-// ─── MANEJO DE NAVEGACIÓN CON HASH (botón atrás del celular) ───────────────
-(function(){
-  const secciones = ['inicio','promociones','catalogo','mayoreo','nosotros','contacto','tiktok-section'];
-  let scrollManual = false;
-
-  // Al hacer clic en enlaces del menú, actualizar hash sin saltar bruscamente
-  document.querySelectorAll('a[href^="#"]').forEach(link => {
-    link.addEventListener('click', function(e){
-      const target = this.getAttribute('href').replace('#','');
-      if(secciones.includes(target)){
-        e.preventDefault();
-        history.pushState(null, null, '#'+target);
-        scrollToSection(target);
-      }
-    });
-  });
-
-  function scrollToSection(id){
-    scrollManual = true;
-    const el = document.getElementById(id);
-    if(el){
-      el.scrollIntoView({behavior:'smooth', block:'start'});
-    }
-    setTimeout(()=>{ scrollManual = false; }, 800);
-  }
-
-  // Manejar botón "atrás" del navegador/celular
-  window.addEventListener('popstate', function(){
-    if(scrollManual) return;
-    const hash = window.location.hash.replace('#','');
-    if(hash && secciones.includes(hash)){
-      const el = document.getElementById(hash);
-      if(el) el.scrollIntoView({behavior:'smooth', block:'start'});
-    } else {
-      // Si no hay hash, volver al inicio
-      window.scrollTo({top:0, behavior:'smooth'});
-    }
-  });
-
-  // Al cargar la página, si hay hash en la URL, ir a esa sección
-  window.addEventListener('DOMContentLoaded', function(){
-    const hash = window.location.hash.replace('#','');
-    if(hash && secciones.includes(hash)){
-      setTimeout(()=>{
-        const el = document.getElementById(hash);
-        if(el) el.scrollIntoView({behavior:'smooth', block:'start'});
-      }, 500);
-    }
-  });
-})();
-</script>
 <script src="main.js"></script>
 
 </body>

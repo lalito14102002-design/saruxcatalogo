@@ -239,25 +239,145 @@ let _catSearchQ='', _sfTipo='Todos', _sfTema='Todos', _sfDiseno='Todos';
 function getCatsFilt(){return CATALOGO_D.filter(c=>c.activa);}
 
 function renderTabs(){
+  // Renderiza el grid de portadas (nueva UI) + mantiene catTabs para compatibilidad interna
   const cf=getCatsFilt();
-  document.getElementById('catTabs').innerHTML=cf.map((c,i)=>{
-    const tabImg=c.imagen_portada?`<img src="${c.imagen_portada}" style="width:24px;height:24px;object-fit:cover;border-radius:2px">`:`<span>${c.emoji}</span>`;
-    return`<button class="cat-tab ${i===0?'active':''}" onclick="cambiarCat(${i},this)">${tabImg} ${c.nombre}</button>`;
-  }).join('');
+  // catTabs oculto pero funcional para subfiltros
+  const catTabsEl=document.getElementById('catTabs');
+  if(catTabsEl) catTabsEl.innerHTML=cf.map((c,i)=>`<button class="cat-tab ${i===0?'active':''}" onclick="cambiarCat(${i},this)">${c.emoji} ${c.nombre}</button>`).join('');
   catActiva=0;
   resetCatSearch();
+  renderPortadas();
+}
+
+function renderPortadas(){
+  const cf=getCatsFilt();
+  const grid=document.getElementById('catPortadasGrid');
+  if(!grid) return;
+  grid.innerHTML=cf.map((c,i)=>{
+    const total=(c.productos||[]).length;
+    const mediaEl=c.imagen_portada
+      ?`<img src="${c.imagen_portada}" alt="${c.nombre}" class="cat-portada-img" loading="lazy">`
+      :`<div class="cat-portada-emoji">${c.emoji||'📦'}</div>`;
+    return `<div class="cat-portada-card" onclick="abrirCatPanel(${i})">
+      ${mediaEl}
+      <div class="cat-portada-overlay"></div>
+      <div class="cat-portada-info">
+        <div class="cat-portada-name">${c.nombre}</div>
+        ${total?`<div class="cat-portada-count">${total} producto${total!==1?'s':''}</div>`:''}
+      </div>
+      <div class="cat-portada-arrow">›</div>
+    </div>`;
+  }).join('');
+}
+
+// ─── PANEL FULLSCREEN DE CATEGORÍA ─────────────────────────────────────────
+let _panelCatIdx = 0;
+let _panelSearchQ = '';
+
+function abrirCatPanel(idx){
+  _panelCatIdx = idx;
+  _panelSearchQ = '';
+  const cf=getCatsFilt();
+  const c=cf[idx];
+  if(!c) return;
+  document.getElementById('catPanelTitle').textContent = c.nombre;
+  document.getElementById('catPanelSearch').value = '';
+  const clr=document.getElementById('catPanelSearchClear');
+  if(clr) clr.style.display='none';
+  // Sync catActiva para que los subfiltros funcionen
+  catActiva=idx;
+  resetCatSearch();
   renderSubFiltros();
-  renderCat();
+  renderCatPanel();
+  document.getElementById('catPanel').classList.add('open');
+  document.body.style.overflow='hidden';
+}
+
+function cerrarCatPanel(){
+  document.getElementById('catPanel').classList.remove('open');
+  document.body.style.overflow='';
+}
+
+function onCatPanelSearch(val){
+  _panelSearchQ=val;
+  const clr=document.getElementById('catPanelSearchClear');
+  if(clr) clr.style.display=val?'block':'none';
+  renderSubFiltros();
+  renderCatPanel();
+}
+function clearCatPanelSearch(){
+  _panelSearchQ='';
+  const inp=document.getElementById('catPanelSearch');
+  if(inp) inp.value='';
+  const clr=document.getElementById('catPanelSearchClear');
+  if(clr) clr.style.display='none';
+  resetCatSearch();
+  renderSubFiltros();
+  renderCatPanel();
+}
+
+function renderCatPanel(){
+  const cf=getCatsFilt();
+  const c=cf[_panelCatIdx];
+  if(!c) return;
+  let prods=c.productos||[];
+
+  if(_sfTipo!=='Todos') prods=prods.filter(p=>(p.tipo||'').trim()===_sfTipo);
+  if(_sfTema!=='Todos') prods=prods.filter(p=>(p.temas||[]).includes(_sfTema));
+  if(_sfDiseno!=='Todos') prods=prods.filter(p=>(p.subtema||'').trim()===_sfDiseno);
+  if(_panelSearchQ.trim()){
+    const q=_panelSearchQ.trim().toLowerCase();
+    prods=prods.filter(p=>
+      p.nombre.toLowerCase().includes(q)||
+      (p.tipo||'').toLowerCase().includes(q)||
+      (p.temas||[]).some(t=>t.toLowerCase().includes(q))||
+      (p.subtema||'').toLowerCase().includes(q)||
+      (p.descripcion||'').toLowerCase().includes(q)
+    );
+  }
+  prods=sortProductos(prods);
+
+  const countEl=document.getElementById('catPanelCount');
+  if(countEl){
+    let parts=[];
+    if(_sfTipo!=='Todos') parts.push(_sfTipo);
+    if(_sfTema!=='Todos') parts.push(_sfTema);
+    if(_sfDiseno!=='Todos') parts.push(_sfDiseno);
+    if(_panelSearchQ.trim()) parts.push(`"${_panelSearchQ.trim()}"`);
+    countEl.textContent=prods.length>0?`${prods.length} producto${prods.length!==1?'s':''}${parts.length?' · '+parts.join(' · '):''}`:'';
+  }
+
+  const panelGrid=document.getElementById('catPanelGrid');
+  panelGrid.setAttribute('data-cols',GRID_CONFIG.productos||2);
+  if(prods.length){
+    panelGrid.innerHTML=mkSkeletons(Math.min(prods.length,6));
+    requestAnimationFrame(()=>{
+      panelGrid.innerHTML=prods.map(p=>mkCard(p,c.nombre,c.emoji)).join('');
+      initLazyImages();
+      // Mover subfiltros al panel
+      const sf=document.getElementById('cat-sub-filters');
+      const sfContainer=document.querySelector('.cat-panel-body');
+      if(sf && sfContainer){
+        const searchBar=sfContainer.querySelector('.cat-search-bar');
+        if(searchBar && searchBar.nextSibling !== sf){
+          sfContainer.insertBefore(sf, searchBar.nextSibling);
+        }
+      }
+    });
+  } else {
+    panelGrid.innerHTML=`<div style="padding:3rem;color:var(--gray);font-family:var(--font-mono);font-size:.7rem;letter-spacing:2px;text-align:center">Sin resultados</div>`;
+  }
 }
 
 function cambiarCat(idx,btn){
   catActiva=idx;
   document.querySelectorAll('.cat-tab').forEach(t=>t.classList.remove('active'));
-  btn.classList.add('active');
+  if(btn) btn.classList.add('active');
   limpiarBusqueda();
   resetCatSearch();
   renderSubFiltros();
   renderCat();
+
 }
 
 function resetCatSearch(){
@@ -309,7 +429,7 @@ function renderSubFiltros(){
   // Nivel 1: Tipos (solo si existen)
   if(tipos.length){
     ['Todos',...tipos].forEach((t,i)=>{
-      wrap.appendChild(mkChip(t,t===_sfTipo,()=>{_sfTipo=t;_sfTema='Todos';_sfDiseno='Todos';renderSubFiltros();renderCat();},i*30));
+      wrap.appendChild(mkChip(t,t===_sfTipo,()=>{_sfTipo=t;_sfTema='Todos';_sfDiseno='Todos';renderSubFiltros();_renderCatActual();},i*30));
     });
   }
 
@@ -319,7 +439,7 @@ function renderSubFiltros(){
   if(mostrarTemas){
     if(tipos.length) wrap.appendChild(mkSep());
     ['Todos',...temas].forEach((t,i)=>{
-      wrap.appendChild(mkChip(t,t===_sfTema,()=>{_sfTema=t;_sfDiseno='Todos';renderSubFiltros();renderCat();},i*25));
+      wrap.appendChild(mkChip(t,t===_sfTema,()=>{_sfTema=t;_sfDiseno='Todos';renderSubFiltros();_renderCatActual();},i*25));
     });
   }
 
@@ -328,9 +448,16 @@ function renderSubFiltros(){
   if(mostrarDisenos){
     wrap.appendChild(mkSep());
     ['Todos',...disenos].forEach((t,i)=>{
-      wrap.appendChild(mkChip(t,t===_sfDiseno,()=>{_sfDiseno=t;renderSubFiltros();renderCat();},i*20));
+      wrap.appendChild(mkChip(t,t===_sfDiseno,()=>{_sfDiseno=t;renderSubFiltros();_renderCatActual();},i*20));
     });
   }
+}
+
+// Decide si re-renderizar el panel o la búsqueda global
+function _renderCatActual(){
+  const panel=document.getElementById('catPanel');
+  if(panel && panel.classList.contains('open')) renderCatPanel();
+  else renderCat();
 }
 
 function onCatSearch(val){
@@ -338,53 +465,61 @@ function onCatSearch(val){
   const clr=document.getElementById('catSearchClear');
   if(clr) clr.style.display=val?'block':'none';
   if(val.length>2) trackSearch(val.toLowerCase().trim());
-  renderCat();
+  // Mostrar/ocultar panel de búsqueda global vs portadas
+  const portadasGrid=document.getElementById('catPortadasGrid');
+  const busquedaPanel=document.getElementById('catalogoBusquedaPanel');
+  if(val.trim()){
+    if(portadasGrid) portadasGrid.style.display='none';
+    if(busquedaPanel) busquedaPanel.style.display='';
+    renderCat(); // búsqueda global en todos los productos
+  } else {
+    if(portadasGrid) portadasGrid.style.display='';
+    if(busquedaPanel) busquedaPanel.style.display='none';
+  }
 }
 function onCatSearchClear(){
   resetCatSearch();
+  const portadasGrid=document.getElementById('catPortadasGrid');
+  const busquedaPanel=document.getElementById('catalogoBusquedaPanel');
+  if(portadasGrid) portadasGrid.style.display='';
+  if(busquedaPanel) busquedaPanel.style.display='none';
   renderSubFiltros();
-  renderCat();
 }
 
 function renderCat(){
-  const cf=getCatsFilt();if(!cf.length){document.getElementById('catalogGrid').innerHTML='';return;}
-  const c=cf[catActiva]||cf[0];
-  let prods=c.productos||[];
+  // Búsqueda global en TODOS los productos de todas las categorías
+  const cg=document.getElementById('catalogGrid');
+  if(!cg) return;
+  const cf=getCatsFilt();
+  if(!cf.length){ cg.innerHTML=''; return; }
 
-  if(_sfTipo!=='Todos') prods=prods.filter(p=>(p.tipo||'').trim()===_sfTipo);
-  if(_sfTema!=='Todos') prods=prods.filter(p=>(p.temas||[]).includes(_sfTema));
-  if(_sfDiseno!=='Todos') prods=prods.filter(p=>(p.subtema||'').trim()===_sfDiseno);
+  let allProds=[];
   if(_catSearchQ.trim()){
     const q=_catSearchQ.trim().toLowerCase();
-    prods=prods.filter(p=>
-      p.nombre.toLowerCase().includes(q)||
-      (p.tipo||'').toLowerCase().includes(q)||
-      (p.temas||[]).some(t=>t.toLowerCase().includes(q))||
-      (p.subtema||'').toLowerCase().includes(q)||
-      (p.descripcion||'').toLowerCase().includes(q)
-    );
+    cf.forEach(c=>{
+      (c.productos||[]).filter(p=>
+        p.nombre.toLowerCase().includes(q)||
+        (p.tipo||'').toLowerCase().includes(q)||
+        (p.temas||[]).some(t=>t.toLowerCase().includes(q))||
+        (p.subtema||'').toLowerCase().includes(q)||
+        (p.descripcion||'').toLowerCase().includes(q)||
+        c.nombre.toLowerCase().includes(q)
+      ).forEach(p=>allProds.push({p, catNombre:c.nombre, catEmoji:c.emoji}));
+    });
   }
-  prods = sortProductos(prods);
 
   const countEl=document.getElementById('catalogoCount');
-  if(countEl){
-    let parts=[];
-    if(_sfTipo!=='Todos') parts.push(_sfTipo);
-    if(_sfTema!=='Todos') parts.push(_sfTema);
-    if(_sfDiseno!=='Todos') parts.push(_sfDiseno);
-    if(_catSearchQ.trim()) parts.push(`"${_catSearchQ.trim()}"`);
-    countEl.textContent=prods.length>0?`Mostrando ${prods.length} producto${prods.length!==1?'s':''}${parts.length?' · '+parts.join(' · '):''}`:'';
-  }
-  const cg=document.getElementById('catalogGrid');
-  cg.setAttribute('data-cols',GRID_CONFIG.productos);
-  if(prods.length){
-    cg.innerHTML = mkSkeletons(Math.min(prods.length,6));
+  if(countEl) countEl.textContent=allProds.length>0?`${allProds.length} resultado${allProds.length!==1?'s':''} para "${_catSearchQ.trim()}"`:_catSearchQ.trim()?'Sin resultados':'';
+
+  cg.setAttribute('data-cols',GRID_CONFIG.productos||2);
+  if(allProds.length){
+    cg.innerHTML=mkSkeletons(Math.min(allProds.length,6));
     requestAnimationFrame(()=>{
-      cg.innerHTML = prods.map(p=>mkCard(p,c.nombre,c.emoji)).join('');
+      cg.innerHTML=allProds.map(({p,catNombre,catEmoji})=>mkCard(p,catNombre,catEmoji)).join('');
       initLazyImages();
     });
   } else {
-    cg.innerHTML = `<div style="padding:3rem;color:var(--gray);font-family:var(--font-mono);font-size:.7rem;letter-spacing:2px">Sin resultados</div>`;
+    cg.innerHTML=_catSearchQ.trim()?`<div style="padding:3rem;color:var(--gray);font-family:var(--font-mono);font-size:.7rem;letter-spacing:2px;text-align:center">Sin resultados para "${_catSearchQ}"</div>`:'';
   }
 }
 
@@ -1140,7 +1275,10 @@ function cerrarLightbox() {
   const vid = document.getElementById('lightbox-vid');
   if(vid){ vid.pause(); vid.src=''; }
 }
-document.addEventListener('keydown', e => { if(e.key==='Escape') cerrarLightbox(); });
+document.addEventListener('keydown', e => { if(e.key==='Escape'){ cerrarLightbox(); cerrarCatPanel(); } });
+function reproducirVideoResena(wrapper, url){
+  abrirLightboxMedia(url, 'video');
+}
 
 // INIT — carga instantánea: muestra con DEFAULTS al instante, Supabase en segundo plano
 (async function(){
@@ -1215,7 +1353,11 @@ function renderFotosClientes(rows){
     let mediaEl = '';
     if(r.imagen_url){
       mediaEl = esVideo
-        ? `<div class="resena-media"><video src="${r.imagen_url}" muted loop playsinline preload="none" class="resena-vid-thumb" onclick="abrirLightboxMedia('${r.imagen_url}','video');event.stopPropagation()"></video><div class="resena-media-badge">▶ VIDEO</div></div>`
+        ? `<div class="resena-media resena-media-video" onclick="reproducirVideoResena(this,'${r.imagen_url.replace(/'/g,"\\'")}');event.stopPropagation()" style="cursor:pointer;position:relative">
+            <video src="${r.imagen_url}#t=0.5" muted playsinline preload="metadata" class="resena-vid-thumb" style="width:100%;height:100%;object-fit:cover;display:block" onloadeddata="this.pause()"></video>
+            <div class="resena-play-overlay"><span class="resena-play-btn">▶</span></div>
+            <div class="resena-media-badge">▶ VIDEO</div>
+           </div>`
         : `<div class="resena-media"><img src="${r.imagen_url}" alt="${r.nombre}" loading="lazy" onclick="abrirLightboxMedia('${r.imagen_url}','img');event.stopPropagation()"></div>`;
     }
     const resenaTxt = r.resena ? `<div class="resena-texto">"${r.resena}"</div>` : `<div class="resena-texto">"${r.producto}"</div>`;
@@ -1238,10 +1380,10 @@ function renderFotosClientes(rows){
       </div>
     </div>`;
   }).join('');
-  // Play videos on hover
+  // Seek to 0.5s para mostrar frame como portada
   grid.querySelectorAll('.resena-vid-thumb').forEach(vid=>{
-    vid.closest('.resena-media').addEventListener('mouseenter',()=>vid.play());
-    vid.closest('.resena-media').addEventListener('mouseleave',()=>{vid.pause();vid.currentTime=0;});
+    vid.addEventListener('loadedmetadata',()=>{ try{ vid.currentTime = 0.5; }catch(e){} });
+    if(vid.readyState >= 1) try{ vid.currentTime = 0.5; }catch(e){}
   });
 }
 
@@ -1380,12 +1522,20 @@ async function subirFotoCliente(){
   }
 }
 
-// ─── MANEJO DE NAVEGACIÓN CON HASH (botón atrás del celular) ───────────────
+// ─── NAVEGACIÓN CON HASH + BOTÓN ATRÁS DEL CELULAR ────────────────────────────
 (function(){
   const secciones = ['inicio','promociones','catalogo','mayoreo','nosotros','contacto','tiktok-section'];
   let scrollManual = false;
+  let ultimaSeccion = '';
 
-  // Al hacer clic en enlaces del menú, actualizar hash sin saltar bruscamente
+  function scrollToSection(id){
+    scrollManual = true;
+    const el = document.getElementById(id);
+    if(el) el.scrollIntoView({behavior:'smooth', block:'start'});
+    setTimeout(()=>{ scrollManual = false; }, 800);
+  }
+
+  // Clicks en links del menú
   document.querySelectorAll('a[href^="#"]').forEach(link => {
     link.addEventListener('click', function(e){
       const target = this.getAttribute('href').replace('#','');
@@ -1397,18 +1547,12 @@ async function subirFotoCliente(){
     });
   });
 
-  function scrollToSection(id){
-    scrollManual = true;
-    const el = document.getElementById(id);
-    if(el){
-      el.scrollIntoView({behavior:'smooth', block:'start'});
-    }
-    setTimeout(()=>{ scrollManual = false; }, 800);
-  }
-
-  // Manejar botón "atrás" del navegador/celular
+  // Botón atrás del celular — un solo listener
   window.addEventListener('popstate', function(){
     if(scrollManual) return;
+    // Si el panel de categoría está abierto, cerrarlo primero
+    const panel=document.getElementById('catPanel');
+    if(panel && panel.classList.contains('open')){ cerrarCatPanel(); return; }
     const hash = window.location.hash.replace('#','');
     if(hash && secciones.includes(hash)){
       const el = document.getElementById(hash);
@@ -1417,51 +1561,26 @@ async function subirFotoCliente(){
       window.scrollTo({top:0, behavior:'smooth'});
     }
   });
-})();
 
-// ─── SCROLL → HASH (botón atrás del celular) ─────────────────────────────────
-(function(){
-  const secciones = ['inicio','promociones','catalogo','mayoreo','nosotros','contacto','tiktok-section'];
-  let ultimaSeccion = '';
-
-  const obs = new IntersectionObserver((entries) => {
-    entries.forEach(entry => {
-      if(entry.isIntersecting){
-        const id = entry.target.id;
-        if(id && secciones.includes(id) && id !== ultimaSeccion){
-          // pushState para que el botón "atrás" del celular tenga historial
-          if(ultimaSeccion !== '') {
-            history.pushState({ seccion: id }, '', '#' + id);
-          } else {
-            history.replaceState({ seccion: id }, '', '#' + id);
+  // IntersectionObserver para actualizar hash al hacer scroll
+  if('IntersectionObserver' in window){
+    const obs = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if(entry.isIntersecting){
+          const id = entry.target.id;
+          if(id && secciones.includes(id) && id !== ultimaSeccion){
+            ultimaSeccion !== ''
+              ? history.pushState({ seccion: id }, '', '#' + id)
+              : history.replaceState({ seccion: id }, '', '#' + id);
+            ultimaSeccion = id;
           }
-          ultimaSeccion = id;
         }
-      }
-    });
-  }, { threshold: 0.4, rootMargin: '-10% 0px -10% 0px' });
+      });
+    }, { threshold: 0.4, rootMargin: '-10% 0px -10% 0px' });
 
-  // Manejar botón atrás
-  window.addEventListener('popstate', function(e){
-    const hash = window.location.hash.replace('#','');
-    if(hash && secciones.includes(hash)){
-      const el = document.getElementById(hash);
-      if(el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    } else {
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    }
-  });
-
-  function iniciarObservador(){
-    secciones.forEach(id => {
-      const el = document.getElementById(id);
-      if(el) obs.observe(el);
-    });
-  }
-
-  if(document.readyState === 'loading'){
-    document.addEventListener('DOMContentLoaded', iniciarObservador);
-  } else {
-    iniciarObservador();
+    const iniciar = () => secciones.forEach(id => { const el=document.getElementById(id); if(el) obs.observe(el); });
+    document.readyState === 'loading'
+      ? document.addEventListener('DOMContentLoaded', iniciar)
+      : iniciar();
   }
 })();
