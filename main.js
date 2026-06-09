@@ -1211,13 +1211,26 @@ function renderFotosClientes(rows){
   grid.innerHTML = rows.map(r => {
     const esVideo = r.imagen_url && /\.(mp4|mov|webm|ogg)(\?|$)/i.test(r.imagen_url);
     const estrellas = '⭐'.repeat(Math.min(5, Math.max(1, r.estrellas || 5)));
-    const mediaEl = esVideo
-      ? `<video src="${r.imagen_url}" muted loop playsinline preload="none" class="resena-vid-thumb" onclick="abrirLightboxMedia('${r.imagen_url}','video');event.stopPropagation()"></video>
-         <div class="resena-media-badge">▶ VIDEO</div>`
-      : `<img src="${r.imagen_url}" alt="${r.nombre}" loading="lazy" onclick="abrirLightboxMedia('${r.imagen_url}','img');event.stopPropagation()">`;
+    // Si tiene imagen o video
+    let mediaEl = '';
+    if(r.imagen_url){
+      mediaEl = esVideo
+        ? `<div class="resena-media"><video src="${r.imagen_url}" muted loop playsinline preload="none" class="resena-vid-thumb" onclick="abrirLightboxMedia('${r.imagen_url}','video');event.stopPropagation()"></video><div class="resena-media-badge">▶ VIDEO</div></div>`
+        : `<div class="resena-media"><img src="${r.imagen_url}" alt="${r.nombre}" loading="lazy" onclick="abrirLightboxMedia('${r.imagen_url}','img');event.stopPropagation()"></div>`;
+    }
     const resenaTxt = r.resena ? `<div class="resena-texto">"${r.resena}"</div>` : `<div class="resena-texto">"${r.producto}"</div>`;
+    // Card sin foto: layout diferente más compacto
+    if(!r.imagen_url){
+      return `<div class="resena-card resena-card-texto">
+        <div class="resena-body">
+          ${resenaTxt}
+          <div class="resena-estrellas">${estrellas}</div>
+          <div class="resena-nombre">— ${r.nombre}</div>
+        </div>
+      </div>`;
+    }
     return `<div class="resena-card">
-      <div class="resena-media">${mediaEl}</div>
+      ${mediaEl}
       <div class="resena-body">
         ${resenaTxt}
         <div class="resena-estrellas">${estrellas}</div>
@@ -1349,6 +1362,13 @@ async function subirFotoCliente(){
     await cargarFotosClientes();
     cerrarFrModal();
     showToast('✅ ¡Tu reseña ya está publicada!', 3500);
+
+    // Notificar al dueño por WhatsApp
+    try {
+      const wa = window.APP_DATA?.NEGOCIO?.whatsapp || window.NEGOCIO?.whatsapp || '522229250603';
+      const msg = `🔔 *Nueva reseña en SARUX*%0A%0A👤 *Cliente:* ${encodeURIComponent(nombre)}%0A🛍️ *Producto:* ${encodeURIComponent(producto)}%0A⭐ *Estrellas:* ${estrellas}/5%0A💬 *Reseña:* ${encodeURIComponent(resena || 'Sin texto')}`;
+      window.open(`https://wa.me/${wa}?text=${msg}`, '_blank');
+    } catch(e){}
 
   } catch(e){
     console.error('Error reseña:', e);
