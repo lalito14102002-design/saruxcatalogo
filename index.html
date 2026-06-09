@@ -419,5 +419,80 @@
 </script>
 <script src="main.js"></script>
 
+<script>
+// ── NAVBAR SCROLL EFFECT ────────────────────────────────
+(function(){
+  const nav = document.querySelector('nav');
+  let lastScroll = 0;
+  window.addEventListener('scroll', function(){
+    const y = window.scrollY;
+    if(y > 80) {
+      nav.classList.add('scrolled');
+    } else {
+      nav.classList.remove('scrolled');
+    }
+    lastScroll = y;
+  }, { passive: true });
+})();
+
+// ── SCROLL REVEAL ───────────────────────────────────────
+(function(){
+  // Add reveal classes to section headers and grids
+  const selectors = [
+    '.sec-header',
+    '#masVendidosGrid',
+    '#promoGrid',
+    '.about-grid',
+    '.steps-grid',
+    '.launch-grid',
+    '.reviews-grid',
+    '.resenas-unificadas-grid',
+    '.mayoreo-hero',
+    '.eventos-grid',
+    '.paquetes-mayoreo',
+    '.proceso-grid',
+    '.mayoreo-cta',
+    '.faq-list',
+    '#launchGrid',
+    '.tiktok-grid',
+    '.ig-grid',
+    '#stepsGrid',
+    '#aboutText',
+    '#aboutMedia',
+    '.contact-section h2',
+    '.contact-section p',
+    '.contact-btns'
+  ];
+
+  selectors.forEach(sel => {
+    document.querySelectorAll(sel).forEach(el => {
+      if(!el.classList.contains('reveal') && !el.classList.contains('reveal-left') && !el.classList.contains('reveal-right')) {
+        el.classList.add('reveal');
+      }
+    });
+  });
+
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if(entry.isIntersecting) {
+        entry.target.classList.add('visible');
+        observer.unobserve(entry.target);
+      }
+    });
+  }, { threshold: 0.08, rootMargin: '0px 0px -40px 0px' });
+
+  document.querySelectorAll('.reveal, .reveal-left, .reveal-right').forEach(el => {
+    observer.observe(el);
+  });
+
+  // Also observe dynamically added elements
+  const mutObs = new MutationObserver(() => {
+    document.querySelectorAll('.reveal:not(.visible), .reveal-left:not(.visible), .reveal-right:not(.visible)').forEach(el => {
+      observer.observe(el);
+    });
+  });
+  mutObs.observe(document.body, { childList: true, subtree: true });
+})();
+</script>
 </body>
 </html>
