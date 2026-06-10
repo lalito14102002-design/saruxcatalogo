@@ -48,9 +48,12 @@
 
 <!-- MODAL PAQUETE MAYOREO -->
 <!-- LIGHTBOX -->
-<div id="lightbox" onclick="cerrarLightbox()">
+<div id="lightbox">
   <button id="lightbox-close" onclick="cerrarLightbox()">✕</button>
-  <img id="lightbox-img" src="" alt="">
+  <div id="lightbox-hint">👌 Pellizca · 2× toca para zoom</div>
+  <div id="lightbox-zoom-wrap">
+    <img id="lightbox-img" src="" alt="">
+  </div>
 </div>
 
 <div id="paqueteModalOverlay" class="modal-overlay" onclick="if(event.target===this)cerrarPaqueteModal()">
