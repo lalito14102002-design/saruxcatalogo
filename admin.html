@@ -885,15 +885,40 @@ Casi listo...
     renderAdminPromos();
   }
 
+  // ── Borrar archivo de Supabase Storage por URL ──────────────────────────────
+  async function deleteFromStorage(url){
+    if(!url || !url.includes('/storage/v1/object/public/images/')) return;
+    try {
+      // Extrae el path después de /images/
+      const path = url.split('/storage/v1/object/public/images/')[1].split('?')[0];
+      if(path) await sb.storage.from('images').remove([path]);
+    } catch(e){ console.warn('No se pudo borrar de Storage:', e); }
+  }
+
   function renderAdminCatalogo(){
     const cont = document.getElementById('admin-cats-list'); if(!cont) return;
     cont.innerHTML = '';
     CATALOGO_D.forEach((cat, ci)=>{
-      cont.innerHTML += `<div class="admin-card"><div class="admin-card-title">${cat.emoji} ${cat.nombre}<button class="admin-btn-sm danger" style="float:right" onclick="confirmDelete('¿Eliminar categoría?',()=>{CATALOGO_D.splice(${ci},1);renderAdminCatalogo()})">🗑️</button></div>
+      const puedeSubir = ci > 0;
+      const puedeBajar = ci < CATALOGO_D.length - 1;
+      cont.innerHTML += `<div class="admin-card" id="cat-card-${ci}">
+        <div class="admin-card-title" style="display:flex;align-items:center;gap:.5rem">
+          <div style="display:flex;flex-direction:column;gap:2px;margin-right:.3rem">
+            <button class="admin-btn-sm" style="padding:2px 7px;font-size:.7rem;opacity:${puedeSubir?1:.25}" ${puedeSubir?`onclick="moverCategoria(${ci},-1)"`:'disabled'} title="Subir">▲</button>
+            <button class="admin-btn-sm" style="padding:2px 7px;font-size:.7rem;opacity:${puedeBajar?1:.25}" ${puedeBajar?`onclick="moverCategoria(${ci},1)"`:'disabled'} title="Bajar">▼</button>
+          </div>
+          <span style="flex:1">${cat.emoji} ${cat.nombre}</span>
+          <span style="font-family:var(--font-mono);font-size:.5rem;color:var(--gray);margin-right:.5rem">#${ci+1}</span>
+          <button class="admin-btn-sm danger" onclick="eliminarCategoria(${ci})">🗑️</button>
+        </div>
         <div class="admin-field"><label>Nombre</label><input class="admin-input" value="${cat.nombre}" oninput="CATALOGO_D[${ci}].nombre=this.value"></div>
         <div class="admin-field"><label>Emoji</label><input class="admin-input" value="${cat.emoji}" oninput="CATALOGO_D[${ci}].emoji=this.value"></div>
         <div class="admin-field"><label>Activa</label><label class="admin-toggle"><input type="checkbox" ${cat.activa?'checked':''} onchange="CATALOGO_D[${ci}].activa=this.checked"><div class="toggle-track"></div></label></div>
-        <div class="admin-field"><label>Imagen portada</label><div class="admin-img-upload"><input type="file" accept="image/*" onchange="uploadCatPortada(this,${ci})"><p>Subir portada</p></div>${cat.imagen_portada?`<img src="${cat.imagen_portada}" style="max-height:60px">`:''}<input class="admin-input" value="${cat.imagen_portada||''}" placeholder="URL portada" oninput="CATALOGO_D[${ci}].imagen_portada=this.value"></div>
+        <div class="admin-field"><label>Imagen portada</label>
+          <div class="admin-img-upload"><input type="file" accept="image/*" onchange="uploadCatPortada(this,${ci})"><p>Subir portada</p></div>
+          ${cat.imagen_portada?`<div style="display:flex;align-items:center;gap:.5rem;margin-top:.3rem"><img src="${cat.imagen_portada}" style="max-height:60px"><button class="admin-btn-sm danger" onclick="quitarPortadaCat(${ci})">🗑️ Quitar</button></div>`:''}
+          <input class="admin-input" value="${cat.imagen_portada||''}" placeholder="URL portada" oninput="CATALOGO_D[${ci}].imagen_portada=this.value" style="margin-top:.4rem">
+        </div>
         <div class="admin-product-list" id="cat-prods-${ci}"></div>
         <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-top:.5rem">
           <button class="admin-btn-add" style="width:auto;flex:1" onclick="openAddProd(${ci})">+ Agregar producto</button>
@@ -902,10 +927,79 @@ Casi listo...
       const prodList = document.getElementById(`cat-prods-${ci}`);
       if(prodList){
         cat.productos.forEach((p, pi)=>{
-          prodList.innerHTML += `<div class="admin-product-item"><div class="admin-product-name">${p.nombre}</div><div class="admin-product-price">$${p.precio}</div><div><button class="admin-btn-sm" onclick="openEditProd(${ci},${pi})">✏️</button><button class="admin-btn-sm danger" onclick="confirmDelete('¿Eliminar producto?',()=>{CATALOGO_D[${ci}].productos.splice(${pi},1);renderAdminCatalogo()})">🗑️</button></div></div>`;
+          prodList.innerHTML += `<div class="admin-product-item">
+            <div style="display:flex;flex-direction:column;gap:2px;margin-right:.4rem">
+              <button class="admin-btn-sm" style="padding:1px 5px;font-size:.65rem;opacity:${pi>0?1:.25}" ${pi>0?`onclick="moverProducto(${ci},${pi},-1)"`:'disabled'}>▲</button>
+              <button class="admin-btn-sm" style="padding:1px 5px;font-size:.65rem;opacity:${pi<cat.productos.length-1?1:.25}" ${pi<cat.productos.length-1?`onclick="moverProducto(${ci},${pi},1)"`:'disabled'}>▼</button>
+            </div>
+            <div class="admin-product-name">${p.nombre}</div>
+            <div class="admin-product-price">$${p.precio}</div>
+            <div><button class="admin-btn-sm" onclick="openEditProd(${ci},${pi})">✏️</button><button class="admin-btn-sm danger" onclick="eliminarProducto(${ci},${pi})">🗑️</button></div>
+          </div>`;
         });
       }
     });
+  }
+
+  // Mover categoría arriba (-1) o abajo (1)
+  function moverCategoria(ci, dir){
+    const nueva = ci + dir;
+    if(nueva < 0 || nueva >= CATALOGO_D.length) return;
+    const tmp = CATALOGO_D[ci];
+    CATALOGO_D[ci] = CATALOGO_D[nueva];
+    CATALOGO_D[nueva] = tmp;
+    renderAdminCatalogo();
+    showNotif('✅ Categoría reordenada — recuerda guardar todo');
+  }
+
+  // Mover producto arriba (-1) o abajo (1) dentro de su categoría
+  function moverProducto(ci, pi, dir){
+    const nueva = pi + dir;
+    const prods = CATALOGO_D[ci].productos;
+    if(nueva < 0 || nueva >= prods.length) return;
+    const tmp = prods[pi];
+    prods[pi] = prods[nueva];
+    prods[nueva] = tmp;
+    renderAdminCatalogo();
+    showNotif('✅ Producto reordenado — recuerda guardar todo');
+  }
+
+  // Eliminar categoría + borrar portada de Storage
+  function eliminarCategoria(ci){
+    confirmDelete('¿Eliminar categoría y todos sus productos?', async ()=>{
+      const cat = CATALOGO_D[ci];
+      // Borrar portada de Storage
+      if(cat.imagen_portada) await deleteFromStorage(cat.imagen_portada);
+      // Borrar imágenes de productos y diseños
+      for(const p of (cat.productos||[])){
+        if(p.imagen) await deleteFromStorage(p.imagen);
+        for(const d of (p.disenos||[])) if(d.imagen) await deleteFromStorage(d.imagen);
+      }
+      CATALOGO_D.splice(ci, 1);
+      renderAdminCatalogo();
+      showNotif('✅ Categoría eliminada');
+    });
+  }
+
+  // Eliminar producto + borrar imágenes de Storage
+  function eliminarProducto(ci, pi){
+    confirmDelete('¿Eliminar producto?', async ()=>{
+      const p = CATALOGO_D[ci].productos[pi];
+      if(p.imagen) await deleteFromStorage(p.imagen);
+      for(const d of (p.disenos||[])) if(d.imagen) await deleteFromStorage(d.imagen);
+      CATALOGO_D[ci].productos.splice(pi, 1);
+      renderAdminCatalogo();
+      showNotif('✅ Producto eliminado');
+    });
+  }
+
+  // Quitar portada de categoría + borrar de Storage
+  async function quitarPortadaCat(ci){
+    const url = CATALOGO_D[ci].imagen_portada;
+    if(url) await deleteFromStorage(url);
+    CATALOGO_D[ci].imagen_portada = '';
+    renderAdminCatalogo();
+    showNotif('✅ Portada eliminada de Storage');
   }
   async function uploadGenerico(input, arr, field, idx, renderFn) {
     const file = input.files[0]; if(!file) return;
@@ -1469,13 +1563,9 @@ Casi listo...
         const { data } = await sb.from('fotos_clientes').select('imagen_url').eq('id', id).single();
         const { error } = await sb.from('fotos_clientes').delete().eq('id', id);
         if(error) throw error;
-        if(data && data.imagen_url){
-          try {
-            const path = data.imagen_url.split('/images/')[1];
-            if(path) await sb.storage.from('images').remove([path]);
-          } catch(e){}
-        }
+        if(data && data.imagen_url) await deleteFromStorage(data.imagen_url);
         showNotif('✅ Reseña eliminada');
+        _fotosClientesCache = null;
         cargarFotosClientesAdmin();
       } catch(e){
         showNotif('Error al eliminar: ' + e.message);
