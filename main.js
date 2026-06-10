@@ -1344,25 +1344,60 @@ function reproducirVideoResena(wrapper, url){
   abrirLightboxMedia(url, 'video');
 }
 
-// INIT — carga instantánea: muestra con DEFAULTS al instante, Supabase en segundo plano
+// INIT — loader configurable desde el admin, página carga en segundo plano
 (async function(){
-  const ocultarLoader = () => {
-    const loader = document.getElementById('sarux-loader');
+  // Leer config del loader (desde caché local si existe, si no defaults)
+  function getLoaderCfg(){
+    try {
+      const cached = localStorage.getItem('sarux_cfg');
+      if(cached){
+        const parsed = JSON.parse(cached);
+        return parsed.LOADER_CONFIG || {};
+      }
+    } catch(e){}
+    return {};
+  }
+  const loaderCfg   = getLoaderCfg();
+  const LOADER_MIN_MS = Math.min(15, Math.max(1, loaderCfg.segundos || 5)) * 1000;
+  const LOADER_MSGS = loaderCfg.mensajes && loaderCfg.mensajes.length
+    ? loaderCfg.mensajes
+    : ['Cargando productos...','Preparando catálogo...','Cargando imágenes...','Casi listo...','¡Ya mero!'];
+
+  const tiempoInicio = Date.now();
+  const loader = document.getElementById('sarux-loader');
+  const barra  = loader ? loader.querySelector('.loader-barra') : null;
+  const texto  = loader ? loader.querySelector('.loader-texto') : null;
+
+  // Animar barra y mensajes durante el tiempo configurado
+  function animarBarra(){
+    if(!barra) return;
+    let paso = 0;
+    const intervaloMsg = LOADER_MIN_MS / LOADER_MSGS.length;
+    if(texto) texto.textContent = LOADER_MSGS[0];
+    const intervalMsg = setInterval(function(){
+      paso++;
+      if(texto && LOADER_MSGS[paso]) texto.textContent = LOADER_MSGS[paso];
+      if(paso >= LOADER_MSGS.length - 1) clearInterval(intervalMsg);
+    }, intervaloMsg);
+    barra.style.transition = 'width ' + LOADER_MIN_MS + 'ms linear';
+    barra.style.animationName = 'none';
+    requestAnimationFrame(function(){
+      requestAnimationFrame(function(){ barra.style.width = '100%'; });
+    });
+  }
+  animarBarra();
+
+  const ocultarLoader = function(){
     if(loader) loader.classList.add('oculto');
   };
-  const mostrarPagina = () => {
-    try { applyStyles(); } catch(e){}
-    try { renderPage(); } catch(e){}
-    ocultarLoader();
-    try { iniciarLluviaImagen(); } catch(e){}
-  };
 
-  // PASO 1: Mostrar página con DEFAULTS inmediatamente (0 espera)
+  // PASO 1: preparar página en background con DEFAULTS
   APP_DATA = JSON.parse(JSON.stringify(DEFAULTS));
   syncGlobalsFromAppData();
-  mostrarPagina();
+  try { applyStyles(); } catch(e){}
+  try { renderPage(); } catch(e){}
 
-  // PASO 2: Cargar datos reales de Supabase en segundo plano sin bloquear
+  // PASO 2: cargar caché local y Supabase en paralelo, en segundo plano
   try {
     const cached = localStorage.getItem('sarux_cfg');
     if(cached){
@@ -1372,8 +1407,8 @@ function reproducirVideoResena(wrapper, url){
       try { applyStyles(); } catch(e){}
       try { renderPage(); } catch(e){}
     }
-    // Actualizar desde Supabase sin bloquear la UI
-    sb.from('site_config').select('config_data').eq('id',1).single().then(({data,error})=>{
+    sb.from('site_config').select('config_data').eq('id',1).single().then(function(res){
+      const data = res.data, error = res.error;
       if(!error && data){
         try{ localStorage.setItem('sarux_cfg', JSON.stringify(data.config_data)); }catch(e){}
         APP_DATA = { ...DEFAULTS, ...data.config_data };
@@ -1382,7 +1417,15 @@ function reproducirVideoResena(wrapper, url){
         try { renderPage(); } catch(e){}
       }
     });
-  } catch(e) {}
+  } catch(e){}
+
+  // PASO 3: esperar el tiempo configurado, luego quitar loader
+  const transcurrido = Date.now() - tiempoInicio;
+  const espera = Math.max(0, LOADER_MIN_MS - transcurrido);
+  setTimeout(function(){
+    ocultarLoader();
+    try { iniciarLluviaImagen(); } catch(e){}
+  }, espera);
 })();
 
 // ─── FOTOS REALES (Supabase) ──────────────────────────────────────────────────

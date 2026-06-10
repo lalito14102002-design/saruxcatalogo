@@ -246,6 +246,7 @@
         <button class="admin-nav-btn active" onclick="showSec('negocio',this)">🏪 Mi negocio</button>
         <button class="admin-nav-btn" onclick="showSec('redes',this)">📱 Redes sociales</button>
         <button class="admin-nav-btn" onclick="showSec('logo',this)">🖼️ Logo</button>
+        <button class="admin-nav-btn" onclick="showSec('loader',this)">⏳ Pantalla de carga</button>
         <button class="admin-nav-btn" onclick="showSec('seguridad',this)">🔐 Seguridad</button>
       </div>
       <div class="admin-nav-group"><span class="admin-nav-label">🎨 Apariencia</span>
@@ -648,6 +649,38 @@
       <div id="sec-negocio" class="admin-section active"><div class="admin-section-title">MI NEGOCIO</div><div class="admin-card"><div class="admin-field"><label>Nombre</label><input class="admin-input" id="a-nombre"></div><div class="admin-field"><label>Descripción</label><textarea class="admin-textarea" id="a-descripcion"></textarea></div><div class="admin-field"><label>WhatsApp (código+tel)</label><input class="admin-input" id="a-whatsapp"></div></div></div>
       <div id="sec-redes" class="admin-section"><div class="admin-section-title">REDES SOCIALES</div><div class="admin-card"><div class="admin-field"><label>Instagram URL</label><input class="admin-input" id="a-instagram"></div><div class="admin-field"><label>Ícono Instagram</label><div class="admin-img-upload"><input type="file" accept="image/*" onchange="uploadIconoRed(this,'icono_instagram')"><p>Subir ícono</p></div><div id="prev-icono-instagram" style="width:40px;height:40px;margin-bottom:.5rem"></div><button class="admin-btn-sm" onclick="quitarIconoRed('icono_instagram')">Quitar personalizado</button></div><div class="admin-field"><label>Facebook URL</label><input class="admin-input" id="a-facebook"></div><div class="admin-field"><label>Ícono Facebook</label><div class="admin-img-upload"><input type="file" accept="image/*" onchange="uploadIconoRed(this,'icono_facebook')"><p>Subir ícono</p></div><div id="prev-icono-facebook" style="width:40px;height:40px"></div><button class="admin-btn-sm" onclick="quitarIconoRed('icono_facebook')">Quitar</button></div><div class="admin-field"><label>TikTok URL</label><input class="admin-input" id="a-tiktok"></div><div class="admin-field"><label>Usuario TikTok (ej: @sarux)</label><input class="admin-input" id="a-tiktok-user"></div><div class="admin-field"><label>Ícono TikTok</label><div class="admin-img-upload"><input type="file" accept="image/*" onchange="uploadIconoRed(this,'icono_tiktok')"><p>Subir ícono</p></div><div id="prev-icono-tiktok" style="width:40px;height:40px"></div><button class="admin-btn-sm" onclick="quitarIconoRed('icono_tiktok')">Quitar</button></div><div class="admin-field"><label>WhatsApp ícono</label><div class="admin-img-upload"><input type="file" accept="image/*" onchange="uploadIconoRed(this,'icono_whatsapp')"><p>Subir ícono</p></div><div id="prev-icono-whatsapp" style="width:40px;height:40px"></div><button class="admin-btn-sm" onclick="quitarIconoRed('icono_whatsapp')">Quitar</button></div></div></div>
       <div id="sec-logo" class="admin-section"><div class="admin-section-title">LOGO</div><div class="admin-card"><div style="text-align:center"><img id="logoPreview" style="max-height:80px; margin-bottom:1rem"></div><div class="admin-img-upload"><input type="file" accept="image/*" onchange="uploadLogo(this)"><p>Subir logo</p></div><div class="admin-field"><input class="admin-input" id="logoUrl" placeholder="URL del logo"><button class="admin-btn-add" onclick="applyLogoUrl()">Aplicar URL</button></div></div></div>
+      <div id="sec-loader" class="admin-section">
+        <div class="admin-section-title">PANTALLA DE CARGA</div>
+        <div class="admin-section-sub">Configura cuánto tiempo se muestra la pantalla de carga antes de mostrar el sitio. La página siempre se prepara en segundo plano, así que cuando termina el tiempo todo ya está listo.</div>
+        <div class="admin-card">
+          <div class="admin-card-title">⏱️ Tiempo de espera</div>
+          <div class="admin-field">
+            <label>Segundos de pantalla de carga</label>
+            <div style="display:flex;align-items:center;gap:1rem;flex-wrap:wrap">
+              <input type="range" id="loader-segundos" min="1" max="15" step="1" value="5"
+                oninput="document.getElementById('loader-seg-val').textContent=this.value+'s'"
+                style="flex:1;min-width:140px;accent-color:var(--neon)">
+              <span id="loader-seg-val" style="font-family:var(--font-mono);font-size:1.1rem;color:var(--neon);min-width:36px">5s</span>
+            </div>
+            <p class="admin-section-sub" style="margin-top:.6rem">Mínimo 1s — Máximo 15s. Recomendado: 4–6 segundos para que las imágenes carguen bien.</p>
+          </div>
+          <div class="admin-field">
+            <div class="admin-card-title" style="margin-bottom:.8rem">📝 Mensajes durante la carga</div>
+            <p class="admin-section-sub">Escribe un mensaje por línea. Se mostrarán en orden durante la pantalla de carga.</p>
+            <textarea class="admin-textarea" id="loader-mensajes" rows="5" placeholder="Cargando productos...
+Preparando catálogo...
+Cargando imágenes...
+Casi listo...
+¡Ya mero!"></textarea>
+          </div>
+          <div class="admin-field">
+            <div style="background:rgba(232,25,44,.06);border:1px solid rgba(232,25,44,.2);padding:1rem;border-radius:4px">
+              <div style="font-family:var(--font-mono);font-size:.55rem;letter-spacing:2px;color:var(--neon);margin-bottom:.5rem">💡 CÓMO FUNCIONA</div>
+              <p style="font-size:.8rem;color:var(--gray);line-height:1.6;margin:0">Mientras se muestra la pantalla de carga, el sitio ya está descargando imágenes, productos y configuración de Supabase en segundo plano. Cuando termina el tiempo, todo aparece de golpe sin esperas.</p>
+            </div>
+          </div>
+        </div>
+      </div>
       <div id="sec-seguridad" class="admin-section"><div class="admin-section-title">SEGURIDAD</div><div class="security-info">La autenticación se gestiona mediante Supabase Auth. Para cambiar tu contraseña, utiliza el panel de Supabase o la opción de recuperación.</div></div>
       <div id="sec-colores" class="admin-section"><div class="admin-section-title">COLORES</div><div class="admin-card"><div class="admin-field"><label>Fondo principal</label><div class="color-preview-wrap"><input type="color" class="admin-color" id="c-fondo" oninput="updateColorPreview(this,'dp-fondo')"><div class="color-preview-dot" id="dp-fondo"></div><input class="admin-input" id="ct-fondo" oninput="syncColorText(this,'c-fondo','dp-fondo')"></div></div><div class="admin-field"><label>Fondo tarjetas</label><div class="color-preview-wrap"><input type="color" class="admin-color" id="c-tarjetas" oninput="updateColorPreview(this,'dp-tarjetas')"><div class="color-preview-dot" id="dp-tarjetas"></div><input class="admin-input" id="ct-tarjetas" oninput="syncColorText(this,'c-tarjetas','dp-tarjetas')"></div></div><div class="admin-field"><label>Color principal (acento)</label><div class="color-preview-wrap"><input type="color" class="admin-color" id="c-acento" oninput="updateColorPreview(this,'dp-acento')"><div class="color-preview-dot" id="dp-acento"></div><input class="admin-input" id="ct-acento" oninput="syncColorText(this,'c-acento','dp-acento')"></div></div><div class="admin-field"><label>Color secundario</label><div class="color-preview-wrap"><input type="color" class="admin-color" id="c-acento2" oninput="updateColorPreview(this,'dp-acento2')"><div class="color-preview-dot" id="dp-acento2"></div><input class="admin-input" id="ct-acento2" oninput="syncColorText(this,'c-acento2','dp-acento2')"></div></div><div class="admin-field"><label>Color de texto</label><div class="color-preview-wrap"><input type="color" class="admin-color" id="c-texto" oninput="updateColorPreview(this,'dp-texto')"><div class="color-preview-dot" id="dp-texto"></div><input class="admin-input" id="ct-texto" oninput="syncColorText(this,'c-texto','dp-texto')"></div></div><div class="admin-field"><label>Color gris</label><div class="color-preview-wrap"><input type="color" class="admin-color" id="c-gris" oninput="updateColorPreview(this,'dp-gris')"><div class="color-preview-dot" id="dp-gris"></div><input class="admin-input" id="ct-gris" oninput="syncColorText(this,'c-gris','dp-gris')"></div></div><button class="admin-btn-add" onclick="previewColors()">Previsualizar colores</button></div></div>
       <div id="sec-tipografia" class="admin-section"><div class="admin-section-title">TIPOGRAFÍA</div><div class="admin-card"><div class="admin-field"><label>Fuente títulos</label><select class="admin-select" id="f-display" onchange="previewFonts()"><option value="'Bebas Neue',sans-serif">Bebas Neue</option><option value="'Oswald',sans-serif">Oswald</option><option value="'Anton',sans-serif">Anton</option><option value="'Righteous',cursive">Righteous</option><option value="'Bungee',cursive">Bungee</option><option value="'Russo One',sans-serif">Russo One</option></select><div id="fp-display" style="font-size:1.2rem;margin-top:.5rem">SARUX</div></div><div class="admin-field"><label>Fuente mono (etiquetas)</label><select class="admin-select" id="f-mono" onchange="previewFonts()"><option value="'Space Mono',monospace">Space Mono</option><option value="'Share Tech Mono',monospace">Share Tech Mono</option><option value="'Courier New',monospace">Courier New</option><option value="'IBM Plex Mono',monospace">IBM Plex Mono</option></select><div id="fp-mono" style="margin-top:.5rem">PRECIO</div></div><div class="admin-field"><label>Fuente cuerpo</label><select class="admin-select" id="f-body" onchange="previewFonts()"><option value="'Rajdhani',sans-serif">Rajdhani</option><option value="'Exo 2',sans-serif">Exo 2</option><option value="'Titillium Web',sans-serif">Titillium Web</option><option value="'Kanit',sans-serif">Kanit</option><option value="'Barlow',sans-serif">Barlow</option></select><div id="fp-body" style="margin-top:.5rem">Texto de ejemplo</div></div></div></div>
@@ -1620,6 +1653,15 @@
       velocidad: parseFloat(document.getElementById('lluvia-velocidad').value) || 2,
       espera: parseInt(document.getElementById('lluvia-espera').value) || 0
     };
+
+    // Config pantalla de carga
+    const loaderMensajes = (document.getElementById('loader-mensajes').value || '')
+      .split('\n').map(s => s.trim()).filter(Boolean);
+    APP_DATA.LOADER_CONFIG = {
+      segundos: parseInt(document.getElementById('loader-segundos').value) || 5,
+      mensajes: loaderMensajes.length ? loaderMensajes : ['Cargando productos...','Preparando catálogo...','Cargando imágenes...','Casi listo...','¡Ya mero!']
+    };
+
     // Config fotos clientes
     if(!APP_DATA.FOTOS_CLIENTES_CFG) APP_DATA.FOTOS_CLIENTES_CFG = {};
     APP_DATA.FOTOS_CLIENTES_CFG.activo = !!(document.getElementById('fc-activo')||{}).checked;
@@ -1697,6 +1739,14 @@
     document.getElementById('lluvia-cantidad').value = LLUVIA_CONFIG.cantidad || 20;
     document.getElementById('lluvia-velocidad').value = LLUVIA_CONFIG.velocidad || 2;
     document.getElementById('lluvia-espera').value = LLUVIA_CONFIG.espera || 0;
+
+    // Cargar config de pantalla de carga
+    const loaderCfg = APP_DATA.LOADER_CONFIG || {};
+    const loaderSeg = loaderCfg.segundos || 5;
+    document.getElementById('loader-segundos').value = loaderSeg;
+    document.getElementById('loader-seg-val').textContent = loaderSeg + 's';
+    const loaderMsgs = (loaderCfg.mensajes || ['Cargando productos...','Preparando catálogo...','Cargando imágenes...','Casi listo...','¡Ya mero!']).join('\n');
+    document.getElementById('loader-mensajes').value = loaderMsgs;
   }
 
   //  INICIALIZACIÓN 

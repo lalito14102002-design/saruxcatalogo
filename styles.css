@@ -76,12 +76,12 @@ body{background:var(--black);color:var(--light);font-family:var(--font-body);ove
 .btn-carrito:hover{border-color:var(--neon);color:var(--neon)}
 
 /* PANTALLA DE CARGA */
-#sarux-loader{position:fixed;inset:0;background:#060606;z-index:99999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2rem;transition:opacity .5s ease,visibility .5s ease}
+#sarux-loader{position:fixed;inset:0;background:#060606;z-index:99999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2rem;transition:opacity .6s ease,visibility .6s ease}
 #sarux-loader.oculto{opacity:0;visibility:hidden;pointer-events:none}
 .loader-logo{font-family:'Bebas Neue',sans-serif;font-size:4.5rem;letter-spacing:12px;color:#fff;text-shadow:0 0 30px rgba(232,25,44,.8),0 0 60px rgba(232,25,44,.4);animation:pulseLogo 1.5s ease-in-out infinite}
 .loader-barra-wrap{width:200px;height:2px;background:rgba(255,255,255,.08);border-radius:2px;overflow:hidden}
-.loader-barra{height:100%;width:0%;background:linear-gradient(90deg,var(--neon),var(--neon3));border-radius:2px;animation:cargarBarra 2.5s ease-in-out forwards}
-.loader-texto{font-family:'Space Mono',monospace;font-size:.55rem;letter-spacing:4px;color:var(--gray);text-transform:uppercase;animation:parpadeo 1.2s ease-in-out infinite}
+.loader-barra{height:100%;width:0%;background:linear-gradient(90deg,var(--neon),var(--neon3));border-radius:2px}
+.loader-texto{font-family:'Space Mono',monospace;font-size:.55rem;letter-spacing:4px;color:var(--gray);text-transform:uppercase;animation:parpadeo 1.2s ease-in-out infinite;min-height:1em;text-align:center}
 @keyframes pulseLogo{0%,100%{text-shadow:0 0 20px rgba(232,25,44,.6),0 0 40px rgba(232,25,44,.3)}50%{text-shadow:0 0 40px rgba(232,25,44,1),0 0 80px rgba(232,25,44,.6)}}
 @keyframes cargarBarra{0%{width:0%}60%{width:75%}100%{width:100%}}
 @keyframes parpadeo{0%,100%{opacity:1}50%{opacity:.3}}
