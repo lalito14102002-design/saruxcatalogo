@@ -232,6 +232,8 @@ function renderPage(){
   window.dispatchEvent(new Event('renderDone'));
   // Activar lazy loading para todas las imágenes recién renderizadas
   setTimeout(initLazyImages, 50);
+  // Refrescar estado de botones de favoritos
+  setTimeout(_refreshFavBtns, 60);
 }
 
 // CATÁLOGO — buscador simple: tab de categoría + búsqueda + subfiltros
@@ -404,7 +406,19 @@ function renderCatPanel(){
       }
     });
   } else {
-    panelGrid.innerHTML=`<div style="padding:3rem;color:var(--gray);font-family:var(--font-mono);font-size:.7rem;letter-spacing:2px;text-align:center">Sin resultados</div>`;
+    const q = document.getElementById('catPanelSearch')?.value?.trim() || '';
+    panelGrid.innerHTML=`
+      <div style="grid-column:1/-1;padding:2.5rem 1rem;text-align:center">
+        <div style="font-size:2.5rem;margin-bottom:.8rem">🔍</div>
+        <div style="font-family:var(--font-display);font-size:1.1rem;color:var(--white);letter-spacing:2px;margin-bottom:.5rem">SIN RESULTADOS</div>
+        <div style="color:var(--gray);font-size:.8rem;font-weight:300;margin-bottom:1.2rem">
+          No encontramos <span style="color:var(--neon)">"${q}"</span> en esta categoría.
+        </div>
+        <div style="display:flex;gap:.7rem;justify-content:center;flex-wrap:wrap">
+          <button onclick="clearCatPanelSearch()" style="background:rgba(232,25,44,.12);border:1px solid rgba(232,25,44,.35);color:var(--neon);font-family:var(--font-mono);font-size:.58rem;letter-spacing:2px;padding:.65rem 1rem;cursor:pointer">← VER TODOS</button>
+          <a href="https://wa.me/${(typeof NEGOCIO!=='undefined'?NEGOCIO.whatsapp:'')}" target="_blank" style="background:rgba(37,211,102,.1);border:1px solid rgba(37,211,102,.3);color:#25d366;font-family:var(--font-mono);font-size:.58rem;letter-spacing:2px;padding:.65rem 1rem;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:.4rem">📱 PREGUNTAR</a>
+        </div>
+      </div>`;
   }
 }
 
@@ -567,7 +581,15 @@ function mkCard(p,catNombre,catEmoji){
   const img=p.imagen?`<img data-src="${p.imagen}" src="${BLANK}" class="card-img-real lazy" alt="${p.nombre}" loading="lazy">`:`<span class="card-img">${catEmoji||p.emoji||'📦'}</span>`;
   const badgeClass=p.badge==='Nuevo'?'badge-new':p.badge==='Más vendido'?'badge-sell':'badge-pop';
   const badgeHTML=p.badge?`<span class="badge ${badgeClass}">${p.badge}</span>`:'';
-  const tallasTag=(p.tallas&&p.tallas.length)?`<span class="card-tag">📏 ${p.tallas.join(' · ')}</span>`:'';
+  // Badge de stock urgente en card
+  const stockNum = p.stock || 0;
+  const stockBadge = stockNum === 0
+    ? `<span style="position:absolute;bottom:.5rem;left:.5rem;background:rgba(255,59,48,.85);color:#fff;font-family:var(--font-mono);font-size:.5rem;letter-spacing:1.5px;padding:.25rem .55rem;z-index:3;pointer-events:none">AGOTADO</span>`
+    : stockNum <= 3
+    ? `<span style="position:absolute;bottom:.5rem;left:.5rem;background:rgba(255,149,0,.9);color:#fff;font-family:var(--font-mono);font-size:.5rem;letter-spacing:1.5px;padding:.25rem .55rem;z-index:3;pointer-events:none;animation:stockPulse 1.2s ease-in-out infinite">🔥 ${stockNum} PZS</span>`
+    : stockNum <= 10
+    ? `<span style="position:absolute;bottom:.5rem;left:.5rem;background:rgba(255,204,0,.85);color:#000;font-family:var(--font-mono);font-size:.5rem;letter-spacing:1.5px;padding:.25rem .55rem;z-index:3;pointer-events:none">⚡ POCAS</span>`
+    : '';  const tallasTag=(p.tallas&&p.tallas.length)?`<span class="card-tag">📏 ${p.tallas.join(' · ')}</span>`:'';
   const coloresTag=(p.colores&&p.colores.length)?`<span class="card-tag">🎨 ${p.colores.join(' · ')}</span>`:'';
   const temasTag=(p.temas&&p.temas.length)?`<span class="card-tag" style="color:var(--neon2);border-color:rgba(255,0,60,.2)">🏷️ ${p.temas.join(' · ')}</span>`:'';
   const tienePersonajes=(p.personajes&&p.personajes.length>0);
@@ -581,9 +603,11 @@ function mkCard(p,catNombre,catEmoji){
   const extraBadge=tienePersonajes?`<span class="badge badge-new" style="position:absolute;top:.5rem;left:.5rem">GALERÍA</span>`:'';
   const nomSafe=(p.nombre||'').replace(/'/g,'&#39;');
   const catSafe=(catNombre||'').replace(/'/g,'&#39;');
+  const esFav = _esFavorito(p.nombre);
+  const favBtn = `<button class="card-fav-btn${esFav?' active':''}" data-pid="${pid}" onclick="toggleFavorito('${pid}',event)" title="${esFav?'Quitar de favoritos':'Guardar en favoritos'}">${esFav?'❤️':'🤍'}</button>`;
   const shareBtn=`<button class="card-share-btn" onclick="event.stopPropagation();compartirProducto('${nomSafe}','${catSafe}')" title="Compartir">🔗</button>`;
   const cartBtn=tienePersonajes?'':`<button style="background:none;border:none;color:var(--gray);cursor:pointer;font-size:.95rem;padding:.2rem .4rem;transition:color .2s" onclick="event.stopPropagation();agregarAlCarritoById('${pid}')" title="Agregar al carrito" onmouseover="this.style.color='var(--neon)'" onmouseout="this.style.color='var(--gray)'">🛒</button>`;
-  return`<div class="product-card" onclick="${onclick}"><div class="card-img-wrap">${img}${extraBadge}${shareBtn}<div class="card-overlay"><button class="card-overlay-btn">${btnLabel}</button></div></div><div class="card-body"><div class="card-cat">${catNombre||p.categoria||''}</div><div class="card-name">${p.nombre}</div><div class="card-tags">${temasTag}${tallasTag}${coloresTag}</div><div class="card-footer"><div class="card-price">$${(p.precio||0).toLocaleString()}<small>MXN</small></div><div style="display:flex;align-items:center;gap:.3rem">${badgeHTML}${cartBtn}</div></div></div></div>`;
+  return`<div class="product-card" onclick="${onclick}"><div class="card-img-wrap">${img}${extraBadge}${stockBadge}${favBtn}${shareBtn}<div class="card-overlay"><button class="card-overlay-btn">${btnLabel}</button></div></div><div class="card-body"><div class="card-cat">${catNombre||p.categoria||''}</div><div class="card-name">${p.nombre}</div><div class="card-tags">${temasTag}${tallasTag}${coloresTag}</div><div class="card-footer"><div class="card-price">$${(p.precio||0).toLocaleString()}<small>MXN</small></div><div style="display:flex;align-items:center;gap:.3rem">${badgeHTML}${cartBtn}</div></div></div></div>`;
 }
 
 // GALERÍA DE PERSONAJES
@@ -675,9 +699,36 @@ function buscarProducto(q) {
 
   const cg = document.getElementById('catalogGrid');
   cg.setAttribute('data-cols', GRID_CONFIG.productos);
-  cg.innerHTML = res.length
-    ? res.map(({ p, cat }) => mkCard(p, cat.nombre, cat.emoji)).join('')
-    : `<div style="padding:3rem;color:var(--gray);font-family:var(--font-mono);font-size:.7rem;letter-spacing:2px;grid-column:1/-1">Sin resultados para "<span style="color:var(--neon)">${q.trim()}</span>"</div>`;
+  if(res.length){
+    cg.innerHTML = res.map(({ p, cat }) => mkCard(p, cat.nombre, cat.emoji)).join('');
+  } else {
+    // Sugerencias: primeros 4 productos de categorías activas
+    const sugeridos = [];
+    (getCatsFilt()||[]).forEach(cat=>{
+      (cat.productos||[]).slice(0,2).forEach(p=>{ if(sugeridos.length<4) sugeridos.push({p,cat}); });
+    });
+    const sugsHTML = sugeridos.length ? `
+      <div style="margin-top:2rem;grid-column:1/-1">
+        <div style="font-family:var(--font-mono);font-size:.55rem;letter-spacing:3px;color:var(--gray);margin-bottom:1rem;text-align:center">TAL VEZ TE INTERESE</div>
+        <div class="product-grid" style="margin:0">${sugeridos.map(({p,cat})=>mkCard(p,cat.nombre,cat.emoji)).join('')}</div>
+      </div>` : '';
+    cg.innerHTML = `
+      <div style="grid-column:1/-1;padding:3rem 1.5rem;text-align:center">
+        <div style="font-size:3rem;margin-bottom:1rem">🔍</div>
+        <div style="font-family:var(--font-display);font-size:1.2rem;color:var(--white);letter-spacing:2px;margin-bottom:.6rem">SIN RESULTADOS</div>
+        <div style="color:var(--gray);font-family:var(--font-mono);font-size:.7rem;letter-spacing:1px;margin-bottom:1.2rem">
+          No encontramos nada para <span style="color:var(--neon)">"${q.trim()}"</span>
+        </div>
+        <div style="color:rgba(255,255,255,.45);font-size:.82rem;font-weight:300;line-height:1.7;margin-bottom:1.5rem">
+          Intenta con otro término o escríbenos directamente<br>y con gusto te ayudamos.
+        </div>
+        <div style="display:flex;gap:.8rem;justify-content:center;flex-wrap:wrap">
+          <button onclick="limpiarBusqueda()" style="background:rgba(232,25,44,.12);border:1px solid rgba(232,25,44,.35);color:var(--neon);font-family:var(--font-mono);font-size:.6rem;letter-spacing:2px;padding:.7rem 1.2rem;cursor:pointer">← VER TODO EL CATÁLOGO</button>
+          <a href="https://wa.me/${(typeof NEGOCIO!=='undefined'?NEGOCIO.whatsapp:'')}" target="_blank" style="background:rgba(37,211,102,.1);border:1px solid rgba(37,211,102,.3);color:#25d366;font-family:var(--font-mono);font-size:.6rem;letter-spacing:2px;padding:.7rem 1.2rem;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:.4rem">📱 PREGUNTAR POR WHATSAPP</a>
+        </div>
+        ${sugsHTML}
+      </div>`;
+  }
 
   document.getElementById('catalogo').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
@@ -712,6 +763,8 @@ function abrirModal(p,catNombre,catEmoji){
   trackView(p.nombre);
   window._modalProdActivo = {p, catNombre, catEmoji};
   window._modalDisenoIdx = 0;
+  // Actualizar OG metas para compartir con imagen correcta
+  actualizarOGMetas(p, catNombre);
   const imgEl=document.getElementById('modalImg');
   _lightboxSrc = p.imagen || (p.disenos&&p.disenos[0]&&p.disenos[0].imagen) || '';
   const zoomBtn = document.getElementById('zoom-btn');
@@ -720,23 +773,146 @@ function abrirModal(p,catNombre,catEmoji){
   const prevGal=document.getElementById('modalDisenosGal');if(prevGal)prevGal.remove();
   if(p.disenos&&p.disenos.length>0){
     const wrap=document.createElement('div');wrap.id='modalDisenosGal';wrap.className='modal-disenos';
-    p.disenos.forEach((d,i)=>{const thumb=document.createElement('div');thumb.className='diseno-thumb'+(i===0?' active':'');thumb.innerHTML=`<img src="${d.imagen||''}" alt="${d.nombre||''}"><div class="diseno-thumb-label">${d.nombre||''}</div>`;thumb.onclick=()=>{document.querySelectorAll('.diseno-thumb').forEach(t=>t.classList.remove('active'));thumb.classList.add('active');_lightboxSrc=d.imagen||'';window._modalDisenoIdx=i;imgEl.innerHTML=`<img src="${d.imagen}" style="width:100%;max-height:70vw;object-fit:contain;display:block;cursor:zoom-in" onclick="abrirLightbox()">`;if(zoomBtn)zoomBtn.style.display=d.imagen?'block':'none';};wrap.appendChild(thumb);});
+
+    // Función para navegar al diseño por índice
+    function irADiseno(idx){
+      const total = p.disenos.length;
+      idx = ((idx % total) + total) % total; // circular
+      window._modalDisenoIdx = idx;
+      const d = p.disenos[idx];
+      _lightboxSrc = d.imagen||'';
+      imgEl.innerHTML = d.imagen ? `<img src="${d.imagen}" style="width:100%;max-height:70vw;object-fit:contain;display:block;cursor:zoom-in" onclick="abrirLightbox()">` : (catEmoji||'📦');
+      if(zoomBtn) zoomBtn.style.display = d.imagen?'block':'none';
+      // Actualizar thumbs activos
+      document.querySelectorAll('.diseno-thumb').forEach((t,i)=>t.classList.toggle('active', i===idx));
+      // Scroll del thumb al centro
+      const thumbEl = wrap.querySelector('.diseno-thumb-scroll');
+      if(thumbEl){
+        const active = thumbEl.querySelectorAll('.diseno-thumb')[idx];
+        if(active) active.scrollIntoView({behavior:'smooth',block:'nearest',inline:'center'});
+      }
+      // Actualizar contador
+      const counter = document.getElementById('disenoCounter');
+      if(counter) counter.textContent = `${idx+1} / ${total}`;
+    }
+
+    // Botones de flecha (solo si hay más de 1 diseño)
+    if(p.disenos.length > 1){
+      const arrowsWrap = document.createElement('div');
+      arrowsWrap.style.cssText='display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem;gap:.5rem';
+      arrowsWrap.innerHTML=`
+        <button onclick="(function(){const idx=window._modalDisenoIdx||0;window._irADiseno(idx-1);})()" style="background:rgba(232,25,44,.12);border:1px solid rgba(232,25,44,.3);color:var(--neon);width:38px;height:38px;font-size:1.1rem;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center">←</button>
+        <span id="disenoCounter" style="font-family:var(--font-mono);font-size:.6rem;letter-spacing:2px;color:var(--gray);flex:1;text-align:center">1 / ${p.disenos.length}</span>
+        <button onclick="(function(){const idx=window._modalDisenoIdx||0;window._irADiseno(idx+1);})()" style="background:rgba(232,25,44,.12);border:1px solid rgba(232,25,44,.3);color:var(--neon);width:38px;height:38px;font-size:1.1rem;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center">→</button>
+      `;
+      wrap.appendChild(arrowsWrap);
+    }
+
+    // Guardar referencia global para los botones de flecha
+    window._irADiseno = irADiseno;
+
+    // Scroll container para thumbnails
+    const thumbScroll = document.createElement('div');
+    thumbScroll.className='diseno-thumb-scroll';
+    thumbScroll.style.cssText='display:flex;gap:.5rem;overflow-x:auto;padding:.25rem 0;scrollbar-width:none;-webkit-overflow-scrolling:touch';
+
+    p.disenos.forEach((d,i)=>{
+      const thumb=document.createElement('div');
+      thumb.className='diseno-thumb'+(i===0?' active':'');
+      thumb.innerHTML=`<img src="${d.imagen||''}" alt="${d.nombre||''}"><div class="diseno-thumb-label">${d.nombre||''}</div>`;
+      thumb.onclick=()=>{ irADiseno(i); };
+      thumbScroll.appendChild(thumb);
+    });
+
+    wrap.appendChild(thumbScroll);
     imgEl.insertAdjacentElement('afterend',wrap);
-    if(p.disenos[0].imagen){_lightboxSrc=p.disenos[0].imagen;imgEl.innerHTML=`<img src="${p.disenos[0].imagen}" style="width:100%;max-height:70vw;object-fit:contain;display:block;cursor:zoom-in" onclick="abrirLightbox()">`;}
+
+    if(p.disenos[0].imagen){
+      _lightboxSrc=p.disenos[0].imagen;
+      imgEl.innerHTML=`<img src="${p.disenos[0].imagen}" style="width:100%;max-height:70vw;object-fit:contain;display:block;cursor:zoom-in" onclick="abrirLightbox()">`;
+    }
+
+    // Swipe en imagen principal para navegar diseños
+    let _swipeStartX = null;
+    imgEl.addEventListener('touchstart', e=>{ _swipeStartX = e.touches[0].clientX; }, {passive:true});
+    imgEl.addEventListener('touchend', e=>{
+      if(_swipeStartX === null) return;
+      const dx = e.changedTouches[0].clientX - _swipeStartX;
+      if(Math.abs(dx) > 40){ irADiseno((window._modalDisenoIdx||0) + (dx < 0 ? 1 : -1)); }
+      _swipeStartX = null;
+    }, {passive:true});
   }
   document.getElementById('modalCat').textContent=catNombre||'';
   document.getElementById('modalName').textContent=p.nombre;
   document.getElementById('modalDesc').textContent=p.descripcion||'';
   document.getElementById('modalPrice').innerHTML=`$${(p.precio||0).toLocaleString()} <small>MXN</small>`;
-  document.getElementById('modalStock').textContent=`✦ STOCK DISPONIBLE: ${p.stock||0} piezas`;
+  window._modalPrecioActual = p.precio || 0;
+  // Stock con urgencia visual
+  const stockEl = document.getElementById('modalStock');
+  const stockNum = p.stock || 0;
+  if (stockNum === 0) {
+    stockEl.innerHTML = `<span style="color:#ff3b30;font-family:var(--font-mono);font-size:.65rem;letter-spacing:2px;background:rgba(255,59,48,.1);border:1px solid rgba(255,59,48,.3);padding:.35rem .8rem;display:inline-block">❌ AGOTADO</span>`;
+    document.getElementById('modalBuyBtn').disabled = true;
+    document.getElementById('modalBuyBtn').style.opacity = '0.4';
+    document.getElementById('modalBuyBtn').style.cursor = 'not-allowed';
+  } else if (stockNum <= 3) {
+    stockEl.innerHTML = `<span style="color:#ff9500;font-family:var(--font-mono);font-size:.65rem;letter-spacing:2px;background:rgba(255,149,0,.12);border:1px solid rgba(255,149,0,.4);padding:.35rem .8rem;display:inline-block;animation:stockPulse 1.2s ease-in-out infinite">🔥 ¡SOLO QUEDAN ${stockNum} PIEZAS!</span>`;
+    document.getElementById('modalBuyBtn').disabled = false;
+    document.getElementById('modalBuyBtn').style.opacity = '';
+    document.getElementById('modalBuyBtn').style.cursor = '';
+  } else if (stockNum <= 10) {
+    stockEl.innerHTML = `<span style="color:#ffcc00;font-family:var(--font-mono);font-size:.65rem;letter-spacing:2px;background:rgba(255,204,0,.08);border:1px solid rgba(255,204,0,.25);padding:.35rem .8rem;display:inline-block">⚡ POCAS PIEZAS: ${stockNum} disponibles</span>`;
+    document.getElementById('modalBuyBtn').disabled = false;
+    document.getElementById('modalBuyBtn').style.opacity = '';
+    document.getElementById('modalBuyBtn').style.cursor = '';
+  } else {
+    stockEl.innerHTML = `<span style="color:var(--gray);font-family:var(--font-mono);font-size:.6rem;letter-spacing:2px">✦ STOCK: ${stockNum} piezas disponibles</span>`;
+    document.getElementById('modalBuyBtn').disabled = false;
+    document.getElementById('modalBuyBtn').style.opacity = '';
+    document.getElementById('modalBuyBtn').style.cursor = '';
+  }
   const tw=document.getElementById('modalTallasWrap');
   if(p.tallas&&p.tallas.length){tw.style.display='block';document.getElementById('modalTallas').innerHTML=p.tallas.map(t=>`<button class="size-btn" onclick="selBtn(this,'.sizes-wrap')">${t}</button>`).join('');}else{tw.style.display='none';}
   const cw=document.getElementById('modalColoresWrap');
   if(p.colores&&p.colores.length){cw.style.display='block';document.getElementById('modalColores').innerHTML=p.colores.map(c=>`<button class="color-btn" onclick="selBtn(this,'.colors-wrap')">${c}</button>`).join('');}else{cw.style.display='none';}
-  document.getElementById('modalBuyBtn').onclick=()=>{ trackWA(p.nombre); window.open(`https://wa.me/${NEGOCIO.whatsapp}?text=${encodeURIComponent('Hola! Me interesa: '+p.nombre+' - $'+p.precio+' MXN 🛍️')}`,'_blank'); };
+  // Cantidad
+  const cantWrap = document.getElementById('modalCantidadWrap');
+  if(cantWrap){ cantWrap.style.display='flex'; document.getElementById('modalCantidad').value=1; }
+
+  // Botón WA inteligente
+  document.getElementById('modalBuyBtn').onclick = () => {
+    const talla   = document.querySelector('.sizes-wrap .size-btn.active')?.textContent.trim() || '';
+    const color   = document.querySelector('.colors-wrap .color-btn.active')?.textContent.trim() || '';
+    const diseno  = document.querySelector('.diseno-thumb.active .diseno-thumb-label')?.textContent.trim() || '';
+    const cant    = parseInt(document.getElementById('modalCantidad')?.value) || 1;
+
+    // Validar talla si el producto tiene tallas
+    if(p.tallas && p.tallas.length && !talla){
+      // Resaltar visualmente que falta talla
+      const tallasEl = document.getElementById('modalTallas');
+      if(tallasEl){ tallasEl.style.animation='none'; setTimeout(()=>{ tallasEl.style.animation='shake .3s ease'; },10); }
+      showToast('⚠️ Selecciona una talla antes de continuar');
+      return;
+    }
+
+    // Construir mensaje detallado
+    let msg = `Hola! Me interesa este producto de Sarux 🛍️\n\n`;
+    msg += `📦 *Producto:* ${p.nombre}\n`;
+    msg += `📂 *Categoría:* ${catNombre||p.categoria||''}\n`;
+    if(diseno)  msg += `🎨 *Diseño:* ${diseno}\n`;
+    if(talla)   msg += `📏 *Talla:* ${talla}\n`;
+    if(color)   msg += `🖌️ *Color:* ${color}\n`;
+    msg += `🔢 *Cantidad:* ${cant}\n`;
+    msg += `💵 *Precio unitario:* $${(p.precio||0).toLocaleString()} MXN\n`;
+    if(cant > 1) msg += `💰 *Total estimado:* $${((p.precio||0)*cant).toLocaleString()} MXN\n`;
+    msg += `\n¿Pueden confirmar disponibilidad? ¡Gracias! 🙏`;
+
+    trackWA(p.nombre);
+    window.open(`https://wa.me/${NEGOCIO.whatsapp}?text=${encodeURIComponent(msg)}`, '_blank');
+  };
+
   document.getElementById('modalOverlay').classList.add('open');
   document.body.style.overflow='hidden';
-  // Cargar reseñas de clientes desde Supabase
   cargarResenasModal();
 }
 function cerrarModal(){
@@ -780,7 +956,24 @@ async function cargarResenasModal(){
     el.innerHTML = '<span style="opacity:.4;font-size:.75rem">No se pudieron cargar las rese\xf1as.</span>';
   }
 }
-function selBtn(btn,wrap){btn.closest(wrap).querySelectorAll('button').forEach(b=>b.classList.remove('active'));btn.classList.add('active');}
+function selBtn(btn,wrap){btn.closest(wrap).querySelectorAll('button').forEach(b=>b.classList.remove('active'));btn.classList.add('active');actualizarTotalModal();}
+
+function cambiarCantModal(delta){
+  const inp = document.getElementById('modalCantidad');
+  if(!inp) return;
+  const nueva = Math.max(1, Math.min(99, (parseInt(inp.value)||1) + delta));
+  inp.value = nueva;
+  actualizarTotalModal();
+}
+
+function actualizarTotalModal(){
+  const inp = document.getElementById('modalCantidad');
+  const tot = document.getElementById('modalTotalEst');
+  const precio = window._modalPrecioActual || 0;
+  if(!inp||!tot||!precio) return;
+  const cant = parseInt(inp.value)||1;
+  tot.textContent = cant > 1 ? `Total: $${(precio*cant).toLocaleString()} MXN` : '';
+}
 document.getElementById('modalOverlay').addEventListener('click',e=>{if(e.target===document.getElementById('modalOverlay'))cerrarModal();});
 
 // MODAL PROMOS
@@ -1098,7 +1291,130 @@ function showToast(msg, duration=2500){
 // ─── CARRITO ──────────────────────────────────────────────────────────────────
 let carrito = JSON.parse(localStorage.getItem('sarux_carrito')||'[]');
 
-function guardarCarrito(){ localStorage.setItem('sarux_carrito', JSON.stringify(carrito)); }
+// ── FAVORITOS ─────────────────────────────────────────────────────────────────
+var _favoritos = [];
+function _cargarFavs(){ try{ _favoritos=JSON.parse(localStorage.getItem('sarux_favs')||'[]'); }catch(e){ _favoritos=[]; } }
+function _guardarFavs(){ try{ localStorage.setItem('sarux_favs', JSON.stringify(_favoritos)); }catch(e){} }
+function _esFavorito(nombre){ return _favoritos.some(function(f){ return f.nombre===nombre; }); }
+
+function toggleFavorito(pid, e){
+  if(e){ e.stopPropagation(); }
+  var r = window._prodRegistry&&window._prodRegistry[pid]; if(!r) return;
+  var p = r.p;
+  if(_esFavorito(p.nombre)){
+    _favoritos = _favoritos.filter(function(f){ return f.nombre!==p.nombre; });
+    showToast('Eliminado de favoritos');
+  } else {
+    _favoritos.push({ nombre:p.nombre, precio:p.precio||0, imagen:p.imagen||'', cat:r.catNombre||'', pid:pid });
+    showToast('❤️ Guardado en favoritos');
+  }
+  _guardarFavs();
+  _actualizarFavBadge();
+  _refreshFavBtns();
+  if(document.getElementById('favPanel').classList.contains('open')) renderFavoritos();
+}
+
+function _actualizarFavBadge(){
+  var badge = document.getElementById('favBadge');
+  if(badge) badge.textContent = _favoritos.length;
+  var btn = document.getElementById('favBtn');
+  if(btn) btn.style.color = _favoritos.length ? 'var(--neon)' : '';
+}
+
+function _refreshFavBtns(){
+  document.querySelectorAll('.card-fav-btn').forEach(function(btn){
+    var pid = btn.dataset.pid;
+    var r = window._prodRegistry&&window._prodRegistry[pid];
+    if(!r) return;
+    var activo = _esFavorito(r.p.nombre);
+    btn.classList.toggle('active', activo);
+    btn.textContent = activo ? '❤️' : '🤍';
+    btn.title = activo ? 'Quitar de favoritos' : 'Guardar en favoritos';
+  });
+}
+
+function toggleFavoritos(){
+  var panel = document.getElementById('favPanel');
+  var overlay = document.getElementById('favOverlay');
+  var abierto = panel.classList.contains('open');
+  if(abierto){
+    panel.classList.remove('open');
+    overlay.classList.remove('open');
+    document.body.style.overflow = '';
+  } else {
+    renderFavoritos();
+    panel.classList.add('open');
+    overlay.classList.add('open');
+    document.body.style.overflow = 'hidden';
+  }
+}
+
+function renderFavoritos(){
+  var cont = document.getElementById('favItems');
+  var footer = document.getElementById('favFooter');
+  if(!cont) return;
+  _cargarFavs();
+  if(!_favoritos.length){
+    cont.innerHTML = '<div class="fav-empty"><div class="fav-empty-icon">🤍</div><div>Aún no tienes favoritos</div><div style="opacity:.5;font-size:.5rem;margin-top:.3rem">Toca ❤️ en cualquier producto para guardarlo aquí</div></div>';
+    if(footer) footer.style.display = 'none';
+    return;
+  }
+  if(footer) footer.style.display = '';
+  cont.innerHTML = _favoritos.map(function(f, i){
+    var imgEl = f.imagen
+      ? '<img src="'+f.imagen+'" style="width:100%;height:100%;object-fit:cover">'
+      : '<span style="font-size:1.5rem">📦</span>';
+    return '<div class="fav-item">'+
+      '<div class="fav-item-img">'+imgEl+'</div>'+
+      '<div class="fav-item-info">'+
+        '<div class="fav-item-name">'+f.nombre+'</div>'+
+        '<div class="fav-item-cat">'+f.cat+'</div>'+
+        '<div class="fav-item-price">$'+(f.precio||0).toLocaleString()+' MXN</div>'+
+      '</div>'+
+      '<div class="fav-item-actions">'+
+        '<button class="fav-item-cart" onclick="agregarFavAlCarrito('+i+')" title="Agregar al carrito">🛒</button>'+
+        '<button class="fav-item-del" onclick="quitarFavorito('+i+')" title="Quitar">✕</button>'+
+      '</div>'+
+    '</div>';
+  }).join('');
+}
+
+function quitarFavorito(i){
+  _favoritos.splice(i, 1);
+  _guardarFavs();
+  _actualizarFavBadge();
+  _refreshFavBtns();
+  renderFavoritos();
+}
+
+function vaciarFavoritos(){
+  _favoritos = [];
+  _guardarFavs();
+  _actualizarFavBadge();
+  _refreshFavBtns();
+  renderFavoritos();
+}
+
+function agregarFavAlCarrito(i){
+  var f = _favoritos[i]; if(!f) return;
+  // Buscar en registry por nombre
+  var found = null;
+  Object.keys(window._prodRegistry||{}).forEach(function(pid){
+    var r = window._prodRegistry[pid];
+    if(r && r.p && r.p.nombre === f.nombre) found = r;
+  });
+  if(found) agregarAlCarrito(found.p, found.catNombre);
+  else agregarAlCarrito({nombre:f.nombre,precio:f.precio,imagen:f.imagen}, f.cat);
+  showToast('🛒 Agregado al carrito');
+}
+
+function enviarFavoritosWA(){
+  if(!_favoritos.length) return;
+  var lista = _favoritos.map(function(f){ return '• '+f.nombre+' ($'+f.precio+' MXN)'; }).join('\n');
+  var msg = 'Hola! Me interesan estos productos de Sarux:\n\n'+lista+'\n\n¿Me pueden dar más información?';
+  window.open('https://wa.me/'+NEGOCIO.whatsapp+'?text='+encodeURIComponent(msg),'_blank');
+}
+// ── FIN FAVORITOS ─────────────────────────────────────────────────────────────
 
 function agregarAlCarrito(p, catNombre){
   const idx = carrito.findIndex(i => i.id === (p.id||p.nombre));
@@ -1197,6 +1513,80 @@ function pedirPorWhatsApp(){
   const total = carrito.reduce((s,i)=>s+(i.precio*i.qty),0);
   const msg = `Hola! Quiero hacer el siguiente pedido en SARUX 🛍️%0A%0A${lineas}%0A%0A*TOTAL: $${total.toLocaleString()} MXN*%0A%0A¿Me pueden confirmar disponibilidad?`;
   window.open(`https://wa.me/${NEGOCIO.whatsapp}?text=${msg}`, '_blank');
+  // Mostrar pantalla de confirmación
+  setTimeout(()=>{ mostrarConfirmacionPedido(carrito, total); }, 400);
+}
+
+function mostrarConfirmacionPedido(items, total){
+  // Cerrar carrito panel
+  const carritoPanel = document.getElementById('carritoPanel');
+  const carritoOverlay = document.getElementById('carritoOverlay');
+  if(carritoPanel) carritoPanel.classList.remove('open');
+  if(carritoOverlay) carritoOverlay.classList.remove('show');
+
+  // Crear overlay de confirmación
+  const existing = document.getElementById('pedidoConfirmOverlay');
+  if(existing) existing.remove();
+
+  const lineasHTML = items.map(i=>`
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:.55rem 0;border-bottom:1px solid rgba(255,255,255,.06)">
+      <span style="color:var(--light);font-size:.85rem;font-weight:300">${i.nombre} <span style="color:var(--gray);font-size:.75rem">x${i.qty}</span></span>
+      <span style="color:var(--neon);font-family:var(--font-mono);font-size:.8rem">$${(i.precio*i.qty).toLocaleString()}</span>
+    </div>`).join('');
+
+  const overlay = document.createElement('div');
+  overlay.id = 'pedidoConfirmOverlay';
+  overlay.style.cssText = `
+    position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:9999;
+    display:flex;align-items:center;justify-content:center;padding:1.5rem;
+    animation:fadeInConf .3s ease;
+  `;
+  overlay.innerHTML = `
+    <div style="
+      background:var(--card);border:1px solid rgba(232,25,44,.25);
+      max-width:420px;width:100%;padding:2rem 1.5rem;position:relative;
+      animation:slideUpConf .35s ease;
+    ">
+      <div style="text-align:center;margin-bottom:1.5rem">
+        <div style="font-size:3rem;margin-bottom:.6rem">✅</div>
+        <div style="font-family:var(--font-display);font-size:1.4rem;color:var(--white);letter-spacing:2px">¡PEDIDO ENVIADO!</div>
+        <div style="color:var(--gray);font-size:.85rem;font-weight:300;margin-top:.4rem;line-height:1.6">
+          Tu pedido fue enviado por WhatsApp.<br>Espera la confirmación de disponibilidad.
+        </div>
+      </div>
+
+      <div style="background:rgba(255,255,255,.03);border:1px solid var(--border);padding:1rem;margin-bottom:1.2rem">
+        <div style="font-family:var(--font-mono);font-size:.55rem;letter-spacing:3px;color:var(--gray);margin-bottom:.8rem">RESUMEN DE TU PEDIDO</div>
+        ${lineasHTML}
+        <div style="display:flex;justify-content:space-between;align-items:center;padding-top:.8rem;margin-top:.2rem">
+          <span style="font-family:var(--font-mono);font-size:.6rem;letter-spacing:2px;color:var(--gray)">TOTAL ESTIMADO</span>
+          <span style="font-family:var(--font-mono);font-size:1.1rem;color:var(--neon);font-weight:700">$${total.toLocaleString()} MXN</span>
+        </div>
+      </div>
+
+      <div style="background:rgba(37,211,102,.06);border:1px solid rgba(37,211,102,.2);padding:.8rem 1rem;margin-bottom:1.2rem;display:flex;gap:.7rem;align-items:flex-start">
+        <span style="font-size:1.1rem">📱</span>
+        <div style="color:rgba(255,255,255,.7);font-size:.8rem;font-weight:300;line-height:1.6">
+          Revisa WhatsApp — el equipo SARUX te responderá para confirmar tu pedido y coordinar el pago.
+        </div>
+      </div>
+
+      <button onclick="cerrarConfirmacionPedido()" style="
+        width:100%;background:var(--neon);color:#000;border:none;
+        padding:1rem;font-family:var(--font-display);font-size:.9rem;
+        letter-spacing:3px;cursor:pointer;
+      ">ENTENDIDO</button>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+
+  // Cerrar tocando fuera
+  overlay.addEventListener('click', e=>{ if(e.target===overlay) cerrarConfirmacionPedido(); });
+}
+
+function cerrarConfirmacionPedido(){
+  const overlay = document.getElementById('pedidoConfirmOverlay');
+  if(overlay){ overlay.style.animation='fadeOutConf .25s ease forwards'; setTimeout(()=>overlay.remove(), 250); }
 }
 
 // ─── COMPARTIR ────────────────────────────────────────────────────────────────
@@ -1210,7 +1600,37 @@ function compartirProducto(nombre, catNombre){
   }
 }
 
-// ─── COMPARTIR IMAGEN ESPECÍFICA ─────────────────────────────────────────────
+// ─── OG IMAGE DINÁMICO ────────────────────────────────────────────────────────
+function actualizarOGMetas(p, catNombre){
+  const titulo = (p.nombre || 'SARUX') + ' — ' + (catNombre || 'Diseños originales');
+  const desc   = p.descripcion || `${p.nombre} desde $${(p.precio||0).toLocaleString()} MXN. Personalización en Puebla.`;
+  const img    = p.imagen || (p.disenos && p.disenos[0] && p.disenos[0].imagen) || '';
+  const url    = window.location.origin + window.location.pathname + '?prod=' + encodeURIComponent(p.nombre) + '#catalogo';
+
+  function setMeta(sel, attr, val){ const el = document.querySelector(sel); if(el && val) el.setAttribute(attr, val); }
+  setMeta('meta[property="og:title"]',       'content', titulo);
+  setMeta('meta[property="og:description"]', 'content', desc);
+  setMeta('meta[property="og:url"]',         'content', url);
+  if(img){
+    let ogImg = document.querySelector('meta[property="og:image"]');
+    if(!ogImg){ ogImg = document.createElement('meta'); ogImg.setAttribute('property','og:image'); document.head.appendChild(ogImg); }
+    ogImg.setAttribute('content', img);
+    // og:image:width / og:image:height opcionales
+    let ogImgW = document.querySelector('meta[property="og:image:width"]');
+    if(!ogImgW){ ogImgW = document.createElement('meta'); ogImgW.setAttribute('property','og:image:width'); document.head.appendChild(ogImgW); }
+    ogImgW.setAttribute('content','1200');
+    // Twitter card
+    let twImg = document.querySelector('meta[name="twitter:image"]');
+    if(!twImg){ twImg = document.createElement('meta'); twImg.setAttribute('name','twitter:image'); document.head.appendChild(twImg); }
+    twImg.setAttribute('content', img);
+  }
+  setMeta('meta[name="twitter:title"]',       'content', titulo);
+  setMeta('meta[name="twitter:description"]', 'content', desc);
+  // Actualizar title del tab también
+  document.title = titulo + ' | SARUX';
+}
+
+
 function compartirImagenActiva(){
   const ref = window._modalProdActivo;
   if(!ref) return;
@@ -1304,7 +1724,7 @@ function agregarDesdeModal(){
 }
 
 // ─── INIT CARRITO ─────────────────────────────────────────────────────────────
-document.addEventListener('DOMContentLoaded', ()=>{ actualizarBadge(); });
+document.addEventListener('DOMContentLoaded', ()=>{ actualizarBadge(); _cargarFavs(); _actualizarFavBadge(); });
 window.addEventListener('renderDone', checkDeepLink);
 
 // LIGHTBOX

@@ -188,7 +188,11 @@
     <div class="admin-field"><label>Nombre</label><input class="admin-input" id="pm-nombre"></div>
     <div class="admin-grid-2">
       <div class="admin-field"><label>Precio (MXN)</label><input class="admin-input" id="pm-precio" type="number"></div>
-      <div class="admin-field"><label>Stock</label><input class="admin-input" id="pm-stock" type="number"></div>
+      <div class="admin-field">
+        <label>Stock <span id="pm-stock-hint" style="font-size:.65rem;font-weight:400;margin-left:.4rem;font-family:monospace"></span></label>
+        <input class="admin-input" id="pm-stock" type="number" min="0" oninput="actualizarStockHint(this.value)">
+        <div id="pm-stock-preview" style="margin-top:.4rem;font-size:.7rem;font-family:monospace;letter-spacing:1px;opacity:.85"></div>
+      </div>
     </div>
     <div class="admin-field"><label>Descripción</label><textarea class="admin-textarea" id="pm-desc"></textarea></div>
     <div class="admin-field"><label>Colores (separados por coma)</label><input class="admin-input" id="pm-colores"></div>
@@ -1152,6 +1156,7 @@ Casi listo...
     document.getElementById('adminModalTitle').textContent=`Editar: ${p.nombre}`;
     document.getElementById('pm-nombre').value=p.nombre; document.getElementById('pm-precio').value=p.precio;
     document.getElementById('pm-stock').value=p.stock; document.getElementById('pm-desc').value=p.descripcion||'';
+    actualizarStockHint(p.stock);
     document.getElementById('pm-colores').value=(p.colores||[]).join(', '); document.getElementById('pm-tallas').value=(p.tallas||[]).join(', ');
     document.getElementById('pm-imagen').value=p.imagen||''; document.getElementById('pm-subtema').value=p.subtema||'';
     document.getElementById('pm-tipo').value=p.tipo||'';
@@ -1844,6 +1849,31 @@ Casi listo...
     document.getElementById('adminMain').innerHTML = buildSectionsHTML();
     await initAuth();
   });
-</script>
+// ─── INDICADOR DE STOCK URGENTE EN ADMIN ─────────────────────────────────────
+function actualizarStockHint(val){
+  const n = parseInt(val) || 0;
+  const hint = document.getElementById('pm-stock-hint');
+  const preview = document.getElementById('pm-stock-preview');
+  if(!hint || !preview) return;
+  if(n === 0){
+    hint.textContent = '— AGOTADO';
+    hint.style.color = '#ff3b30';
+    preview.innerHTML = `<span style="color:#ff3b30">❌ Se mostrará: "AGOTADO" — botón desactivado</span>`;
+  } else if(n <= 3){
+    hint.textContent = '— URGENTE';
+    hint.style.color = '#ff9500';
+    preview.innerHTML = `<span style="color:#ff9500">🔥 Se mostrará: "¡SOLO QUEDAN ${n} PIEZAS!" (parpadeante)</span>`;
+  } else if(n <= 10){
+    hint.textContent = '— POCAS';
+    hint.style.color = '#ffcc00';
+    preview.innerHTML = `<span style="color:#ffcc00">⚡ Se mostrará: "POCAS PIEZAS: ${n} disponibles"</span>`;
+  } else {
+    hint.textContent = '';
+    hint.style.color = '';
+    preview.innerHTML = `<span style="color:#666">✦ Se mostrará: "STOCK: ${n} piezas disponibles"</span>`;
+  }
+}
+
+
 </body>
 </html>

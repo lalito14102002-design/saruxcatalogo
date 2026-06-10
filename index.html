@@ -18,6 +18,9 @@
 <meta property="og:url" content="https://saruxcatalogo.pages.dev">
 <meta property="og:site_name" content="SARUX">
 <meta property="og:locale" content="es_MX">
+<meta property="og:image" content="https://saruxcatalogo.pages.dev/og-default.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="SARUX | Diseño y Sublimación en Puebla">
 <meta name="twitter:description" content="Diseños originales en playeras, tazas, termos y más. Personalización para eventos en Puebla.">
@@ -30,6 +33,21 @@
 <link rel="preconnect" href="https://ngavbeiochxdvgzcywuh.supabase.co">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Space+Mono:wght@400;700&family=Rajdhani:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="styles.css">
+<style>
+@keyframes stockPulse {
+  0%,100%{ opacity:1; transform:scale(1); }
+  50%{ opacity:.75; transform:scale(1.03); }
+}
+@keyframes fadeInConf {
+  from{ opacity:0; } to{ opacity:1; }
+}
+@keyframes fadeOutConf {
+  from{ opacity:1; } to{ opacity:0; }
+}
+@keyframes slideUpConf {
+  from{ opacity:0; transform:translateY(24px); } to{ opacity:1; transform:translateY(0); }
+}
+</style>
 
 <!-- PANTALLA DE CARGA -->
 <div id="sarux-loader">
@@ -107,6 +125,15 @@
       <div id="modalTallasWrap"><div class="modal-sec-title">Tallas disponibles</div><div class="sizes-wrap" id="modalTallas"></div></div>
       <div id="modalColoresWrap"><div class="modal-sec-title">Colores disponibles</div><div class="colors-wrap" id="modalColores"></div></div>
       <div class="modal-stock" id="modalStock"></div>
+      <div id="modalCantidadWrap" style="display:flex;align-items:center;gap:.8rem;margin:.8rem 0">
+        <span style="font-family:var(--font-mono);font-size:.55rem;letter-spacing:2px;color:var(--gray)">CANTIDAD</span>
+        <div style="display:flex;align-items:center;gap:.5rem;border:1px solid rgba(232,25,44,.2);padding:.2rem .5rem">
+          <button onclick="cambiarCantModal(-1)" style="background:none;border:none;color:var(--neon);cursor:pointer;font-size:1.2rem;padding:0 .2rem;line-height:1">−</button>
+          <input id="modalCantidad" type="number" min="1" max="99" value="1" oninput="actualizarTotalModal()" style="background:none;border:none;color:var(--white);font-family:var(--font-mono);font-size:.9rem;width:32px;text-align:center">
+          <button onclick="cambiarCantModal(1)" style="background:none;border:none;color:var(--neon);cursor:pointer;font-size:1.2rem;padding:0 .2rem;line-height:1">+</button>
+        </div>
+        <span id="modalTotalEst" style="font-family:var(--font-mono);font-size:.65rem;color:var(--neon);opacity:.8"></span>
+      </div>
       <button class="modal-buy" id="modalBuyBtn">📱 Comprar por WhatsApp</button>
       <button class="modal-buy" id="modalAddCarritoBtn" style="background:var(--card);color:var(--neon);border:1px solid rgba(232,25,44,.35);margin-top:.6rem;font-size:.6rem" onclick="agregarDesdeModal()">🛒 Guardar en carrito</button>
       <button class="modal-buy" id="modalShareBtn" style="background:var(--card);color:var(--light);border:1px solid var(--border);margin-top:.6rem;font-size:.6rem" onclick="compartirImagenActiva()">🔗 Compartir diseño</button>
@@ -172,6 +199,7 @@
         <input type="text" placeholder="Buscar producto..." id="searchInput" oninput="buscarProducto(this.value)">
         <button class="search-clear-btn" id="searchClearBtn" onclick="limpiarBusqueda()" title="Limpiar búsqueda">✕</button>
       </div>
+      <button id="favBtn" onclick="toggleFavoritos()" title="Mis favoritos">❤️ <span id="favBadge">0</span></button>
       <button id="carritoBtn" onclick="toggleCarrito()">🛒 Carrito <span id="carritoBadge">0</span></button>
     </div>
   </div>
@@ -379,6 +407,20 @@
 
 <!-- LLUVIA DE IMÁGENES -->
 <canvas id="rainCanvas" style="position:fixed; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index:999;"></canvas>
+
+<!-- FAVORITOS OVERLAY -->
+<div id="favOverlay" onclick="toggleFavoritos()"></div>
+<div id="favPanel">
+  <div class="carrito-header">
+    <div class="carrito-title">❤️ MIS FAVORITOS</div>
+    <button class="carrito-close" onclick="toggleFavoritos()">✕</button>
+  </div>
+  <div class="carrito-items" id="favItems"></div>
+  <div class="carrito-footer" id="favFooter" style="display:none">
+    <button class="carrito-wa-btn" onclick="enviarFavoritosWA()" style="background:rgba(232,25,44,.15);border:1px solid rgba(232,25,44,.4);color:var(--neon)">📱 Preguntar por favoritos</button>
+    <button class="carrito-clear-btn" onclick="vaciarFavoritos()">Limpiar favoritos</button>
+  </div>
+</div>
 
 <!-- CARRITO OVERLAY -->
 <div id="carritoOverlay" onclick="toggleCarrito()"></div>
