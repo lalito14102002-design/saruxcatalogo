@@ -230,6 +230,8 @@ function renderPage(){
   document.getElementById('footerIg').href=NEGOCIO.instagram||'#';
   document.getElementById('footerTt').href=NEGOCIO.tiktok||'#';
   window.dispatchEvent(new Event('renderDone'));
+  // Activar lazy loading para todas las imágenes recién renderizadas
+  setTimeout(initLazyImages, 50);
 }
 
 // CATÁLOGO — buscador simple: tab de categoría + búsqueda + subfiltros
@@ -561,7 +563,8 @@ function renderCat(){
 }
 
 function mkCard(p,catNombre,catEmoji){
-  const img=p.imagen?`<img data-src="${p.imagen}" src="" class="card-img-real lazy" alt="${p.nombre}" loading="lazy">`:`<span class="card-img">${catEmoji||p.emoji||'📦'}</span>`;
+  const BLANK = 'data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=';
+  const img=p.imagen?`<img data-src="${p.imagen}" src="${BLANK}" class="card-img-real lazy" alt="${p.nombre}" loading="lazy">`:`<span class="card-img">${catEmoji||p.emoji||'📦'}</span>`;
   const badgeClass=p.badge==='Nuevo'?'badge-new':p.badge==='Más vendido'?'badge-sell':'badge-pop';
   const badgeHTML=p.badge?`<span class="badge ${badgeClass}">${p.badge}</span>`:'';
   const tallasTag=(p.tallas&&p.tallas.length)?`<span class="card-tag">📏 ${p.tallas.join(' · ')}</span>`:'';
@@ -1068,7 +1071,12 @@ function initLazyImages(){
       if(e.isIntersecting){
         const img = e.target;
         if(img.dataset.src){ img.src = img.dataset.src; }
-        img.onload = function(){ img.classList.add('loaded'); };
+        img.onload = function(){
+          img.classList.add('loaded');
+          // Quitar shimmer del wrapper cuando carga
+          const wrap = img.closest('.card-img-wrap');
+          if(wrap) wrap.classList.add('img-loaded');
+        };
         img.onerror = function(){ img.classList.add('loaded'); };
         obs.unobserve(img);
       }
