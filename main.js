@@ -1524,10 +1524,20 @@ function renderCarrito(){
 
 function pedirPorWhatsApp(){
   if(!carrito.length){ showToast('Tu carrito está vacío'); return; }
+
+  // Construir mensaje con imagenes de cada producto
   const lineas = carrito.map(i=>{
-    const linkProd = SHARE_BASE + '/?prod=' + encodeURIComponent(i.nombre);
-    return `• *${i.nombre}* x${i.qty} — $${(i.precio*i.qty).toLocaleString()} MXN%0A   🔗 ${linkProd}`;
+    const linkProd = window.location.origin + window.location.pathname + '?prod=' + encodeURIComponent(i.nombre);
+    let imgLine = '';
+
+    if(i.imagen){
+      // URL directa de la imagen - WhatsApp mostrara preview si es URL directa
+      imgLine = '%0A   📸 ' + encodeURIComponent(i.imagen);
+    }
+
+    return `• *${i.nombre}* x${i.qty} — $${(i.precio*i.qty).toLocaleString()} MXN%0A   🔗 ${linkProd}${imgLine}`;
   }).join('%0A%0A');
+
   const total = carrito.reduce((s,i)=>s+(i.precio*i.qty),0);
   const msg = `Hola! Quiero hacer el siguiente pedido en SARUX 🛍️%0A%0A${lineas}%0A%0A*TOTAL: $${total.toLocaleString()} MXN*%0A%0A¿Me pueden confirmar disponibilidad?`;
   window.open(`https://wa.me/${NEGOCIO.whatsapp}?text=${msg}`, '_blank');
@@ -1612,17 +1622,65 @@ const SHARE_BASE = 'https://purple-sky-0d90sarux-og.lalito14102002.workers.dev';
 
 function compartirProducto(nombre, catNombre){
   let imgUrl = '';
+  let precio = '';
   const found = buscarProdEnCatalogo(nombre);
   if(found){
     const p = found.p;
     imgUrl = p.imagen || (p.disenos && p.disenos[0] && p.disenos[0].imagen) || '';
+    precio = p.precio || '';
   }
-  // Sin #catalogo — WhatsApp ignora URLs con fragmento #
-  const url = SHARE_BASE + '/?prod=' + encodeURIComponent(nombre);
+
+  // URL de la pagina del producto
+  const pageUrl = window.location.origin + window.location.pathname + '?prod=' + encodeURIComponent(nombre);
+
   if(navigator.share){
-    navigator.share({ title: nombre + ' | SARUX', text: 'Mira este producto en SARUX', url }).catch(()=>{});
+    // Si hay imagen, intentar compartir como archivo para que se vea en WhatsApp
+    if(imgUrl){
+      fetch(imgUrl)
+        .then(r => r.blob())
+        .then(blob => {
+          const file = new File([blob], nombre.replace(/[^a-z0-9]/gi,'_') + '.jpg', { type: blob.type || 'image/jpeg' });
+          navigator.share({
+            title: nombre + ' | SARUX',
+            text: 'Mira este producto en SARUX 🛍️
+💰 $' + precio + ' MXN',
+            files: [file]
+          }).catch(() => {
+            // Fallback: compartir URL de imagen directa
+            navigator.share({ 
+              title: nombre + ' | SARUX', 
+              text: 'Mira este producto en SARUX 🛍️
+💰 $' + precio + ' MXN',
+              url: imgUrl
+            }).catch(()=>{});
+          });
+        })
+        .catch(() => {
+          navigator.share({ 
+            title: nombre + ' | SARUX', 
+            text: 'Mira este producto en SARUX 🛍️
+💰 $' + precio + ' MXN',
+            url: imgUrl
+          }).catch(()=>{});
+        });
+    } else {
+      navigator.share({ 
+        title: nombre + ' | SARUX', 
+        text: 'Mira este producto en SARUX 🛍️',
+        url: pageUrl
+      }).catch(()=>{});
+    }
   } else {
-    navigator.clipboard.writeText(url).then(()=>showToast('🔗 Link copiado al portapapeles')).catch(()=>showToast('🔗 ' + url));
+    // Copiar al portapapeles: imagen primero para que WhatsApp la detecte
+    const textoCompartir = imgUrl 
+      ? '📸 ' + imgUrl + '
+
+🛍️ ' + nombre + '
+💰 $' + precio + ' MXN
+🔗 ' + pageUrl
+      : '🛍️ ' + nombre + '
+🔗 ' + pageUrl;
+    navigator.clipboard.writeText(textoCompartir).then(()=>showToast('✅ Producto copiado (pega en WhatsApp)')).catch(()=>showToast('🔗 ' + pageUrl));
   }
 }
 
@@ -1661,12 +1719,62 @@ function compartirImagenActiva(){
   const ref = window._modalProdActivo;
   if(!ref) return;
   const idx = window._modalDisenoIdx || 0;
-  // Sin #catalogo — WhatsApp ignora URLs con fragmento #
-  const url = SHARE_BASE + '/?prod=' + encodeURIComponent(ref.p.nombre) + (idx ? '&img=' + idx : '');
+
+  // Obtener la imagen activa actual
+  let imgUrl = '';
+  if(ref.p.disenos && ref.p.disenos[idx] && ref.p.disenos[idx].imagen){
+    imgUrl = ref.p.disenos[idx].imagen;
+  } else if(ref.p.imagen){
+    imgUrl = ref.p.imagen;
+  }
+
+  const pageUrl = window.location.origin + window.location.pathname + '?prod=' + encodeURIComponent(ref.p.nombre) + (idx ? '&img=' + idx : '');
+
   if(navigator.share){
-    navigator.share({ title: ref.p.nombre + ' | SARUX', text: 'Mira este diseño en SARUX', url }).catch(()=>{});
+    if(imgUrl){
+      fetch(imgUrl)
+        .then(r => r.blob())
+        .then(blob => {
+          const file = new File([blob], ref.p.nombre.replace(/[^a-z0-9]/gi,'_') + '.jpg', { type: blob.type || 'image/jpeg' });
+          navigator.share({
+            title: ref.p.nombre + ' | SARUX',
+            text: 'Mira este diseño en SARUX 🎨
+💰 $' + (ref.p.precio||'') + ' MXN',
+            files: [file]
+          }).catch(() => {
+            navigator.share({ 
+              title: ref.p.nombre + ' | SARUX', 
+              text: 'Mira este diseño en SARUX 🎨
+💰 $' + (ref.p.precio||'') + ' MXN',
+              url: imgUrl
+            }).catch(()=>{});
+          });
+        })
+        .catch(() => {
+          navigator.share({ 
+            title: ref.p.nombre + ' | SARUX', 
+            text: 'Mira este diseño en SARUX 🎨
+💰 $' + (ref.p.precio||'') + ' MXN',
+            url: imgUrl
+          }).catch(()=>{});
+        });
+    } else {
+      navigator.share({ 
+        title: ref.p.nombre + ' | SARUX', 
+        text: 'Mira este diseño en SARUX 🎨',
+        url: pageUrl
+      }).catch(()=>{});
+    }
   } else {
-    navigator.clipboard.writeText(url).then(()=>showToast('🔗 Link copiado al portapapeles')).catch(()=>showToast('🔗 Link: ' + url));
+    const textoCompartir = imgUrl 
+      ? '📸 ' + imgUrl + '
+
+🎨 ' + ref.p.nombre + '
+💰 $' + (ref.p.precio||'') + ' MXN
+🔗 ' + pageUrl
+      : '🎨 ' + ref.p.nombre + '
+🔗 ' + pageUrl;
+    navigator.clipboard.writeText(textoCompartir).then(()=>showToast('✅ Diseño copiado (pega en WhatsApp)')).catch(()=>showToast('🔗 Link: ' + pageUrl));
   }
 }
 
