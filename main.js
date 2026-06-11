@@ -1291,6 +1291,10 @@ function showToast(msg, duration=2500){
 // ─── CARRITO ──────────────────────────────────────────────────────────────────
 let carrito = JSON.parse(localStorage.getItem('sarux_carrito')||'[]');
 
+function guardarCarrito(){
+  localStorage.setItem('sarux_carrito', JSON.stringify(carrito));
+}
+
 // ── FAVORITOS ─────────────────────────────────────────────────────────────────
 var _favoritos = [];
 function _cargarFavs(){ try{ _favoritos=JSON.parse(localStorage.getItem('sarux_favs')||'[]'); }catch(e){ _favoritos=[]; } }
@@ -1422,6 +1426,7 @@ function agregarAlCarrito(p, catNombre){
   else { carrito.push({ id: p.id||p.nombre, nombre: p.nombre, precio: p.precio||0, imagen: p.imagen||'', cat: catNombre||'', qty: 1 }); }
   guardarCarrito();
   actualizarBadge();
+  renderCarrito();
   showToast('🛒 ' + p.nombre + ' agregado al carrito');
 }
 
