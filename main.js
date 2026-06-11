@@ -1617,8 +1617,8 @@ function compartirProducto(nombre, catNombre){
     const p = found.p;
     imgUrl = p.imagen || (p.disenos && p.disenos[0] && p.disenos[0].imagen) || '';
   }
-  // Usar URL del Worker para que WhatsApp vea la imagen correcta
-  const url = SHARE_BASE + '/?prod=' + encodeURIComponent(nombre) + '#catalogo';
+  // Sin #catalogo — WhatsApp ignora URLs con fragmento #
+  const url = SHARE_BASE + '/?prod=' + encodeURIComponent(nombre);
   if(navigator.share){
     navigator.share({ title: nombre + ' | SARUX', text: 'Mira este producto en SARUX', url }).catch(()=>{});
   } else {
@@ -1661,7 +1661,8 @@ function compartirImagenActiva(){
   const ref = window._modalProdActivo;
   if(!ref) return;
   const idx = window._modalDisenoIdx || 0;
-  const url = SHARE_BASE + '/?prod=' + encodeURIComponent(ref.p.nombre) + (idx ? '&img=' + idx : '') + '#catalogo';
+  // Sin #catalogo — WhatsApp ignora URLs con fragmento #
+  const url = SHARE_BASE + '/?prod=' + encodeURIComponent(ref.p.nombre) + (idx ? '&img=' + idx : '');
   if(navigator.share){
     navigator.share({ title: ref.p.nombre + ' | SARUX', text: 'Mira este diseño en SARUX', url }).catch(()=>{});
   } else {
