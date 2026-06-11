@@ -662,6 +662,16 @@ function abrirPersonajeModal(pj, prodPadre, catNombre){
 }
 
 // BÚSQUEDA
+function buscarProdEnCatalogo(nombre){
+  if(!CATALOGO_D) return null;
+  for(const cat of CATALOGO_D){
+    for(const p of (cat.productos||[])){
+      if(p.nombre === nombre) return {p, catNombre: cat.nombre, catEmoji: cat.emoji};
+    }
+  }
+  return null;
+}
+
 function buscarProducto(q) {
   if (!CATALOGO_D) return;
 
@@ -1514,11 +1524,15 @@ function renderCarrito(){
 
 function pedirPorWhatsApp(){
   if(!carrito.length){ showToast('Tu carrito está vacío'); return; }
-  const lineas = carrito.map(i=>`• ${i.nombre} x${i.qty} — $${(i.precio*i.qty).toLocaleString()} MXN`).join('%0A');
+  const base = window.location.href.split('?')[0].split('#')[0];
+  const lineas = carrito.map(i=>{
+    const linkProd = base + '?prod=' + encodeURIComponent(i.nombre) + '#catalogo';
+    const imgLine = i.imagen ? `%0A   🖼️ ${i.imagen}` : '';
+    return `• *${i.nombre}* x${i.qty} — $${(i.precio*i.qty).toLocaleString()} MXN%0A   🔗 ${linkProd}${imgLine}`;
+  }).join('%0A%0A');
   const total = carrito.reduce((s,i)=>s+(i.precio*i.qty),0);
   const msg = `Hola! Quiero hacer el siguiente pedido en SARUX 🛍️%0A%0A${lineas}%0A%0A*TOTAL: $${total.toLocaleString()} MXN*%0A%0A¿Me pueden confirmar disponibilidad?`;
   window.open(`https://wa.me/${NEGOCIO.whatsapp}?text=${msg}`, '_blank');
-  // Mostrar pantalla de confirmación
   setTimeout(()=>{ mostrarConfirmacionPedido(carrito, total); }, 400);
 }
 
@@ -1596,12 +1610,22 @@ function cerrarConfirmacionPedido(){
 
 // ─── COMPARTIR ────────────────────────────────────────────────────────────────
 function compartirProducto(nombre, catNombre){
-  const url = window.location.href.split('#')[0] + '#catalogo';
-  const texto = `${nombre} — ${catNombre} | SARUX: ${url}`;
+  // Buscar la imagen del producto
+  let imgUrl = '';
+  const found = buscarProdEnCatalogo(nombre);
+  if(found){
+    const p = found.p;
+    imgUrl = p.imagen || (p.disenos && p.disenos[0] && p.disenos[0].imagen) || '';
+  }
+  const base = window.location.href.split('?')[0].split('#')[0];
+  const url = base + '?prod=' + encodeURIComponent(nombre) + '#catalogo';
+  const texto = imgUrl
+    ? `🛍️ *${nombre}* — ${catNombre} | SARUX\n${url}\n\n🖼️ ${imgUrl}`
+    : `🛍️ *${nombre}* — ${catNombre} | SARUX\n${url}`;
   if(navigator.share){
     navigator.share({ title: nombre, text: `Mira este producto en SARUX: ${nombre}`, url }).catch(()=>{});
   } else {
-    navigator.clipboard.writeText(texto).then(()=>showToast('🔗 Link copiado al portapapeles')).catch(()=>showToast('🔗 ' + texto));
+    navigator.clipboard.writeText(texto).then(()=>showToast('🔗 Link copiado al portapapeles')).catch(()=>showToast('🔗 ' + url));
   }
 }
 
@@ -1642,10 +1666,14 @@ function compartirImagenActiva(){
   const idx = window._modalDisenoIdx || 0;
   const base = window.location.href.split('?')[0].split('#')[0];
   const url = base + '?prod=' + encodeURIComponent(ref.p.nombre) + '&img=' + idx + '#catalogo';
+  const imgUrl = _lightboxSrc || ref.p.imagen || '';
+  const texto = imgUrl
+    ? `🛍️ *${ref.p.nombre}* | SARUX\n${url}\n\n🖼️ ${imgUrl}`
+    : `🛍️ *${ref.p.nombre}* | SARUX\n${url}`;
   if(navigator.share){
-    navigator.share({ title: ref.p.nombre, text: 'Mira este diseño en SARUX', url }).catch(()=>{});
+    navigator.share({ title: ref.p.nombre, text: texto, url }).catch(()=>{});
   } else {
-    navigator.clipboard.writeText(url).then(()=>showToast('🔗 Link copiado al portapapeles')).catch(()=>showToast('🔗 Link: ' + url));
+    navigator.clipboard.writeText(texto).then(()=>showToast('🔗 Link copiado al portapapeles')).catch(()=>showToast('🔗 Link: ' + url));
   }
 }
 
