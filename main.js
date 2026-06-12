@@ -1596,8 +1596,6 @@ function mostrarConfirmacionPedido(items, total){
     </div>
   `;
   document.body.appendChild(overlay);
-  // Bloquear scroll del body mientras el overlay está abierto
-  document.body.style.overflow = 'hidden';
 
   // Cerrar tocando fuera
   overlay.addEventListener('click', e=>{ if(e.target===overlay) cerrarConfirmacionPedido(); });
@@ -1959,7 +1957,7 @@ function reproducirVideoResena(wrapper, url){
     return {};
   }
   const loaderCfg   = getLoaderCfg();
-  const LOADER_MIN_MS = Math.min(15, Math.max(1, loaderCfg.segundos || 5)) * 1000;
+  const LOADER_MIN_MS = Math.min(8, Math.max(1, loaderCfg.segundos || 5)) * 1000;
   const LOADER_MSGS = loaderCfg.mensajes && loaderCfg.mensajes.length
     ? loaderCfg.mensajes
     : ['Cargando productos...','Preparando catálogo...','Cargando imágenes...','Casi listo...','¡Ya mero!'];
