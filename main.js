@@ -1604,18 +1604,21 @@ function mostrarConfirmacionPedido(items, total){
 function cerrarConfirmacionPedido(){
   const overlay = document.getElementById('pedidoConfirmOverlay');
   if(overlay){ 
-    overlay.style.animation='fadeOutConf .25s ease forwards'; 
+    overlay.style.animation='fadeOutConf .25s ease forwards';
+    overlay.style.pointerEvents = 'none';
     setTimeout(()=>{ 
-      overlay.remove();
-      // Vaciar carrito después de confirmar pedido
+      if(overlay.parentNode) overlay.parentNode.removeChild(overlay);
+      // Limpiar cualquier estilo residual del body
+      document.body.style.overflow = '';
+      document.body.style.pointerEvents = '';
+      document.body.style.userSelect = '';
+      document.documentElement.style.overflow = '';
+      // Vaciar carrito
       carrito = [];
       guardarCarrito();
       actualizarBadge();
       renderCarrito();
-      // Quitar cualquier bloqueo visual de la página
-      document.body.style.overflow = '';
-      document.body.style.pointerEvents = '';
-    }, 250); 
+    }, 260); 
   }
 }
 
