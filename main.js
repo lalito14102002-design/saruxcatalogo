@@ -1596,6 +1596,8 @@ function mostrarConfirmacionPedido(items, total){
     </div>
   `;
   document.body.appendChild(overlay);
+  // Bloquear scroll del body mientras el overlay está abierto
+  document.body.style.overflow = 'hidden';
 
   // Cerrar tocando fuera
   overlay.addEventListener('click', e=>{ if(e.target===overlay) cerrarConfirmacionPedido(); });
@@ -1603,7 +1605,20 @@ function mostrarConfirmacionPedido(items, total){
 
 function cerrarConfirmacionPedido(){
   const overlay = document.getElementById('pedidoConfirmOverlay');
-  if(overlay){ overlay.style.animation='fadeOutConf .25s ease forwards'; setTimeout(()=>overlay.remove(), 250); }
+  if(overlay){ 
+    overlay.style.animation='fadeOutConf .25s ease forwards'; 
+    setTimeout(()=>{ 
+      overlay.remove();
+      // Vaciar carrito después de confirmar pedido
+      carrito = [];
+      guardarCarrito();
+      actualizarBadge();
+      renderCarrito();
+      // Quitar cualquier bloqueo visual de la página
+      document.body.style.overflow = '';
+      document.body.style.pointerEvents = '';
+    }, 250); 
+  }
 }
 
 // ─── COMPARTIR ────────────────────────────────────────────────────────────────
