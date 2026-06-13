@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Reseñas de Clientes | SARUX</title>
+  <meta name="description" content="Reseñas reales de clientes SARUX — Diseño y Sublimación en Puebla">
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    body{background:var(--black);color:var(--white);margin:0;padding:0;font-family:var(--font-body)}
+    .res-header{background:var(--card);border-bottom:1px solid var(--border);padding:1.2rem 1.5rem;display:flex;align-items:center;gap:1rem;position:sticky;top:0;z-index:100}
+    .res-back{background:none;border:1px solid var(--border);color:var(--gray);font-family:var(--font-mono);font-size:.6rem;letter-spacing:2px;padding:.5rem .8rem;cursor:pointer;text-decoration:none;transition:border-color .2s,color .2s}
+    .res-back:hover{border-color:var(--neon);color:var(--neon)}
+    .res-title{font-family:var(--font-display);font-size:1.3rem;letter-spacing:4px;color:var(--white)}
+    .res-count{font-family:var(--font-mono);font-size:.55rem;letter-spacing:2px;color:var(--gray);margin-left:auto}
+    .res-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:1rem;padding:1.5rem;max-width:900px;margin:0 auto}
+    .res-empty{text-align:center;padding:4rem 1.5rem;color:var(--gray);font-family:var(--font-mono);font-size:.7rem;letter-spacing:2px}
+    @media(max-width:480px){.res-grid{grid-template-columns:1fr;gap:.8rem;padding:1rem}}
+    .res-fab{position:fixed;bottom:1.5rem;right:1.5rem;background:var(--neon);color:#000;border:none;width:52px;height:52px;border-radius:50%;font-size:1.3rem;cursor:pointer;box-shadow:0 4px 20px rgba(232,25,44,.4);z-index:200;display:flex;align-items:center;justify-content:center}
+  </style>
+</head>
+<body>
+
+<header class="res-header">
+  <a href="index.html#fotos-reales-sec" class="res-back">← VOLVER</a>
+  <div class="res-title">RESEÑAS</div>
+  <div class="res-count" id="resCount"></div>
+</header>
+
+<div class="res-grid" id="resGrid">
+  <div class="res-empty">Cargando reseñas...</div>
+</div>
+
+<button class="res-fab" onclick="abrirModal()" title="Subir mi reseña">📸</button>
+
+<!-- Modal subir reseña (reutiliza el de index) -->
+<div id="frModalOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:9999;overflow-y:auto;padding:2rem 1rem">
+  <div style="max-width:480px;margin:0 auto;background:var(--card);border:1px solid var(--border);padding:2rem 1.5rem;position:relative">
+    <button onclick="cerrarModal()" style="position:absolute;top:1rem;right:1rem;background:none;border:none;color:var(--gray);font-size:1.2rem;cursor:pointer">✕</button>
+    <div style="font-family:var(--font-display);font-size:1.1rem;letter-spacing:3px;color:var(--white);margin-bottom:1.5rem">DEJA TU RESEÑA</div>
+    <input id="frNombre" placeholder="Tu nombre" style="width:100%;background:var(--black);border:1px solid var(--border);color:var(--white);padding:.8rem;font-family:var(--font-mono);font-size:.75rem;margin-bottom:.8rem;box-sizing:border-box">
+    <input id="frProducto" placeholder="Producto que compraste" style="width:100%;background:var(--black);border:1px solid var(--border);color:var(--white);padding:.8rem;font-family:var(--font-mono);font-size:.75rem;margin-bottom:.8rem;box-sizing:border-box">
+    <textarea id="frTexto" placeholder="¿Qué te pareció?" rows="3" style="width:100%;background:var(--black);border:1px solid var(--border);color:var(--white);padding:.8rem;font-family:var(--font-mono);font-size:.75rem;margin-bottom:.8rem;resize:none;box-sizing:border-box"></textarea>
+    <div style="display:flex;gap:.5rem;margin-bottom:.8rem" id="starBtns">
+      <span style="font-family:var(--font-mono);font-size:.55rem;color:var(--gray);align-self:center;letter-spacing:1px">ESTRELLAS:</span>
+      <span id="s5" onclick="setStar(5)" style="cursor:pointer;font-size:1.3rem">⭐</span>
+      <span id="s4" onclick="setStar(4)" style="cursor:pointer;font-size:1.3rem">⭐</span>
+      <span id="s3" onclick="setStar(3)" style="cursor:pointer;font-size:1.3rem">⭐</span>
+      <span id="s2" onclick="setStar(2)" style="cursor:pointer;font-size:1.3rem">⭐</span>
+      <span id="s1" onclick="setStar(1)" style="cursor:pointer;font-size:1.3rem">⭐</span>
+    </div>
+    <label style="display:flex;align-items:center;gap:.6rem;border:1px dashed var(--border);padding:.8rem;cursor:pointer;margin-bottom:1rem">
+      <input type="file" id="frFile" accept="image/*,video/*" style="display:none" onchange="previewFr(this)">
+      <span style="font-family:var(--font-mono);font-size:.6rem;letter-spacing:1px;color:var(--gray)">📎 FOTO O VIDEO (opcional)</span>
+      <span id="frFileName" style="font-size:.6rem;color:var(--neon)"></span>
+    </label>
+    <img id="frPreview" src="" style="display:none;width:100%;max-height:200px;object-fit:cover;margin-bottom:.8rem">
+    <button onclick="enviarResena()" style="width:100%;background:var(--neon);color:#000;border:none;padding:1rem;font-family:var(--font-display);font-size:.85rem;letter-spacing:3px;cursor:pointer">ENVIAR RESEÑA</button>
+    <div id="frMsg" style="margin-top:.8rem;font-family:var(--font-mono);font-size:.65rem;text-align:center"></div>
+  </div>
+</div>
+
+<script src="config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const sb = window.supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
+let estrellasVal = 5;
+
+function setStar(n){
+  estrellasVal = n;
+  for(let i=1;i<=5;i++) document.getElementById('s'+i).style.opacity = i<=n ? '1' : '0.25';
+}
+setStar(5);
+
+function abrirModal(){ document.getElementById('frModalOverlay').style.display='block'; }
+function cerrarModal(){ document.getElementById('frModalOverlay').style.display='none'; }
+
+function previewFr(input){
+  const f = input.files[0];
+  if(!f) return;
+  document.getElementById('frFileName').textContent = f.name;
+  const prev = document.getElementById('frPreview');
+  prev.src = URL.createObjectURL(f);
+  prev.style.display = 'block';
+}
+
+async function enviarResena(){
+  const nombre = document.getElementById('frNombre').value.trim();
+  const producto = document.getElementById('frProducto').value.trim();
+  const resena = document.getElementById('frTexto').value.trim();
+  const msg = document.getElementById('frMsg');
+  if(!nombre || !resena){ msg.style.color='var(--neon)'; msg.textContent='Completa nombre y reseña'; return; }
+  msg.style.color='var(--gray)'; msg.textContent='Enviando...';
+  let imagen_url = null;
+  const file = document.getElementById('frFile').files[0];
+  if(file){
+    const ext = file.name.split('.').pop();
+    const path = Date.now() + '_' + Math.random().toString(36).substr(2,6) + '.' + ext;
+    const { data, error } = await sb.storage.from('images').upload('fotos_clientes/' + path, file, {cacheControl:'3600',upsert:false});
+    if(!error){ const {data:u} = sb.storage.from('images').getPublicUrl(data.path); imagen_url = u.publicUrl; }
+  }
+  const {error:err2} = await sb.from('fotos_clientes').insert([{nombre,producto,resena,estrellas:estrellasVal,imagen_url,aprobada:false,destacada:false}]);
+  if(err2){ msg.style.color='red'; msg.textContent='Error al enviar. Intenta de nuevo.'; return; }
+  msg.style.color='#4caf50'; msg.textContent='¡Gracias! Tu reseña será revisada pronto.';
+  setTimeout(cerrarModal, 2000);
+}
+
+async function cargarResenas(){
+  const grid = document.getElementById('resGrid');
+  const {data, error} = await sb.from('fotos_clientes').select('*').eq('aprobada',true).order('created_at',{ascending:false});
+  if(error || !data || !data.length){
+    grid.innerHTML='<div class="res-empty">Aún no hay reseñas. ¡Sé el primero!</div>';
+    return;
+  }
+  document.getElementById('resCount').textContent = data.length + ' reseñas';
+  grid.innerHTML = data.map(r=>{
+    const esVideo = r.imagen_url && /\.(mp4|mov|webm|ogg)(\?|$)/i.test(r.imagen_url);
+    const estrellas = '⭐'.repeat(Math.min(5,Math.max(1,r.estrellas||5)));
+    let mediaEl = '';
+    if(r.imagen_url){
+      mediaEl = esVideo
+        ? `<div class="resena-media"><video src="${r.imagen_url}" muted playsinline controls style="width:100%;height:100%;object-fit:cover;display:block"></video></div>`
+        : `<div class="resena-media"><img src="${r.imagen_url}" alt="${r.nombre}" loading="lazy" style="width:100%;height:100%;object-fit:cover;display:block" onclick="window.open(this.src,'_blank')"></div>`;
+    }
+    return `<div class="resena-card">${mediaEl}<div class="resena-body">
+      <div class="resena-texto">"${r.resena||r.producto}"</div>
+      <div class="resena-estrellas">${estrellas}</div>
+      <div class="resena-nombre">— ${r.nombre}</div>
+    </div></div>`;
+  }).join('');
+}
+
+cargarResenas();
+</script>
+</body>
+</html>

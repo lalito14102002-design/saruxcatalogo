@@ -2087,12 +2087,17 @@ function renderFotosClientes(rows){
   const grid = document.getElementById('fotosRealesGrid');
   if(!grid) return;
   if(!rows.length){
-    grid.innerHTML = '<div class="foto-real-nueva">\uD83D\uDCF7<span>\xA1S\xe9 el primero en dejar tu rese\xf1a!</span></div>';
+    grid.innerHTML = '<div class="foto-real-nueva">📷<span>¡Sé el primero en dejar tu reseña!</span></div>';
     return;
   }
-  grid.innerHTML = rows.map(function(r){
+
+  // Mostrar solo las 4 destacadas (orden por campo "destacada" o simplemente las primeras 4)
+  const destacadas = rows.filter(r => r.destacada).slice(0,4);
+  const visibles = destacadas.length >= 4 ? destacadas : rows.slice(0,4);
+
+  function mkCard(r){
     const esVideo = r.imagen_url && /\.(mp4|mov|webm|ogg)(\?|$)/i.test(r.imagen_url);
-    const estrellas = '\u2B50'.repeat(Math.min(5, Math.max(1, r.estrellas || 5)));
+    const estrellas = '⭐'.repeat(Math.min(5, Math.max(1, r.estrellas || 5)));
     let mediaEl = '';
     if(r.imagen_url){
       const imgSrc = esVideo ? r.imagen_url : supabaseImgOpt(r.imagen_url, 400);
@@ -2100,8 +2105,8 @@ function renderFotosClientes(rows){
       mediaEl = esVideo
         ? '<div class="resena-media resena-media-video" onclick="reproducirVideoResena(this,\'' + imgFull.replace(/'/g,"\\'") + '\');event.stopPropagation()" style="cursor:pointer;position:relative">' +
             '<video muted playsinline preload="none" class="resena-vid-thumb" style="width:100%;height:100%;object-fit:cover;display:block"></video>' +
-            '<div class="resena-play-overlay"><span class="resena-play-btn">\u25B6</span></div>' +
-            '<div class="resena-media-badge">\u25B6 VIDEO</div>' +
+            '<div class="resena-play-overlay"><span class="resena-play-btn">▶</span></div>' +
+            '<div class="resena-media-badge">▶ VIDEO</div>' +
            '</div>'
         : '<div class="resena-media"><img data-src="' + imgSrc + '" src="" alt="' + r.nombre + '" class="lazy" loading="lazy" style="width:100%;height:100%;object-fit:cover" onclick="abrirLightboxMedia(\'' + imgFull + '\',\'img\');event.stopPropagation()"></div>';
     }
@@ -2111,17 +2116,23 @@ function renderFotosClientes(rows){
     if(!r.imagen_url){
       return '<div class="resena-card resena-card-texto"><div class="resena-body">' + resenaTxt +
         '<div class="resena-estrellas">' + estrellas + '</div>' +
-        '<div class="resena-nombre">\u2014 ' + r.nombre + '</div></div></div>';
+        '<div class="resena-nombre">— ' + r.nombre + '</div></div></div>';
     }
     return '<div class="resena-card">' + mediaEl + '<div class="resena-body">' + resenaTxt +
       '<div class="resena-estrellas">' + estrellas + '</div>' +
-      '<div class="resena-nombre">\u2014 ' + r.nombre + '</div></div></div>';
-  }).join('');
+      '<div class="resena-nombre">— ' + r.nombre + '</div></div></div>';
+  }
 
-  // Lazy loading para imágenes
+  grid.innerHTML = visibles.map(mkCard).join('');
+
+  // Botón "Ver más reseñas"
+  const verMasWrap = document.getElementById('verMasResenasWrap');
+  if(verMasWrap){
+    verMasWrap.style.display = rows.length > 4 ? 'flex' : 'none';
+  }
+
   initLazyImages();
 
-  // Videos: cargar solo cuando entren en viewport
   if('IntersectionObserver' in window){
     const vidObs = new IntersectionObserver(function(entries){
       entries.forEach(function(e){

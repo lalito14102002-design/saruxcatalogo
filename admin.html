@@ -1558,8 +1558,38 @@ Casi listo...
         </div>
         <button class="admin-btn-sm danger" onclick="eliminarFotoCliente('${r.id}')">🗑️</button>
         <button class="admin-btn-sm" style="margin-left:.3rem" onclick="editarResenaAdmin('${r.id}','${(r.nombre||'').replace(/'/g,"\\'")}','${(r.producto||'').replace(/'/g,"\\'")}','${(r.resena||'').replace(/'/g,"\\'").replace(/\n/g,' ')}',${r.estrellas||5})">✏️</button>
+        <button class="admin-btn-sm" style="margin-left:.3rem;background:${r.aprobada?'rgba(76,175,80,.2)':'rgba(255,255,255,.05)'};border-color:${r.aprobada?'#4caf50':'var(--border)'}" onclick="toggleAprobada('${r.id}',${r.aprobada})" title="${r.aprobada?'Aprobada — clic para ocultar':'Pendiente — clic para aprobar'}">${r.aprobada?'✅':'⏳'}</button>
+        <button class="admin-btn-sm" style="margin-left:.3rem;background:${r.destacada?'rgba(232,25,44,.2)':'rgba(255,255,255,.05)'};border-color:${r.destacada?'var(--neon)':'var(--border)'}" onclick="toggleDestacada('${r.id}',${r.destacada})" title="${r.destacada?'Destacada en home — clic para quitar':'Clic para mostrar en home (max 4)'}">⭐</button>
       </div>`;
     }).join('');
+  }
+
+  async function toggleAprobada(id, actual){
+    try {
+      const { error } = await sb.from('fotos_clientes').update({ aprobada: !actual }).eq('id', id);
+      if(error) throw error;
+      showNotif(!actual ? '✅ Reseña aprobada — visible en el sitio' : '⏳ Reseña ocultada');
+      _fotosClientesCache = null;
+      cargarFotosClientesAdmin();
+    } catch(e){ showNotif('Error: ' + e.message); }
+  }
+
+  async function toggleDestacada(id, actual){
+    if(!actual){
+      // Verificar que no haya ya 4 destacadas
+      const { data } = await sb.from('fotos_clientes').select('id').eq('destacada', true).eq('aprobada', true);
+      if(data && data.length >= 4){
+        showNotif('⚠️ Ya hay 4 reseñas destacadas en home. Quita una antes de agregar otra.');
+        return;
+      }
+    }
+    try {
+      const { error } = await sb.from('fotos_clientes').update({ destacada: !actual }).eq('id', id);
+      if(error) throw error;
+      showNotif(!actual ? '⭐ Destacada en home' : 'Quitada del home');
+      _fotosClientesCache = null;
+      cargarFotosClientesAdmin();
+    } catch(e){ showNotif('Error: ' + e.message); }
   }
 
   async function eliminarFotoCliente(id){
