@@ -195,12 +195,27 @@ function renderPage(){
   document.getElementById('tiktokBtn').href=NEGOCIO.tiktok||'#';
   document.getElementById('tiktok-user-display').textContent=NEGOCIO.tiktok_user||'@sarux.oficial';
   const ttg=document.getElementById('tiktokGrid');ttg.innerHTML='';
-  (window.TIKTOK_POSTS_D||[]).forEach(p=>{const img=p.imagen?`<img src="${p.imagen}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:.7">`:'';ttg.innerHTML+=`<a href="${p.url||NEGOCIO.tiktok||'#'}" target="_blank" class="tiktok-item">${img}<span class="tk-icon" style="position:relative;z-index:2">${p.imagen?'▶️':'🎵'}</span><span style="z-index:2;position:relative;font-size:.6rem;text-align:center;padding:0 .5rem">${p.titulo||'Ver video'}</span></a>`;});
-  if(!(window.TIKTOK_POSTS_D||[]).length)for(let i=0;i<6;i++)ttg.innerHTML+=`<a href="${NEGOCIO.tiktok||'#'}" target="_blank" class="tiktok-item"><span class="tk-icon">🎵</span></a>`;
+  (window.TIKTOK_POSTS_D||[]).forEach(p=>{
+    const imgTag = p.imagen
+      ? `<img src="${p.imagen}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:.85" onerror="this.style.display='none'">`
+      : '';
+    const icon = p.imagen ? '▶️' : '🎵';
+    ttg.innerHTML+=`<a href="${p.url||NEGOCIO.tiktok||'#'}" target="_blank" class="tiktok-item">${imgTag}<span class="tk-icon" style="position:relative;z-index:2">${icon}</span><span style="z-index:2;position:relative;font-size:.55rem;text-align:center;padding:0 .4rem;line-height:1.3">${p.titulo||'Ver video'}</span></a>`;
+  });
+  if(!(window.TIKTOK_POSTS_D||[]).length)for(let i=0;i<6;i++)ttg.innerHTML+=`<a href="${NEGOCIO.tiktok||'#'}" target="_blank" class="tiktok-item"><span class="tk-icon">🎵</span><span style="font-size:.5rem;color:var(--gray)">Ver video</span></a>`;
 
   const ig=document.getElementById('igGrid');ig.innerHTML='';
-  (window.IG_POSTS_D||[]).forEach(p=>{if(p.imagen){ig.innerHTML+=`<div class="ig-item" style="padding:0;overflow:hidden" onclick="window.open('${p.url||NEGOCIO.instagram||'#'}','_blank')"><img src="${p.imagen}" style="width:100%;height:100%;object-fit:cover"></div>`;}else{ig.innerHTML+=`<div class="ig-item" onclick="window.open('${p.url||NEGOCIO.instagram||'#'}','_blank')"><span class="ig-icon">📸</span><span>${p.titulo||'Ver post'}</span></div>`;}});
-  if(!(window.IG_POSTS_D||[]).length)for(let i=0;i<6;i++)ig.innerHTML+=`<div class="ig-item" onclick="window.open('${NEGOCIO.instagram||'#'}','_blank')"><span class="ig-icon">📸</span>Ver post</div>`;
+  (window.IG_POSTS_D||[]).forEach(p=>{
+    if(p.imagen){
+      ig.innerHTML+=`<div class="ig-item" style="padding:0;overflow:hidden;position:relative" onclick="window.open('${p.url||NEGOCIO.instagram||'#'}','_blank')">
+        <img src="${p.imagen}" style="width:100%;height:100%;object-fit:cover;display:block" onerror="this.parentElement.innerHTML='<span class=\\'ig-icon\\'>📸</span><span style=\\'font-size:.5rem;color:var(--gray)\\'>Ver post</span>'">
+        <div style="position:absolute;bottom:0;left:0;right:0;background:linear-gradient(transparent,rgba(0,0,0,.6));padding:.4rem .3rem;font-size:.45rem;color:#fff;font-family:var(--font-mono);letter-spacing:1px;line-height:1.3;overflow:hidden;max-height:2.5rem">${p.titulo||''}</div>
+      </div>`;
+    } else {
+      ig.innerHTML+=`<div class="ig-item" onclick="window.open('${p.url||NEGOCIO.instagram||'#'}','_blank')"><span class="ig-icon">📸</span><span style="font-size:.5rem">${p.titulo||'Ver post'}</span></div>`;
+    }
+  });
+  if(!(window.IG_POSTS_D||[]).length)for(let i=0;i<6;i++)ig.innerHTML+=`<div class="ig-item" onclick="window.open('${NEGOCIO.instagram||'#'}','_blank')"><span class="ig-icon">📸</span><span style="font-size:.5rem">Ver post</span></div>`;
   document.getElementById('igBtn').href=NEGOCIO.instagram||'#';
 
   document.getElementById('faqList').innerHTML=FAQS_D.map((f,i)=>`<div class="faq-item" id="faq-${i}"><div class="faq-q" onclick="toggleFaq(${i})"><span class="faq-q-text">${f.pregunta}</span><i class="faq-icon">+</i></div><div class="faq-a">${f.respuesta}</div></div>`).join('');

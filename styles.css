@@ -406,7 +406,7 @@ section{padding:5rem 3rem}
 
 /*  TIKTOK  */
 .tiktok-section{background:var(--dark)}
-.tiktok-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:1px;background:var(--border);margin-bottom:2rem}
+.tiktok-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--border);margin-bottom:2rem}
 .tiktok-item{background:var(--card);aspect-ratio:9/16;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:.5rem;cursor:pointer;transition:background .3s;font-family:var(--font-mono);font-size:.55rem;letter-spacing:2px;color:var(--gray);text-decoration:none;position:relative;overflow:hidden}
 .tiktok-item:hover{background:var(--card2)}
 .tiktok-item .tk-icon{font-size:2rem}
@@ -415,7 +415,7 @@ section{padding:5rem 3rem}
 .tiktok-btn:hover{background:var(--white);color:#000}
 
 /*  IG  */
-.ig-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:1px;background:var(--border);margin-bottom:2rem}
+.ig-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--border);margin-bottom:2rem}
 .ig-item{background:var(--card);aspect-ratio:1;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:.5rem;cursor:pointer;transition:background .3s;font-family:var(--font-mono);font-size:.55rem;letter-spacing:2px;color:var(--gray)}
 .ig-item:hover{background:var(--card2)}
 .ig-item .ig-icon{font-size:2rem}
