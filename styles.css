@@ -311,9 +311,9 @@ section{padding:5rem 3rem}
 .proceso-paso{font-family:var(--font-display);font-size:4rem;color:rgba(232,25,44,.08);letter-spacing:4px;line-height:1;margin-bottom:.5rem}
 .proceso-titulo{font-family:var(--font-body);font-size:1.1rem;font-weight:700;color:var(--white);margin-bottom:.3rem}
 .proceso-desc{font-size:.85rem;color:var(--gray);font-weight:300;line-height:1.6}
-.mayoreo-cta{text-align:center;padding:3rem;background:var(--card);border:1px solid rgba(232,25,44,.15)}
-.mayoreo-cta h3{font-family:var(--font-display);font-size:2.5rem;letter-spacing:4px;color:var(--white);margin-bottom:1rem}
-.mayoreo-cta p{color:var(--gray);font-weight:300;margin-bottom:2rem}
+.mayoreo-cta{text-align:center;padding:1.5rem;background:var(--card);border:1px solid rgba(232,25,44,.15)}
+.mayoreo-cta h3{font-family:var(--font-display);font-size:1.4rem;letter-spacing:4px;color:var(--white);margin-bottom:.5rem}
+.mayoreo-cta p{color:var(--gray);font-weight:300;margin-bottom:1rem;font-size:.85rem}
 
 /*  ABOUT  */
 .about-grid{display:grid;grid-template-columns:1fr 1fr;gap:4rem;align-items:center}

@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Nuestras Creaciones | SARUX</title>
+  <meta name="description" content="Trabajos reales de SARUX — Diseño y Sublimación en Puebla">
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    body{background:var(--black);color:var(--white);margin:0;padding:0;font-family:var(--font-body)}
+    .crea-header{background:var(--card);border-bottom:1px solid var(--border);padding:1.2rem 1.5rem;display:flex;align-items:center;gap:1rem;position:sticky;top:0;z-index:100}
+    .crea-back{background:none;border:1px solid var(--border);color:var(--gray);font-family:var(--font-mono);font-size:.6rem;letter-spacing:2px;padding:.5rem .8rem;cursor:pointer;text-decoration:none;transition:border-color .2s,color .2s}
+    .crea-back:hover{border-color:var(--neon);color:var(--neon)}
+    .crea-title{font-family:var(--font-display);font-size:1.3rem;letter-spacing:4px;color:var(--white)}
+    .crea-count{font-family:var(--font-mono);font-size:.55rem;letter-spacing:2px;color:var(--gray);margin-left:auto}
+    .crea-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:1rem;padding:1.5rem;max-width:900px;margin:0 auto}
+    .crea-card{background:var(--card);border:1px solid var(--border);overflow:hidden;transition:border-color .25s,transform .25s;cursor:pointer}
+    .crea-card:hover{border-color:var(--neon);transform:translateY(-3px)}
+    .crea-media{width:100%;aspect-ratio:4/5;background:#111;overflow:hidden;position:relative}
+    .crea-media img,.crea-media video{width:100%;height:100%;object-fit:cover;display:block;transition:transform .4s}
+    .crea-card:hover .crea-media img,.crea-card:hover .crea-media video{transform:scale(1.05)}
+    .crea-body{padding:.7rem .8rem .9rem}
+    .crea-titulo{font-family:var(--font-body);font-size:.9rem;font-weight:700;color:var(--white);margin-bottom:.25rem}
+    .crea-desc{font-size:.75rem;color:var(--gray);font-weight:300;line-height:1.5}
+    .crea-empty{grid-column:1/-1;text-align:center;padding:4rem 1.5rem;color:var(--gray);font-family:var(--font-mono);font-size:.7rem;letter-spacing:2px}
+    @media(max-width:480px){.crea-grid{grid-template-columns:1fr;gap:.8rem;padding:1rem}}
+
+    /* Lightbox */
+    #lightbox{display:none;position:fixed;inset:0;background:rgba(0,0,0,.95);z-index:9999;align-items:center;justify-content:center}
+    #lightbox.open{display:flex}
+    #lightbox img,#lightbox video{max-width:95vw;max-height:90vh;object-fit:contain}
+    #lightbox-close{position:absolute;top:1rem;right:1.2rem;color:#fff;font-size:2rem;cursor:pointer;background:none;border:none;line-height:1}
+  </style>
+</head>
+<body>
+
+<header class="crea-header">
+  <a href="index.html#creaciones-sec" class="crea-back">← VOLVER</a>
+  <div class="crea-title">NUESTRAS CREACIONES</div>
+  <div class="crea-count" id="creaCount"></div>
+</header>
+
+<div class="crea-grid" id="creaGrid">
+  <div class="crea-empty">Cargando creaciones...</div>
+</div>
+
+<!-- Lightbox -->
+<div id="lightbox" onclick="cerrarLightbox()">
+  <button id="lightbox-close" onclick="cerrarLightbox()">✕</button>
+  <div id="lightbox-content"></div>
+</div>
+
+<script src="config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const sb = window.supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
+
+function abrirLightbox(url, esVideo){
+  const lb = document.getElementById('lightbox');
+  const content = document.getElementById('lightbox-content');
+  content.innerHTML = esVideo
+    ? `<video src="${url}" controls autoplay playsinline style="max-width:95vw;max-height:90vh"></video>`
+    : `<img src="${url}" style="max-width:95vw;max-height:90vh;object-fit:contain">`;
+  lb.classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
+function cerrarLightbox(){
+  document.getElementById('lightbox').classList.remove('open');
+  document.getElementById('lightbox-content').innerHTML = '';
+  document.body.style.overflow = '';
+}
+
+async function cargarCreaciones(){
+  const grid = document.getElementById('creaGrid');
+  const { data, error } = await sb.from('creaciones').select('*').order('orden',{ascending:true}).order('created_at',{ascending:false});
+  if(error || !data || !data.length){
+    grid.innerHTML = '<div class="crea-empty">Próximamente nuestros trabajos aquí. 🎨</div>';
+    return;
+  }
+  document.getElementById('creaCount').textContent = data.length + ' trabajos';
+  grid.innerHTML = data.map(c => {
+    const esVideo = c.media_url && /\.(mp4|mov|webm|ogg)(\?|$)/i.test(c.media_url);
+    const mediaEl = c.media_url
+      ? (esVideo
+        ? `<div class="crea-media" onclick="abrirLightbox('${c.media_url}',true)">
+            <video src="${c.media_url}#t=0.5" muted playsinline preload="metadata" style="width:100%;height:100%;object-fit:cover;display:block"></video>
+            <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.3)"><span style="font-size:2rem">▶️</span></div>
+           </div>`
+        : `<div class="crea-media" onclick="abrirLightbox('${c.media_url}',false)">
+            <img src="${c.media_url}" alt="${c.titulo||''}" loading="lazy" style="width:100%;height:100%;object-fit:cover;display:block">
+           </div>`)
+      : '';
+    return `<div class="crea-card">
+      ${mediaEl}
+      <div class="crea-body">
+        <div class="crea-titulo">${c.titulo||''}</div>
+        ${c.descripcion ? `<div class="crea-desc">${c.descripcion}</div>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+cargarCreaciones();
+</script>
+</body>
+</html>

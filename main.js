@@ -237,6 +237,7 @@ function renderPage(){
   const frTit = document.getElementById('frSecTitulo');
   if(frTit) frTit.textContent = 'RESEÑAS';
   cargarFotosClientes();
+  cargarCreaciones();
 
   document.getElementById('footerIg').href=NEGOCIO.instagram||'#';
   document.getElementById('footerTt').href=NEGOCIO.tiktok||'#';
@@ -1640,6 +1641,62 @@ function cerrarConfirmacionPedido(){
 // ─── COMPARTIR ────────────────────────────────────────────────────────────────
 // URL del Worker para compartir (genera preview con imagen en WhatsApp)
 const SHARE_BASE = 'https://purple-sky-0d90sarux-og.lalito14102002.workers.dev';
+
+function compartirSeccion(seccion){
+  const base = window.location.href.split('?')[0].split('#')[0];
+  const urls = {
+    creaciones: base + 'creaciones.html',
+    resenas: base + 'resenas.html'
+  };
+  const titulos = {
+    creaciones: '✨ Nuestras Creaciones | SARUX — Diseño y Sublimación en Puebla',
+    resenas: '⭐ Reseñas de Clientes | SARUX — Diseño y Sublimación en Puebla'
+  };
+  const url = urls[seccion] || base;
+  const titulo = titulos[seccion] || 'SARUX';
+  if(navigator.share){
+    navigator.share({ title: titulo, url }).catch(()=>{});
+  } else {
+    navigator.clipboard.writeText(url).then(()=>showToast('🔗 Link copiado al portapapeles')).catch(()=>showToast('🔗 ' + url));
+  }
+}
+
+// ── NUESTRAS CREACIONES ────────────────────────────────────────────────────
+async function cargarCreaciones(){
+  const grid = document.getElementById('creacionesGrid');
+  if(!grid) return;
+  try {
+    const { data, error } = await sb.from('creaciones').select('*').order('orden',{ascending:true}).order('created_at',{ascending:false});
+    if(error || !data || !data.length){
+      grid.innerHTML = '<div class="foto-real-nueva">📷<span>Pronto aquí nuestros trabajos</span></div>';
+      return;
+    }
+    // Mostrar solo las primeras 4 en home
+    const visibles = data.slice(0,4);
+    grid.innerHTML = visibles.map(c => mkCreacionCard(c)).join('');
+    const wrap = document.getElementById('verMasCreacionesWrap');
+    if(wrap) wrap.style.display = data.length > 4 ? 'flex' : 'none';
+    initLazyImages();
+  } catch(e){
+    grid.innerHTML = '<div class="foto-real-nueva">📷<span>Pronto aquí nuestros trabajos</span></div>';
+  }
+}
+
+function mkCreacionCard(c){
+  const esVideo = c.media_url && /\.(mp4|mov|webm|ogg)(\?|$)/i.test(c.media_url);
+  let mediaEl = '';
+  if(c.media_url){
+    mediaEl = esVideo
+      ? `<div class="resena-media"><video src="${c.media_url}" muted playsinline controls loop style="width:100%;height:100%;object-fit:cover;display:block"></video></div>`
+      : `<div class="resena-media"><img data-src="${c.media_url}" src="" alt="${c.titulo||''}" class="lazy" loading="lazy" style="width:100%;height:100%;object-fit:cover;display:block" onclick="abrirLightboxMedia('${c.media_url}','img');event.stopPropagation()"></div>`;
+  }
+  return `<div class="resena-card">${mediaEl}
+    <div class="resena-body">
+      ${c.titulo ? `<div style="font-family:var(--font-mono);font-size:.6rem;letter-spacing:2px;color:var(--white);font-weight:700;text-transform:uppercase">${c.titulo}</div>` : ''}
+      ${c.descripcion ? `<div class="resena-texto" style="font-style:normal">${c.descripcion}</div>` : ''}
+    </div>
+  </div>`;
+}
 
 function compartirProducto(nombre, catNombre){
   let imgUrl = '';
