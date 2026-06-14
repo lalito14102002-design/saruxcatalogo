@@ -2032,7 +2032,7 @@ function reproducirVideoResena(wrapper, url){
     return {};
   }
   const loaderCfg   = getLoaderCfg();
-  const LOADER_MIN_MS = Math.min(8, Math.max(1, loaderCfg.segundos || 5)) * 1000;
+  const LOADER_MIN_MS = Math.min(5, Math.max(1, loaderCfg.segundos || 3)) * 1000;
   const LOADER_MSGS = loaderCfg.mensajes && loaderCfg.mensajes.length
     ? loaderCfg.mensajes
     : ['Cargando productos...','Preparando catálogo...','Cargando imágenes...','Casi listo...','¡Ya mero!'];

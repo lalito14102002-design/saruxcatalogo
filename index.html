@@ -32,7 +32,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="preconnect" href="https://ngavbeiochxdvgzcywuh.supabase.co">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Space+Mono:wght@400;700&family=Rajdhani:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css">
+<link rel="stylesheet" href="styles.css?v=3">
 <style>
 @keyframes stockPulse {
   0%,100%{ opacity:1; transform:scale(1); }
@@ -55,7 +55,7 @@
   <div class="loader-barra-wrap"><div class="loader-barra"></div></div>
   <div class="loader-texto">Cargando...</div>
 </div>
-<script src="config.js"></script>
+<script src="config.js?v=3"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <script type="application/ld+json">
@@ -312,9 +312,24 @@
     <div>
       <div class="sec-label">TRABAJOS REALES</div>
       <h2 class="sec-title">NUESTRAS CREACIONES</h2>
+      <button onclick="compartirSeccion('creaciones')" style="background:none;border:none;color:var(--gray);font-family:var(--font-mono);font-size:.55rem;letter-spacing:2px;padding:.3rem 0;cursor:pointer;display:flex;align-items:center;gap:.4rem;margin-top:.3rem" onmouseover="this.style.color='var(--neon)'" onmouseout="this.style.color='var(--gray)'">🔗 COMPARTIR</button>
     </div>
-    <button onclick="compartirSeccion('creaciones')" style="background:none;border:1px solid var(--border);color:var(--gray);font-family:var(--font-mono);font-size:.55rem;letter-spacing:2px;padding:.5rem .8rem;cursor:pointer;transition:border-color .2s,color .2s" onmouseover="this.style.borderColor='var(--neon)';this.style.color='var(--neon)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--gray)'">🔗 COMPARTIR</button>
   </div>
+  <div class="resenas-unificadas-grid" id="creacionesGrid">
+    <div class="foto-real-nueva">📷<span>Cargando...</span></div>
+  </div>
+  <div id="verMasCreacionesWrap" style="display:none;justify-content:center;margin-top:1.5rem">
+    <a href="creaciones.html" style="
+      display:inline-flex;align-items:center;gap:.6rem;
+      background:rgba(232,25,44,.08);border:1px solid rgba(232,25,44,.35);
+      color:var(--neon);font-family:var(--font-mono);font-size:.65rem;
+      letter-spacing:3px;padding:.9rem 2rem;text-decoration:none;
+      transition:background .2s
+    " onmouseover="this.style.background='rgba(232,25,44,.18)'" onmouseout="this.style.background='rgba(232,25,44,.08)'">
+      VER TODAS LAS CREACIONES →
+    </a>
+  </div>
+</section>
   <div class="resenas-unificadas-grid" id="creacionesGrid">
     <div class="foto-real-nueva">📷<span>Cargando...</span></div>
   </div>
@@ -336,11 +351,9 @@
   <div class="sec-header">
     <div>
       <h2 class="sec-title" id="frSecTitulo">RESEÑAS</h2>
+      <button onclick="compartirSeccion('resenas')" style="background:none;border:none;color:var(--gray);font-family:var(--font-mono);font-size:.55rem;letter-spacing:2px;padding:.3rem 0;cursor:pointer;display:flex;align-items:center;gap:.4rem;margin-top:.3rem" onmouseover="this.style.color='var(--neon)'" onmouseout="this.style.color='var(--gray)'">🔗 COMPARTIR</button>
     </div>
-    <div style="display:flex;gap:.6rem;align-items:center">
-      <button onclick="compartirSeccion('resenas')" style="background:none;border:1px solid var(--border);color:var(--gray);font-family:var(--font-mono);font-size:.55rem;letter-spacing:2px;padding:.5rem .8rem;cursor:pointer;transition:border-color .2s,color .2s" onmouseover="this.style.borderColor='var(--neon)';this.style.color='var(--neon)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--gray)'">🔗 COMPARTIR</button>
-      <button class="btn-subir-foto" onclick="abrirFrModal()">📸 Subir mi reseña</button>
-    </div>
+    <button class="btn-subir-foto" onclick="abrirFrModal()">📸 Subir mi reseña</button>
   </div>
   <div class="resenas-unificadas-grid" id="fotosRealesGrid">
     <div class="foto-real-nueva">📷<span>Cargando...</span></div>
@@ -484,7 +497,7 @@
 </div>
 <!-- TOAST -->
 <div id="toastWrap"></div>
-<script src="main.js"></script>
+<script src="main.js?v=3"></script>
 
 </body>
 </html>
