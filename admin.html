@@ -1565,12 +1565,23 @@ Casi listo...
     const msg    = document.getElementById('creacion-msg');
     if(!titulo){ msg.style.color='var(--neon)'; msg.textContent='Escribe un título'; return; }
     if(!file){ msg.style.color='var(--neon)'; msg.textContent='Selecciona una imagen o video'; return; }
-    msg.style.color='var(--gray)'; msg.textContent='Subiendo...';
+    msg.style.color='var(--gray)'; msg.textContent='Subiendo archivo...';
     try {
-      const mediaUrl = await uploadToStorage(file, 'creaciones');
-      const { error } = await sb.from('creaciones').insert([{ titulo, descripcion: desc, media_url: mediaUrl, orden }]);
-      if(error) throw error;
-      msg.style.color='#4caf50'; msg.textContent='✅ Creación subida';
+      // Subir archivo a Storage
+      const fileExt = file.name.split('.').pop();
+      const fileName = Date.now() + '_' + Math.random().toString(36).substr(2,6) + '.' + fileExt;
+      const filePath = 'creaciones/' + fileName;
+      msg.textContent = 'Subiendo a Storage...';
+      const { data: storageData, error: storageError } = await sb.storage
+        .from('images')
+        .upload(filePath, file, { cacheControl: '3600', upsert: true });
+      if(storageError){ msg.style.color='red'; msg.textContent='Error Storage: ' + storageError.message; return; }
+      const { data: { publicUrl } } = sb.storage.from('images').getPublicUrl(storageData.path);
+      msg.textContent = 'Guardando en base de datos...';
+      // Guardar en tabla creaciones
+      const { error: dbError } = await sb.from('creaciones').insert([{ titulo, descripcion: desc, media_url: publicUrl, orden }]);
+      if(dbError){ msg.style.color='red'; msg.textContent='Error BD: ' + dbError.message; return; }
+      msg.style.color='#4caf50'; msg.textContent='✅ Creación subida correctamente';
       document.getElementById('creacion-titulo').value = '';
       document.getElementById('creacion-desc').value = '';
       document.getElementById('creacion-orden').value = '99';
