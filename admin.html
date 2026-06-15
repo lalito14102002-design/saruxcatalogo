@@ -277,6 +277,7 @@
         <button class="admin-nav-btn" onclick="showSec('ig-posts',this)">📸 Instagram</button>
         <button class="admin-nav-btn" onclick="showSec('tt-posts',this)">🎵 TikTok</button>
         <button class="admin-nav-btn" onclick="showSec('creaciones',this);cargarCreacionesAdmin()">✨ Mis Creaciones</button>
+        <button class="admin-nav-btn" onclick="showSec('mayoreo-prods',this);cargarMayoreoProductosAdmin()">📦 Catálogo Mayoreo</button>
         <button class="admin-nav-btn" onclick="showSec('fotos-clientes',this);cargarFotosClientesAdmin()">📷 Fotos Reales</button>
         <button class="admin-nav-btn" onclick="showSec('nosotros',this)">ℹ️ Sobre nosotros</button>
         <button class="admin-nav-btn" onclick="showSec('pasos',this)">👣 Cómo pedir</button>
@@ -785,6 +786,75 @@ Casi listo...
       <div id="sec-faqs" class="admin-section"><div class="admin-section-title">PREGUNTAS FRECUENTES</div><div id="admin-faqs-list"></div><button class="admin-btn-add" onclick="addFaq()">+ Agregar pregunta</button></div>
       <div id="sec-ig-posts" class="admin-section"><div class="admin-section-title">POSTS INSTAGRAM</div><div id="admin-ig-posts-list"></div><button class="admin-btn-add" onclick="addIgPost()">+ Agregar post</button></div>
       <div id="sec-tt-posts" class="admin-section"><div class="admin-section-title">VIDEOS TIKTOK</div><div id="admin-tt-posts-list"></div><button class="admin-btn-add" onclick="addTtPost()">+ Agregar video</button></div>
+
+      <!-- MAYOREO PRODUCTOS -->
+      <div id="sec-mayoreo-prods" class="admin-section">
+        <div class="admin-section-title">📦 CATÁLOGO MAYOREO</div>
+        <div class="admin-section-sub">Agrega y gestiona los productos de tu catálogo de mayoreo. Solo tú puedes editarlos.</div>
+
+        <!-- Formulario -->
+        <div style="background:var(--card2);border:1px solid var(--border);padding:1.2rem;margin-bottom:1.5rem">
+          <input type="hidden" id="mp-edit-id">
+
+          <div class="admin-field-label">IMAGEN DEL PRODUCTO</div>
+          <div style="display:flex;gap:.8rem;align-items:flex-start;flex-wrap:wrap;margin-bottom:.8rem">
+            <label style="flex:1;min-width:200px;border:1px dashed var(--border);padding:.8rem;cursor:pointer;display:flex;align-items:center;gap:.5rem;font-family:var(--font-mono);font-size:.6rem;letter-spacing:1px;color:var(--gray)">
+              <input type="file" id="mp-file" accept="image/*" style="display:none" onchange="previewMPFile(this)">
+              📎 SELECCIONAR IMAGEN
+            </label>
+            <span id="mp-file-name" style="font-family:var(--font-mono);font-size:.55rem;color:var(--neon);align-self:center"></span>
+          </div>
+          <img id="mp-preview" src="" style="display:none;width:100%;max-height:180px;object-fit:cover;margin-bottom:.8rem;border:1px solid var(--border)">
+
+          <div style="display:flex;gap:.6rem;align-items:center;margin-bottom:.5rem">
+            <div class="admin-field-label" style="margin:0">EMOJI (si no hay imagen)</div>
+            <input id="mp-emoji" placeholder="📦" class="admin-input" style="width:60px;text-align:center;font-size:1.2rem">
+          </div>
+
+          <div class="admin-field-label">NOMBRE DEL PRODUCTO *</div>
+          <input id="mp-nombre" placeholder="Ej: 60 Tazas Sublimadas / Paquete Boda Premium" class="admin-input" style="margin-bottom:.8rem">
+
+          <div class="admin-field-label">PRECIO <span style="color:var(--gray);font-size:.5rem">(número, sin signos)</span></div>
+          <input id="mp-precio" type="number" placeholder="1500" class="admin-input" style="width:140px;margin-bottom:.8rem">
+
+          <div class="admin-field-label">DESCRIPCIÓN CORTA</div>
+          <textarea id="mp-desc" placeholder="Ej: Sublimación full color, entrega en 5 días hábiles" class="admin-input" rows="2" style="resize:none;margin-bottom:.8rem"></textarea>
+
+          <!-- Contenido del paquete -->
+          <div style="background:rgba(232,25,44,.04);border:1px solid rgba(232,25,44,.15);padding:.8rem;margin-bottom:.8rem">
+            <div style="display:flex;align-items:center;gap:.8rem;margin-bottom:.6rem">
+              <div class="admin-field-label" style="margin:0">CONTENIDO DEL PAQUETE</div>
+              <label style="display:flex;align-items:center;gap:.4rem;cursor:pointer;font-family:var(--font-mono);font-size:.55rem;color:var(--gray)">
+                <input type="checkbox" id="mp-contenido-activo" onchange="toggleContenidoForm()"> ACTIVAR
+              </label>
+            </div>
+            <div id="mp-contenido-form" style="display:none">
+              <div style="font-family:var(--font-mono);font-size:.5rem;color:var(--gray);letter-spacing:1px;margin-bottom:.6rem">Agrega líneas con cantidad y producto (ej: 12 → Tazas sublimadas)</div>
+              <div id="mp-items-list"></div>
+              <button onclick="agregarItemContenido()" style="background:none;border:1px dashed var(--border);color:var(--gray);font-family:var(--font-mono);font-size:.55rem;letter-spacing:2px;padding:.5rem 1rem;cursor:pointer;width:100%;margin-top:.5rem">+ AGREGAR LÍNEA</button>
+            </div>
+          </div>
+
+          <div class="admin-field-label">ORDEN <span style="color:var(--gray);font-size:.5rem">(menor = primero)</span></div>
+          <input id="mp-orden" type="number" value="99" class="admin-input" style="width:80px;margin-bottom:.6rem">
+
+          <div style="display:flex;align-items:center;gap:.8rem;margin-bottom:1rem">
+            <label style="display:flex;align-items:center;gap:.4rem;cursor:pointer;font-family:var(--font-mono);font-size:.55rem;color:var(--gray)">
+              <input type="checkbox" id="mp-activo" checked> VISIBLE EN CATÁLOGO
+            </label>
+          </div>
+
+          <div id="mp-msg" style="font-family:var(--font-mono);font-size:.6rem;margin-bottom:.6rem"></div>
+          <div style="display:flex;gap:.6rem;flex-wrap:wrap">
+            <button class="admin-btn" onclick="guardarMProd()">💾 GUARDAR PRODUCTO</button>
+            <button class="admin-btn" style="background:rgba(255,255,255,.05);border-color:var(--border);color:var(--gray)" onclick="limpiarMPForm()">✕ CANCELAR</button>
+          </div>
+        </div>
+
+        <div id="admin-mayoreo-prods-list">
+          <div style="font-family:var(--font-mono);font-size:.6rem;color:var(--gray)">Cargando...</div>
+        </div>
+      </div>
 
       <!-- NUESTRAS CREACIONES -->
       <div id="sec-creaciones" class="admin-section">
@@ -1543,6 +1613,183 @@ Casi listo...
       if(btn){ btn.disabled=false; btn.textContent='✅ PUBLICAR RESEÑA'; }
     }
   }
+
+  // ── CATÁLOGO MAYOREO ───────────────────────────────────────────────────────
+  let _mpItems = [];
+
+  function previewMPFile(input){
+    const f = input.files[0]; if(!f) return;
+    document.getElementById('mp-file-name').textContent = f.name;
+    const prev = document.getElementById('mp-preview');
+    prev.src = URL.createObjectURL(f);
+    prev.style.display = 'block';
+  }
+
+  function toggleContenidoForm(){
+    const activo = document.getElementById('mp-contenido-activo').checked;
+    document.getElementById('mp-contenido-form').style.display = activo ? 'block' : 'none';
+    if(activo && !_mpItems.length) agregarItemContenido();
+  }
+
+  function agregarItemContenido(){
+    _mpItems.push({ cantidad:'', producto:'' });
+    renderItemsContenido();
+  }
+
+  function renderItemsContenido(){
+    const cont = document.getElementById('mp-items-list');
+    cont.innerHTML = _mpItems.map((it,i) => `
+      <div style="display:flex;gap:.5rem;align-items:center;margin-bottom:.4rem">
+        <input value="${it.cantidad}" placeholder="Cant." oninput="_mpItems[${i}].cantidad=this.value"
+          style="width:70px;background:var(--black);border:1px solid var(--border);color:var(--white);padding:.5rem;font-family:var(--font-mono);font-size:.65rem">
+        <input value="${it.producto}" placeholder="Producto (ej: Tazas sublimadas)" oninput="_mpItems[${i}].producto=this.value"
+          style="flex:1;background:var(--black);border:1px solid var(--border);color:var(--white);padding:.5rem;font-family:var(--font-mono);font-size:.65rem">
+        <button onclick="_mpItems.splice(${i},1);renderItemsContenido()" style="background:none;border:none;color:rgba(232,25,44,.6);cursor:pointer;font-size:1rem;padding:.2rem">✕</button>
+      </div>`).join('');
+  }
+
+  function limpiarMPForm(){
+    document.getElementById('mp-edit-id').value = '';
+    document.getElementById('mp-nombre').value = '';
+    document.getElementById('mp-precio').value = '';
+    document.getElementById('mp-desc').value = '';
+    document.getElementById('mp-emoji').value = '';
+    document.getElementById('mp-orden').value = '99';
+    document.getElementById('mp-activo').checked = true;
+    document.getElementById('mp-contenido-activo').checked = false;
+    document.getElementById('mp-contenido-form').style.display = 'none';
+    document.getElementById('mp-file').value = '';
+    document.getElementById('mp-file-name').textContent = '';
+    document.getElementById('mp-preview').style.display = 'none';
+    document.getElementById('mp-msg').textContent = '';
+    _mpItems = [];
+    renderItemsContenido();
+  }
+
+  async function guardarMProd(){
+    const nombre = document.getElementById('mp-nombre').value.trim();
+    const precio = parseFloat(document.getElementById('mp-precio').value) || null;
+    const desc   = document.getElementById('mp-desc').value.trim();
+    const emoji  = document.getElementById('mp-emoji').value.trim() || '📦';
+    const orden  = parseInt(document.getElementById('mp-orden').value) || 99;
+    const activo = document.getElementById('mp-activo').checked;
+    const conActivo = document.getElementById('mp-contenido-activo').checked;
+    const editId = document.getElementById('mp-edit-id').value;
+    const msg    = document.getElementById('mp-msg');
+
+    if(!nombre){ msg.style.color='var(--neon)'; msg.textContent='⚠️ Escribe el nombre del producto'; return; }
+    msg.style.color='var(--gray)'; msg.textContent='Guardando...';
+
+    try {
+      let imagen_url = null;
+      const file = document.getElementById('mp-file').files[0];
+      if(file){
+        msg.textContent = 'Subiendo imagen...';
+        const ext = file.name.split('.').pop().toLowerCase();
+        const path = 'mayoreo/' + Date.now() + '.' + ext;
+        const { data: up, error: upErr } = await sb.storage.from('images').upload(path, file, { upsert: true });
+        if(upErr){ msg.style.color='red'; msg.textContent='❌ Error imagen: ' + upErr.message; return; }
+        const { data: urlData } = sb.storage.from('images').getPublicUrl(up.path);
+        imagen_url = urlData.publicUrl;
+      }
+
+      const contenido = conActivo ? JSON.stringify(_mpItems.filter(it=>it.producto)) : null;
+      const payload = { nombre, precio, descripcion: desc||null, emoji, orden, activo, contenido_activo: conActivo, contenido };
+      if(imagen_url) payload.imagen_url = imagen_url;
+
+      let err;
+      if(editId){
+        ({ error: err } = await sb.from('mayoreo_productos').update(payload).eq('id', editId));
+      } else {
+        ({ error: err } = await sb.from('mayoreo_productos').insert([payload]));
+      }
+      if(err){ msg.style.color='red'; msg.textContent='❌ Error: ' + err.message; return; }
+
+      msg.style.color='#4caf50'; msg.textContent='✅ Producto guardado';
+      limpiarMPForm();
+      setTimeout(()=>{ msg.textContent=''; }, 3000);
+      cargarMayoreoProductosAdmin();
+    } catch(e){ msg.style.color='red'; msg.textContent='❌ Error: ' + e.message; }
+  }
+
+  async function cargarMayoreoProductosAdmin(){
+    const cont = document.getElementById('admin-mayoreo-prods-list');
+    if(!cont) return;
+    cont.innerHTML = '<div style="font-family:var(--font-mono);font-size:.6rem;color:var(--gray)">Cargando...</div>';
+    try {
+      const { data, error } = await sb.from('mayoreo_productos').select('*').order('orden',{ascending:true}).order('created_at',{ascending:false});
+      if(error) throw error;
+      if(!data || !data.length){ cont.innerHTML='<div style="font-family:var(--font-mono);font-size:.6rem;color:var(--gray);padding:.8rem 0">Aún no hay productos de mayoreo.</div>'; return; }
+      cont.innerHTML = data.map(p => {
+        const mediaEl = p.imagen_url
+          ? `<img src="${p.imagen_url}" style="width:64px;height:64px;object-fit:cover;flex-shrink:0;border:1px solid var(--border)">`
+          : `<div style="width:64px;height:64px;display:flex;align-items:center;justify-content:center;background:var(--card2);font-size:2rem;flex-shrink:0">${p.emoji||'📦'}</div>`;
+        return `<div class="admin-card" style="display:flex;gap:1rem;align-items:flex-start">
+          ${mediaEl}
+          <div style="flex:1;min-width:0">
+            <div class="admin-card-title" style="display:flex;align-items:center;gap:.5rem">
+              ${p.nombre}
+              <span style="font-family:var(--font-mono);font-size:.45rem;letter-spacing:1px;background:${p.activo?'rgba(76,175,80,.15)':'rgba(255,255,255,.05)'};color:${p.activo?'#4caf50':'var(--gray)'};padding:.15rem .4rem">${p.activo?'ACTIVO':'OCULTO'}</span>
+            </div>
+            ${p.precio ? `<div style="font-family:var(--font-mono);font-size:.7rem;color:var(--neon)">$${Number(p.precio).toLocaleString('es-MX')} MXN</div>` : ''}
+            ${p.descripcion ? `<div style="font-size:.75rem;color:var(--gray);margin-top:.2rem;line-height:1.4">${p.descripcion}</div>` : ''}
+          </div>
+          <div style="display:flex;flex-direction:column;gap:.3rem;flex-shrink:0">
+            <button class="admin-btn-sm" onclick="editarMProd('${p.id}')">✏️</button>
+            <button class="admin-btn-sm danger" onclick="eliminarMProd('${p.id}','${(p.imagen_url||'').replace(/'/g,"\\'")}')">🗑️</button>
+            <button class="admin-btn-sm" style="background:${p.activo?'rgba(76,175,80,.15)':'rgba(255,255,255,.05)'}" onclick="toggleMPActivo('${p.id}',${p.activo})">${p.activo?'✅':'👁️'}</button>
+          </div>
+        </div>`;
+      }).join('');
+    } catch(e){ cont.innerHTML=`<div style="color:var(--neon);font-size:.6rem">${e.message}</div>`; }
+  }
+
+  async function editarMProd(id){
+    const { data, error } = await sb.from('mayoreo_productos').select('*').eq('id',id).single();
+    if(error||!data) return;
+    document.getElementById('mp-edit-id').value = data.id;
+    document.getElementById('mp-nombre').value = data.nombre||'';
+    document.getElementById('mp-precio').value = data.precio||'';
+    document.getElementById('mp-desc').value = data.descripcion||'';
+    document.getElementById('mp-emoji').value = data.emoji||'';
+    document.getElementById('mp-orden').value = data.orden||99;
+    document.getElementById('mp-activo').checked = data.activo !== false;
+    if(data.imagen_url){
+      const prev = document.getElementById('mp-preview');
+      prev.src = data.imagen_url; prev.style.display='block';
+    }
+    const conActivo = data.contenido_activo && data.contenido;
+    document.getElementById('mp-contenido-activo').checked = !!conActivo;
+    if(conActivo){
+      try { _mpItems = JSON.parse(data.contenido)||[]; } catch(e){ _mpItems=[]; }
+      document.getElementById('mp-contenido-form').style.display='block';
+      renderItemsContenido();
+    }
+    document.getElementById('mp-msg').textContent = '';
+    document.getElementById('sec-mayoreo-prods').scrollIntoView({behavior:'smooth'});
+  }
+
+  async function eliminarMProd(id, imgUrl){
+    confirmDelete('¿Eliminar este producto de mayoreo?', async()=>{
+      try {
+        const { error } = await sb.from('mayoreo_productos').delete().eq('id',id);
+        if(error) throw error;
+        if(imgUrl) await deleteFromStorage(imgUrl);
+        showNotif('✅ Producto eliminado');
+        cargarMayoreoProductosAdmin();
+      } catch(e){ showNotif('Error: '+e.message); }
+    });
+  }
+
+  async function toggleMPActivo(id, actual){
+    try {
+      await sb.from('mayoreo_productos').update({ activo: !actual }).eq('id',id);
+      showNotif(!actual ? '✅ Producto visible' : '👁️ Producto oculto');
+      cargarMayoreoProductosAdmin();
+    } catch(e){ showNotif('Error: '+e.message); }
+  }
+
+  // ── CATÁLOGO MAYOREO END ───────────────────────────────────────────────────
 
   // ── NUESTRAS CREACIONES ────────────────────────────────────────────────────
   function previewCreacion(input){

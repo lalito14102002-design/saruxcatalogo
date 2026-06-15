@@ -1065,7 +1065,7 @@ function cerrarPaqueteModal(){
 function renderMayoreo(){
   if(!MAYOREO_D.activo){document.getElementById('mayoreo').innerHTML='';return;}
   const paquetesHTML=(MAYOREO_D.paquetes||[]).map((p,i)=>`<div class="paquete-card" style="cursor:pointer" onclick="abrirPaqueteModal(${i})"><span class="paquete-emoji">${p.emoji}</span><div class="paquete-nombre">${p.nombre}</div><div class="paquete-piezas">${p.piezas}</div><div class="paquete-precio">${p.precio}</div><div class="paquete-incluye">${p.incluye}</div><div style="margin-top:.8rem;font-family:var(--font-mono);font-size:.5rem;letter-spacing:2px;color:var(--neon);border:1px solid rgba(232,25,44,.3);padding:.3rem .8rem;display:inline-block">VER DETALLES →</div></div>`).join('');
-  document.getElementById('mayoreo').innerHTML=`<div class="mayoreo-hero"><div class="mayoreo-titulo">VENTA AL <span>MAYOREO</span></div><div class="mayoreo-subtitulo">${MAYOREO_D.subtitulo}</div><p class="mayoreo-desc">${MAYOREO_D.descripcion}</p><div class="mayoreo-badges"><span class="mayoreo-badge-item">✦ ${MAYOREO_D.minimo}</span><span class="mayoreo-badge-item">✦ ${MAYOREO_D.descuento}</span><span class="mayoreo-badge-item">✦ ${MAYOREO_D.entrega}</span></div><div style="display:flex;gap:1rem;justify-content:center;flex-wrap:wrap;position:relative"><a href="https://wa.me/${NEGOCIO.whatsapp}?text=${encodeURIComponent(MAYOREO_D.whatsapp_msg)}" target="_blank" class="btn-neon">📱 Cotizar ahora</a><a href="#catalogo" class="btn-outline">Ver productos</a></div></div><div style="padding:4rem 3rem 0"><div class="sec-header"><div><div class="sec-label">Para cada ocasión</div><h2 class="sec-title">TIPOS DE EVENTOS</h2></div></div><div class="eventos-grid">${(MAYOREO_D.eventos||[]).map(e=>`<div class="evento-card"><span class="evento-emoji">${e.emoji}</span><div class="evento-nombre">${e.nombre}</div><div class="evento-desc">${e.descripcion}</div></div>`).join('')}</div></div><div style="padding:3rem 3rem 0"><div class="sec-header"><div><div class="sec-label">Elige tu volumen</div><h2 class="sec-title">PAQUETES MAYOREO</h2></div></div><div class="paquetes-mayoreo">${paquetesHTML}</div></div><div style="padding:3rem 3rem 0"><div class="sec-header"><div><div class="sec-label">Así funciona</div><h2 class="sec-title">PROCESO</h2></div></div><div class="proceso-grid">${(MAYOREO_D.proceso||[]).map(p=>`<div class="proceso-card"><div class="proceso-paso">${p.paso}</div><div class="proceso-titulo">${p.titulo}</div><div class="proceso-desc">${p.desc}</div></div>`).join('')}</div></div><div style="padding:2rem 3rem 5rem"><div class="mayoreo-cta"><h3>¿LISTO PARA COTIZAR?</h3><p>Escríbenos por WhatsApp y te enviamos una cotización personalizada en menos de 24 horas.</p><a href="https://wa.me/${NEGOCIO.whatsapp}?text=${encodeURIComponent(MAYOREO_D.whatsapp_msg)}" target="_blank" class="btn-neon">📱 Solicitar cotización gratis</a></div></div>`;
+  document.getElementById('mayoreo').innerHTML=`<div class="mayoreo-hero"><div class="mayoreo-titulo">VENTA AL <span>MAYOREO</span></div><div class="mayoreo-subtitulo">${MAYOREO_D.subtitulo}</div><p class="mayoreo-desc">${MAYOREO_D.descripcion}</p><div class="mayoreo-badges"><span class="mayoreo-badge-item">✦ ${MAYOREO_D.minimo}</span><span class="mayoreo-badge-item">✦ ${MAYOREO_D.descuento}</span><span class="mayoreo-badge-item">✦ ${MAYOREO_D.entrega}</span></div><div style="display:flex;gap:1rem;justify-content:center;flex-wrap:wrap;position:relative"><a href="https://wa.me/${NEGOCIO.whatsapp}?text=${encodeURIComponent(MAYOREO_D.whatsapp_msg)}" target="_blank" class="btn-neon">📱 Cotizar ahora</a><a href="mayoreo-catalogo.html" class="btn-outline" style="border-color:var(--neon);color:var(--neon)">📦 Ver catálogo mayoreo</a></div></div><div style="padding:4rem 3rem 0"><div class="sec-header"><div><div class="sec-label">Para cada ocasión</div><h2 class="sec-title">TIPOS DE EVENTOS</h2></div></div><div class="eventos-grid">${(MAYOREO_D.eventos||[]).map(e=>`<div class="evento-card"><span class="evento-emoji">${e.emoji}</span><div class="evento-nombre">${e.nombre}</div><div class="evento-desc">${e.descripcion}</div></div>`).join('')}</div></div><div style="padding:3rem 3rem 0"><div class="sec-header"><div><div class="sec-label">Así funciona</div><h2 class="sec-title">PROCESO</h2></div></div><div class="proceso-grid">${(MAYOREO_D.proceso||[]).map(p=>`<div class="proceso-card"><div class="proceso-paso">${p.paso}</div><div class="proceso-titulo">${p.titulo}</div><div class="proceso-desc">${p.desc}</div></div>`).join('')}</div></div><div style="padding:2rem 3rem 5rem"><div class="mayoreo-cta"><h3>¿LISTO PARA COTIZAR?</h3><p>Escríbenos por WhatsApp y te enviamos una cotización personalizada en menos de 24 horas.</p><a href="https://wa.me/${NEGOCIO.whatsapp}?text=${encodeURIComponent(MAYOREO_D.whatsapp_msg)}" target="_blank" class="btn-neon">📱 Solicitar cotización gratis</a></div></div>`;
 }
 
 // COUNTDOWN — persiste usando timestamp de inicio guardado en Supabase
@@ -1668,17 +1668,16 @@ async function cargarCreaciones(){
   try {
     const { data, error } = await sb.from('creaciones').select('*').order('orden',{ascending:true}).order('created_at',{ascending:false});
     if(error || !data || !data.length){
-      grid.innerHTML = '<div class="foto-real-nueva">📷<span>Pronto aquí nuestros trabajos</span></div>';
+      grid.innerHTML = '';
       return;
     }
-    // Mostrar solo las primeras 4 en home
     const visibles = data.slice(0,4);
     grid.innerHTML = visibles.map(c => mkCreacionCard(c)).join('');
     const wrap = document.getElementById('verMasCreacionesWrap');
     if(wrap) wrap.style.display = data.length > 4 ? 'flex' : 'none';
     initLazyImages();
   } catch(e){
-    grid.innerHTML = '<div class="foto-real-nueva">📷<span>Pronto aquí nuestros trabajos</span></div>';
+    grid.innerHTML = '';
   }
 }
 
@@ -2114,23 +2113,23 @@ async function cargarFotosClientes(){
   if(!grid) return;
   try {
     const ahora = Date.now();
-    // Usar caché si es reciente
     if(_fotosClientesCache && (ahora - _fotosClientesCacheTs) < FOTOS_CACHE_TTL){
       renderFotosClientes(_fotosClientesCache);
       return;
     }
     const { data, error } = await sb
       .from('fotos_clientes')
-      .select('id, nombre, producto, imagen_url, resena, estrellas, created_at')
+      .select('id, nombre, producto, imagen_url, resena, estrellas, aprobada, destacada, created_at')
+      .eq('aprobada', true)
       .order('created_at', { ascending: false })
-      .limit(20); // Máximo 20 fotos para no sobrecargar
+      .limit(20);
     if(error) throw error;
     _fotosClientesCache = data || [];
     _fotosClientesCacheTs = ahora;
     renderFotosClientes(_fotosClientesCache);
   } catch(e){
     console.warn('fotos_clientes:', e);
-    grid.innerHTML = '<div class="foto-real-nueva">📷<span>Sin fotos aún</span></div>';
+    if(grid) grid.innerHTML = '<div class="foto-real-nueva">📷<span>Sin reseñas aún</span></div>';
   }
 }
 
