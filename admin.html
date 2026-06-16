@@ -277,7 +277,8 @@
         <button class="admin-nav-btn" onclick="showSec('ig-posts',this)">📸 Instagram</button>
         <button class="admin-nav-btn" onclick="showSec('tt-posts',this)">🎵 TikTok</button>
         <button class="admin-nav-btn" onclick="showSec('creaciones',this);cargarCreacionesAdmin()">✨ Mis Creaciones</button>
-        <button class="admin-nav-btn" onclick="showSec('mayoreo-prods',this);cargarMayoreoProductosAdmin();actualizarSelectEvento()">📦 Catálogo Mayoreo</button>
+        <button class="admin-nav-btn" onclick="showSec('mayoreo-cats',this);cargarMayoreoCatsAdmin()">🎊 Categorías Mayoreo</button>
+        <button class="admin-nav-btn" onclick="showSec('mayoreo-prods',this);cargarMayoreoProductosAdmin();cargarCatsEnSelectProductos()">📦 Catálogo Mayoreo</button>
         <button class="admin-nav-btn" onclick="showSec('fotos-clientes',this);cargarFotosClientesAdmin()">📷 Fotos Reales</button>
         <button class="admin-nav-btn" onclick="showSec('nosotros',this)">ℹ️ Sobre nosotros</button>
         <button class="admin-nav-btn" onclick="showSec('pasos',this)">👣 Cómo pedir</button>
@@ -788,6 +789,62 @@ Casi listo...
       <div id="sec-tt-posts" class="admin-section"><div class="admin-section-title">VIDEOS TIKTOK</div><div id="admin-tt-posts-list"></div><button class="admin-btn-add" onclick="addTtPost()">+ Agregar video</button></div>
 
       <!-- MAYOREO PRODUCTOS -->
+      <!-- CATEGORÍAS MAYOREO -->
+      <div id="sec-mayoreo-cats" class="admin-section">
+        <div class="admin-section-title">🎊 CATEGORÍAS MAYOREO</div>
+        <div class="admin-section-sub">Gestiona las categorías de eventos (Bodas, XV Años, etc.). Cada categoría agrupa productos del catálogo mayoreo.</div>
+
+        <!-- Formulario -->
+        <div style="background:var(--card2);border:1px solid var(--border);padding:1.2rem;margin-bottom:1.5rem">
+          <input type="hidden" id="mcat-edit-id">
+
+          <div class="admin-field-label">IMAGEN DE LA CATEGORÍA <span style="color:var(--gray);font-size:.5rem">(opcional, si no pones emoji)</span></div>
+          <div style="display:flex;gap:.8rem;align-items:flex-start;flex-wrap:wrap;margin-bottom:.8rem">
+            <label style="flex:1;min-width:200px;border:1px dashed var(--border);padding:.8rem;cursor:pointer;display:flex;align-items:center;gap:.5rem;font-family:var(--font-mono);font-size:.6rem;letter-spacing:1px;color:var(--gray)">
+              <input type="file" id="mcat-file" accept="image/*" style="display:none" onchange="previewMCatFile(this)">
+              📎 SELECCIONAR IMAGEN
+            </label>
+            <span id="mcat-file-name" style="font-family:var(--font-mono);font-size:.55rem;color:var(--neon);align-self:center"></span>
+          </div>
+          <img id="mcat-preview" src="" style="display:none;width:100%;max-height:180px;object-fit:cover;margin-bottom:.8rem;border:1px solid var(--border)">
+          <div id="mcat-img-actual" style="display:none;margin-bottom:.6rem">
+            <div style="font-family:var(--font-mono);font-size:.5rem;color:var(--gray);margin-bottom:.3rem">IMAGEN ACTUAL:</div>
+            <img id="mcat-img-actual-img" src="" style="width:80px;height:80px;object-fit:cover;border:1px solid var(--border)">
+            <button onclick="limpiarMCatImagen()" style="display:block;margin-top:.3rem;background:none;border:1px solid rgba(232,25,44,.3);color:var(--neon);font-family:var(--font-mono);font-size:.5rem;padding:.3rem .6rem;cursor:pointer">✕ QUITAR IMAGEN</button>
+          </div>
+
+          <div style="display:flex;gap:.6rem;align-items:center;margin-bottom:.8rem">
+            <div class="admin-field-label" style="margin:0">EMOJI <span style="color:var(--gray);font-size:.5rem">(se muestra si no hay imagen)</span></div>
+            <input id="mcat-emoji" placeholder="💍" class="admin-input" style="width:70px;text-align:center;font-size:1.2rem">
+          </div>
+
+          <div class="admin-field-label">NOMBRE DE LA CATEGORÍA *</div>
+          <input id="mcat-nombre" placeholder="Ej: Bodas, XV Años, Graduaciones..." class="admin-input" style="margin-bottom:.8rem">
+
+          <div class="admin-field-label">DESCRIPCIÓN CORTA</div>
+          <input id="mcat-desc" placeholder="Ej: Recuerdos personalizados con los nombres de los novios" class="admin-input" style="margin-bottom:.8rem">
+
+          <div class="admin-field-label">ORDEN <span style="color:var(--gray);font-size:.5rem">(menor = primero)</span></div>
+          <input id="mcat-orden" type="number" value="99" class="admin-input" style="width:80px;margin-bottom:.6rem">
+
+          <div style="display:flex;align-items:center;gap:.8rem;margin-bottom:1rem">
+            <label style="display:flex;align-items:center;gap:.4rem;cursor:pointer;font-family:var(--font-mono);font-size:.55rem;color:var(--gray)">
+              <input type="checkbox" id="mcat-activa" checked> VISIBLE EN CATÁLOGO
+            </label>
+          </div>
+
+          <div id="mcat-msg" style="font-family:var(--font-mono);font-size:.6rem;margin-bottom:.6rem"></div>
+          <div style="display:flex;gap:.6rem;flex-wrap:wrap">
+            <button class="admin-btn" onclick="guardarMCat()">💾 GUARDAR CATEGORÍA</button>
+            <button class="admin-btn" style="background:rgba(255,255,255,.05);border-color:var(--border);color:var(--gray)" onclick="limpiarMCatForm()">✕ CANCELAR</button>
+          </div>
+        </div>
+
+        <div id="admin-mayoreo-cats-list">
+          <div style="font-family:var(--font-mono);font-size:.6rem;color:var(--gray)">Cargando...</div>
+        </div>
+      </div>
+
       <div id="sec-mayoreo-prods" class="admin-section">
         <div class="admin-section-title">📦 CATÁLOGO MAYOREO</div>
         <div class="admin-section-sub">Agrega y gestiona los productos de tu catálogo de mayoreo. Solo tú puedes editarlos.</div>
@@ -810,6 +867,11 @@ Casi listo...
             <div class="admin-field-label" style="margin:0">EMOJI (si no hay imagen)</div>
             <input id="mp-emoji" placeholder="📦" class="admin-input" style="width:60px;text-align:center;font-size:1.2rem">
           </div>
+
+          <div class="admin-field-label">CATEGORÍA DEL EVENTO</div>
+          <select id="mp-categoria-id" class="admin-input" style="margin-bottom:.8rem">
+            <option value="">— Sin categoría específica —</option>
+          </select>
 
           <div class="admin-field-label">NOMBRE DEL PRODUCTO *</div>
           <input id="mp-nombre" placeholder="Ej: 60 Tazas Sublimadas / Paquete Boda Premium" class="admin-input" style="margin-bottom:.8rem">
@@ -834,11 +896,6 @@ Casi listo...
               <button onclick="agregarItemContenido()" style="background:none;border:1px dashed var(--border);color:var(--gray);font-family:var(--font-mono);font-size:.55rem;letter-spacing:2px;padding:.5rem 1rem;cursor:pointer;width:100%;margin-top:.5rem">+ AGREGAR LÍNEA</button>
             </div>
           </div>
-
-          <div class="admin-field-label">EVENTO / CATEGORÍA <span style="color:var(--neon);font-size:.5rem">* REQUERIDO para filtrar por catálogo</span></div>
-          <select id="mp-evento" class="admin-input" style="margin-bottom:.8rem">
-            <option value="">— Sin categoría (aparece en todos) —</option>
-          </select>
 
           <div class="admin-field-label">ORDEN <span style="color:var(--gray);font-size:.5rem">(menor = primero)</span></div>
           <input id="mp-orden" type="number" value="99" class="admin-input" style="width:80px;margin-bottom:.6rem">
@@ -1623,20 +1680,167 @@ Casi listo...
   // ── CATÁLOGO MAYOREO ───────────────────────────────────────────────────────
   let _mpItems = [];
 
-  // Llena el select de evento desde los eventos configurados en Mayoreo
-  function actualizarSelectEvento(valorActual){
-    const sel = document.getElementById('mp-evento');
-    if(!sel) return;
-    const eventos = (MAYOREO_D && MAYOREO_D.eventos) || [];
-    sel.innerHTML = '<option value="">— Sin categoría (aparece en todos) —</option>';
-    eventos.forEach(e => {
-      const opt = document.createElement('option');
-      opt.value = e.nombre;
-      opt.textContent = (e.emoji||'') + ' ' + e.nombre;
-      if(valorActual && e.nombre === valorActual) opt.selected = true;
-      sel.appendChild(opt);
+  // ═══════════════════════════════════════════════
+  // CATEGORÍAS MAYOREO
+  // ═══════════════════════════════════════════════
+  let _mcatImgUrl = null; // imagen actual al editar
+
+  function previewMCatFile(input){
+    const f = input.files[0]; if(!f) return;
+    document.getElementById('mcat-file-name').textContent = f.name;
+    const prev = document.getElementById('mcat-preview');
+    prev.src = URL.createObjectURL(f);
+    prev.style.display = 'block';
+  }
+
+  function limpiarMCatImagen(){
+    _mcatImgUrl = '__remove__';
+    document.getElementById('mcat-img-actual').style.display = 'none';
+    document.getElementById('mcat-file-name').textContent = '';
+    document.getElementById('mcat-preview').style.display = 'none';
+    document.getElementById('mcat-file').value = '';
+  }
+
+  function limpiarMCatForm(){
+    document.getElementById('mcat-edit-id').value = '';
+    document.getElementById('mcat-nombre').value = '';
+    document.getElementById('mcat-desc').value = '';
+    document.getElementById('mcat-emoji').value = '';
+    document.getElementById('mcat-orden').value = '99';
+    document.getElementById('mcat-activa').checked = true;
+    document.getElementById('mcat-file').value = '';
+    document.getElementById('mcat-file-name').textContent = '';
+    document.getElementById('mcat-preview').style.display = 'none';
+    document.getElementById('mcat-img-actual').style.display = 'none';
+    document.getElementById('mcat-msg').textContent = '';
+    _mcatImgUrl = null;
+  }
+
+  async function guardarMCat(){
+    const nombre = document.getElementById('mcat-nombre').value.trim();
+    const desc   = document.getElementById('mcat-desc').value.trim();
+    const emoji  = document.getElementById('mcat-emoji').value.trim() || '🎊';
+    const orden  = parseInt(document.getElementById('mcat-orden').value) || 99;
+    const activa = document.getElementById('mcat-activa').checked;
+    const editId = document.getElementById('mcat-edit-id').value;
+    const msg    = document.getElementById('mcat-msg');
+
+    if(!nombre){ msg.style.color='var(--neon)'; msg.textContent='⚠️ Escribe el nombre de la categoría'; return; }
+    msg.style.color='var(--gray)'; msg.textContent='Guardando...';
+
+    try {
+      let imagen_url = _mcatImgUrl === '__remove__' ? null : (_mcatImgUrl || undefined);
+      const file = document.getElementById('mcat-file').files[0];
+      if(file){
+        msg.textContent = 'Subiendo imagen...';
+        const ext = file.name.split('.').pop().toLowerCase();
+        const path = 'mayoreo-cats/' + Date.now() + '.' + ext;
+        const { data: up, error: upErr } = await sb.storage.from('images').upload(path, file, { upsert: true });
+        if(upErr){ msg.style.color='red'; msg.textContent='❌ Error imagen: ' + upErr.message; return; }
+        const { data: urlData } = sb.storage.from('images').getPublicUrl(up.path);
+        imagen_url = urlData.publicUrl;
+      }
+
+      const payload = { nombre, descripcion: desc||null, emoji, orden, activa };
+      if(imagen_url !== undefined) payload.imagen_url = imagen_url;
+
+      let err;
+      if(editId){
+        ({ error: err } = await sb.from('mayoreo_categorias').update(payload).eq('id', editId));
+      } else {
+        ({ error: err } = await sb.from('mayoreo_categorias').insert([payload]));
+      }
+      if(err){ msg.style.color='red'; msg.textContent='❌ Error: ' + err.message; return; }
+
+      msg.style.color='#4caf50'; msg.textContent='✅ Categoría guardada';
+      limpiarMCatForm();
+      setTimeout(()=>{ msg.textContent=''; }, 3000);
+      cargarMayoreoCatsAdmin();
+      cargarCatsEnSelectProductos(); // actualizar el select de productos
+    } catch(e){ msg.style.color='red'; msg.textContent='❌ Error: ' + e.message; }
+  }
+
+  async function cargarMayoreoCatsAdmin(){
+    const cont = document.getElementById('admin-mayoreo-cats-list');
+    if(!cont) return;
+    cont.innerHTML = '<div style="font-family:var(--font-mono);font-size:.6rem;color:var(--gray)">Cargando...</div>';
+    try {
+      const { data, error } = await sb.from('mayoreo_categorias').select('*').order('orden',{ascending:true}).order('created_at',{ascending:true});
+      if(error) throw error;
+      if(!data || !data.length){
+        cont.innerHTML = '<div style="font-family:var(--font-mono);font-size:.6rem;color:var(--gray);padding:.8rem 0">Aún no hay categorías. Agrégalas arriba.</div>';
+        return;
+      }
+      cont.innerHTML = data.map(c => {
+        const img = c.imagen_url
+          ? `<img src="${c.imagen_url}" style="width:48px;height:48px;object-fit:cover;border:1px solid var(--border)">`
+          : `<div style="width:48px;height:48px;display:flex;align-items:center;justify-content:center;background:var(--card2);font-size:1.5rem;border:1px solid var(--border)">${c.emoji||'🎊'}</div>`;
+        return `<div style="display:flex;align-items:center;gap:.8rem;padding:.8rem;border-bottom:1px solid var(--border);background:var(--card2)">
+          ${img}
+          <div style="flex:1;min-width:0">
+            <div style="font-family:var(--font-display);font-size:.9rem;letter-spacing:2px;color:${c.activa?'var(--white)':'var(--gray)'}">${c.nombre}</div>
+            <div style="font-size:.7rem;color:var(--gray);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${c.descripcion||''}</div>
+            <div style="font-family:var(--font-mono);font-size:.45rem;color:rgba(232,25,44,.6);margin-top:.2rem">ORDEN: ${c.orden||99} · ${c.activa?'VISIBLE':'OCULTA'}</div>
+          </div>
+          <div style="display:flex;gap:.4rem;flex-shrink:0">
+            <button class="admin-btn-sm" onclick="editarMCat('${c.id}')">✏️</button>
+            <button class="admin-btn-sm" style="background:${c.activa?'rgba(76,175,80,.15)':'rgba(255,255,255,.05)'}" onclick="toggleMCatActiva('${c.id}',${c.activa})">${c.activa?'✅':'👁️'}</button>
+            <button class="admin-btn-sm" style="border-color:rgba(232,25,44,.4)" onclick="eliminarMCat('${c.id}')">🗑️</button>
+          </div>
+        </div>`;
+      }).join('');
+    } catch(e){ cont.innerHTML = `<div style="color:var(--neon);font-size:.6rem">${e.message}</div>`; }
+  }
+
+  async function editarMCat(id){
+    const { data, error } = await sb.from('mayoreo_categorias').select('*').eq('id',id).single();
+    if(error||!data) return;
+    document.getElementById('mcat-edit-id').value = data.id;
+    document.getElementById('mcat-nombre').value = data.nombre||'';
+    document.getElementById('mcat-desc').value = data.descripcion||'';
+    document.getElementById('mcat-emoji').value = data.emoji||'';
+    document.getElementById('mcat-orden').value = data.orden||99;
+    document.getElementById('mcat-activa').checked = data.activa !== false;
+    document.getElementById('mcat-preview').style.display = 'none';
+    document.getElementById('mcat-file').value = '';
+    document.getElementById('mcat-file-name').textContent = '';
+    _mcatImgUrl = data.imagen_url || null;
+    if(data.imagen_url){
+      document.getElementById('mcat-img-actual-img').src = data.imagen_url;
+      document.getElementById('mcat-img-actual').style.display = 'block';
+    } else {
+      document.getElementById('mcat-img-actual').style.display = 'none';
+    }
+    document.getElementById('mcat-msg').textContent = '';
+    document.getElementById('sec-mayoreo-cats').scrollIntoView({behavior:'smooth'});
+  }
+
+  async function toggleMCatActiva(id, actual){
+    await sb.from('mayoreo_categorias').update({ activa: !actual }).eq('id', id);
+    cargarMayoreoCatsAdmin();
+  }
+
+  function eliminarMCat(id){
+    confirmDelete('¿Eliminar esta categoría? Los productos asignados quedarán sin categoría.', async()=>{
+      const { error } = await sb.from('mayoreo_categorias').delete().eq('id', id);
+      if(!error){ cargarMayoreoCatsAdmin(); cargarCatsEnSelectProductos(); }
     });
   }
+
+  // Cargar opciones de categoría en el select de productos mayoreo
+  async function cargarCatsEnSelectProductos(){
+    const sel = document.getElementById('mp-categoria-id');
+    if(!sel) return;
+    try {
+      const { data } = await sb.from('mayoreo_categorias').select('id,nombre').eq('activa',true).order('orden',{ascending:true});
+      const actual = sel.value;
+      sel.innerHTML = '<option value="">— Sin categoría específica —</option>' +
+        (data||[]).map(c => `<option value="${c.id}">${c.nombre}</option>`).join('');
+      if(actual) sel.value = actual;
+    } catch(e){}
+  }
+
+  // ═══════════════════════════════════════════════
 
   function previewMPFile(input){
     const f = input.files[0]; if(!f) return;
@@ -1675,7 +1879,7 @@ Casi listo...
     document.getElementById('mp-precio').value = '';
     document.getElementById('mp-desc').value = '';
     document.getElementById('mp-emoji').value = '';
-    actualizarSelectEvento('');
+    document.getElementById('mp-categoria-id').value = '';
     document.getElementById('mp-orden').value = '99';
     document.getElementById('mp-activo').checked = true;
     document.getElementById('mp-contenido-activo').checked = false;
@@ -1693,11 +1897,11 @@ Casi listo...
     const precio = parseFloat(document.getElementById('mp-precio').value) || null;
     const desc   = document.getElementById('mp-desc').value.trim();
     const emoji  = document.getElementById('mp-emoji').value.trim() || '📦';
-    const evento = document.getElementById('mp-evento').value.trim() || null;
     const orden  = parseInt(document.getElementById('mp-orden').value) || 99;
     const activo = document.getElementById('mp-activo').checked;
     const conActivo = document.getElementById('mp-contenido-activo').checked;
     const editId = document.getElementById('mp-edit-id').value;
+    const catId  = document.getElementById('mp-categoria-id').value || null;
     const msg    = document.getElementById('mp-msg');
 
     if(!nombre){ msg.style.color='var(--neon)'; msg.textContent='⚠️ Escribe el nombre del producto'; return; }
@@ -1717,7 +1921,7 @@ Casi listo...
       }
 
       const contenido = conActivo ? JSON.stringify(_mpItems.filter(it=>it.producto)) : null;
-      const payload = { nombre, precio, descripcion: desc||null, emoji, evento, orden, activo, contenido_activo: conActivo, contenido };
+      const payload = { nombre, precio, descripcion: desc||null, emoji, orden, activo, contenido_activo: conActivo, contenido, categoria_id: catId };
       if(imagen_url) payload.imagen_url = imagen_url;
 
       let err;
@@ -1753,7 +1957,6 @@ Casi listo...
             <div class="admin-card-title" style="display:flex;align-items:center;gap:.5rem">
               ${p.nombre}
               <span style="font-family:var(--font-mono);font-size:.45rem;letter-spacing:1px;background:${p.activo?'rgba(76,175,80,.15)':'rgba(255,255,255,.05)'};color:${p.activo?'#4caf50':'var(--gray)'};padding:.15rem .4rem">${p.activo?'ACTIVO':'OCULTO'}</span>
-              ${p.evento ? `<span style="font-family:var(--font-mono);font-size:.45rem;letter-spacing:1px;background:rgba(232,25,44,.15);color:var(--neon);padding:.15rem .4rem">${p.evento.toUpperCase()}</span>` : ''}
             </div>
             ${p.precio ? `<div style="font-family:var(--font-mono);font-size:.7rem;color:var(--neon)">$${Number(p.precio).toLocaleString('es-MX')} MXN</div>` : ''}
             ${p.descripcion ? `<div style="font-size:.75rem;color:var(--gray);margin-top:.2rem;line-height:1.4">${p.descripcion}</div>` : ''}
@@ -1776,7 +1979,7 @@ Casi listo...
     document.getElementById('mp-precio').value = data.precio||'';
     document.getElementById('mp-desc').value = data.descripcion||'';
     document.getElementById('mp-emoji').value = data.emoji||'';
-    actualizarSelectEvento(data.evento||'');
+    document.getElementById('mp-categoria-id').value = data.categoria_id||'';
     document.getElementById('mp-orden').value = data.orden||99;
     document.getElementById('mp-activo').checked = data.activo !== false;
     if(data.imagen_url){

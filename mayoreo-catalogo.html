@@ -4,15 +4,13 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Catálogo Mayoreo | SARUX</title>
-  <meta name="description" content="Catálogo de mayoreo SARUX — Precios especiales por volumen en Puebla">
+  <meta name="description" content="Catálogo de mayoreo SARUX — Paquetes por evento: Bodas, XV Años, Graduaciones y más">
   <link rel="stylesheet" href="styles.css">
   <style>
-    /* ── Layout base ── */
     body{background:var(--black);color:var(--white);margin:0;padding:0;font-family:var(--font-body)}
 
     /* ── Header ── */
     .my-header{background:var(--black);border-bottom:2px solid var(--neon);padding:1rem 1.5rem;display:flex;align-items:center;gap:1rem;position:sticky;top:0;z-index:100}
-    .my-header-inner{max-width:1200px;margin:0 auto;width:100%;display:flex;align-items:center;gap:1rem}
     .my-back{background:none;border:1px solid rgba(232,25,44,.35);color:var(--neon);font-family:var(--font-mono);font-size:.6rem;letter-spacing:2px;padding:.5rem .9rem;cursor:pointer;text-decoration:none;transition:background .2s}
     .my-back:hover{background:rgba(232,25,44,.1)}
     .my-header-title{font-family:var(--font-display);font-size:1.1rem;letter-spacing:6px;color:var(--white)}
@@ -20,76 +18,43 @@
     .my-share-btn{margin-left:auto;background:none;border:1px solid var(--border);color:var(--gray);font-family:var(--font-mono);font-size:.55rem;letter-spacing:2px;padding:.5rem .8rem;cursor:pointer;display:flex;align-items:center;gap:.4rem;transition:border-color .2s,color .2s}
     .my-share-btn:hover{border-color:var(--neon);color:var(--neon)}
 
-    /* ── Search bar ── */
-    .my-search-wrap{padding:1rem 1.5rem;border-bottom:1px solid var(--border);background:rgba(232,25,44,.03)}
-    .my-search{width:100%;background:var(--card);border:1px solid var(--border);color:var(--white);padding:.8rem 1rem;font-family:var(--font-mono);font-size:.7rem;letter-spacing:1px;box-sizing:border-box;outline:none;transition:border-color .2s}
-    .my-search:focus{border-color:var(--neon)}
-    .my-search::placeholder{color:var(--gray)}
+    /* ── Hero info ── */
+    .my-hero{padding:1.5rem 1.5rem 1rem;background:linear-gradient(180deg,rgba(232,25,44,.06) 0%,transparent 100%);border-bottom:1px solid var(--border)}
+    .my-hero-label{font-family:var(--font-mono);font-size:.5rem;letter-spacing:4px;color:var(--neon);margin-bottom:.3rem}
+    .my-hero-title{font-family:var(--font-display);font-size:1.6rem;letter-spacing:4px;color:var(--white);line-height:1.1;margin:0 0 .4rem}
+    .my-hero-desc{font-size:.75rem;color:var(--gray);font-weight:300;margin:0}
 
-    /* ── Grid de productos — igual que catálogo normal ── */
-    .my-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:1rem;padding:1rem;max-width:1200px;margin:0 auto;background:transparent}
-    @media(min-width:600px){.my-grid{grid-template-columns:repeat(3,1fr)}}
-    @media(min-width:900px){.my-grid{grid-template-columns:repeat(4,1fr)}}
+    /* ── Grid de categorías ── */
+    .my-cats-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:1px;background:var(--border)}
+    .my-cat-card{background:var(--card);cursor:pointer;transition:background .2s;position:relative;overflow:hidden;display:flex;flex-direction:column;text-decoration:none;color:inherit}
+    .my-cat-card:hover{background:rgba(20,0,3,1)}
+    .my-cat-card:active{background:var(--card2)}
 
-    .my-card{
-      position:relative;border-radius:8px;overflow:hidden;
-      background:var(--card);border:1px solid rgba(255,255,255,.07);
-      cursor:pointer;aspect-ratio:4/5;
-      transition:transform .2s,border-color .2s,box-shadow .2s;
-    }
-    .my-card:active{transform:scale(.97)}
-    .my-card:hover{border-color:rgba(232,25,44,.4);box-shadow:0 0 20px rgba(232,25,44,.15)}
+    /* Banda MAYOREO */
+    .my-cat-card::before{content:'MAYOREO';position:absolute;top:10px;right:-22px;background:var(--neon);color:#000;font-family:var(--font-mono);font-size:.38rem;letter-spacing:2px;padding:.15rem 1.8rem;transform:rotate(35deg);font-weight:700;z-index:2}
 
-    .my-card-img-wrap{width:100%;height:100%;overflow:hidden}
-    .my-card-img-wrap img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .35s}
-    .my-card:hover .my-card-img-wrap img{transform:scale(1.04)}
-    .my-card-emoji{width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:3.5rem;background:var(--card2)}
+    .my-cat-img{width:100%;aspect-ratio:1;overflow:hidden;position:relative;background:#111}
+    .my-cat-img img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .4s}
+    .my-cat-card:hover .my-cat-img img{transform:scale(1.05)}
+    .my-cat-emoji{width:100%;aspect-ratio:1;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#0a0000,#1a0005);font-size:3.5rem}
 
-    .my-card-overlay{position:absolute;inset:0;background:linear-gradient(to top,rgba(0,0,0,.82) 0%,rgba(0,0,0,.1) 55%,transparent 100%)}
-    .my-card-info{position:absolute;bottom:0;left:0;right:0;padding:.9rem .85rem .75rem}
-    .my-card-nombre{font-family:var(--font-display);font-size:1.05rem;letter-spacing:2px;color:#fff;line-height:1.1;text-transform:uppercase}
-    .my-card-precio{font-family:var(--font-mono);font-size:.6rem;letter-spacing:2px;color:rgba(255,255,255,.6);margin-top:.25rem}
+    .my-cat-body{padding:.9rem;flex:1;display:flex;flex-direction:column;gap:.25rem;border-top:1px solid rgba(232,25,44,.15)}
+    .my-cat-nombre{font-family:var(--font-display);font-size:1rem;letter-spacing:2px;color:var(--white);line-height:1.2}
+    .my-cat-desc{font-size:.7rem;color:var(--gray);font-weight:300;line-height:1.5;flex:1}
+    .my-cat-count{font-family:var(--font-mono);font-size:.48rem;letter-spacing:2px;color:rgba(232,25,44,.7);margin-top:.2rem}
+    .my-cat-ver{font-family:var(--font-mono);font-size:.45rem;letter-spacing:2px;color:var(--neon);border:1px solid rgba(232,25,44,.3);padding:.25rem .6rem;margin-top:.5rem;display:inline-block}
 
-    .my-card-arrow{position:absolute;top:.7rem;right:.7rem;width:28px;height:28px;border-radius:50%;background:rgba(232,25,44,.8);display:flex;align-items:center;justify-content:center;font-size:.75rem;opacity:0;transition:opacity .2s}
-    .my-card:hover .my-card-arrow{opacity:1}
-
-    /* ── Empty state ── */
+    /* ── Empty / Loading ── */
     .my-empty{grid-column:1/-1;padding:4rem 1.5rem;text-align:center;color:var(--gray)}
     .my-empty-icon{font-size:3rem;margin-bottom:1rem}
     .my-empty-text{font-family:var(--font-mono);font-size:.65rem;letter-spacing:2px}
-
-    /* ── Modal ── */
-    .my-modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:9999;overflow-y:auto;padding:1.5rem 1rem}
-    .my-modal-overlay.open{display:flex;align-items:flex-start;justify-content:center}
-    .my-modal{background:var(--card);border:1px solid rgba(232,25,44,.3);max-width:480px;width:100%;position:relative;animation:slideUp .3s ease}
-    @keyframes slideUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
-    .my-modal-close{position:absolute;top:.8rem;right:.8rem;background:none;border:none;color:var(--gray);font-size:1.3rem;cursor:pointer;z-index:2;line-height:1}
-    .my-modal-img{width:100%;aspect-ratio:1;overflow:hidden;background:#111;position:relative}
-    .my-modal-img img{width:100%;height:100%;object-fit:cover;display:block}
-    .my-modal-no-img{width:100%;aspect-ratio:3/2;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#0a0000,#1a0005);font-size:5rem}
-    .my-modal-body{padding:1.2rem 1.3rem 1.5rem}
-    .my-modal-badge{font-family:var(--font-mono);font-size:.5rem;letter-spacing:3px;color:var(--neon);margin-bottom:.4rem}
-    .my-modal-nombre{font-family:var(--font-display);font-size:1.4rem;letter-spacing:3px;color:var(--white);margin-bottom:.4rem;line-height:1.2}
-    .my-modal-precio{font-family:var(--font-mono);font-size:1.3rem;color:var(--neon);font-weight:700;margin-bottom:.8rem}
-    .my-modal-desc{font-size:.85rem;color:var(--gray);font-weight:300;line-height:1.7;margin-bottom:1rem}
-    .my-modal-sec{font-family:var(--font-mono);font-size:.5rem;letter-spacing:3px;color:rgba(255,255,255,.4);margin-bottom:.5rem;margin-top:.8rem}
-    .my-modal-contenido{background:rgba(232,25,44,.05);border:1px solid rgba(232,25,44,.15);padding:.8rem 1rem;margin-bottom:1rem}
-    .my-modal-contenido-item{display:flex;align-items:center;gap:.6rem;padding:.3rem 0;border-bottom:1px solid rgba(255,255,255,.04);font-size:.82rem;color:var(--light)}
-    .my-modal-contenido-item:last-child{border-bottom:none}
-    .my-modal-contenido-item span{color:var(--neon);font-family:var(--font-mono);font-size:.7rem;font-weight:700;min-width:2rem}
-    .my-modal-btns{display:flex;flex-direction:column;gap:.6rem;margin-top:1rem}
-    .my-modal-wa{background:var(--neon);color:#000;border:none;padding:1rem;font-family:var(--font-display);font-size:.85rem;letter-spacing:3px;cursor:pointer;width:100%;transition:opacity .2s}
-    .my-modal-wa:hover{opacity:.9}
-    .my-modal-share{background:none;border:1px solid var(--border);color:var(--gray);padding:.7rem;font-family:var(--font-mono);font-size:.6rem;letter-spacing:2px;cursor:pointer;width:100%;transition:border-color .2s,color .2s}
-    .my-modal-share:hover{border-color:var(--neon);color:var(--neon)}
 
     /* ── Toast ── */
     #myToast{position:fixed;bottom:2rem;left:50%;transform:translateX(-50%) translateY(60px);background:var(--card);border:1px solid var(--neon);color:var(--white);font-family:var(--font-mono);font-size:.65rem;letter-spacing:1px;padding:.7rem 1.2rem;z-index:99999;opacity:0;transition:all .3s;pointer-events:none;white-space:nowrap}
     #myToast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 
-    @media(max-width:480px){
-      .my-card-nombre{font-size:.82rem}
-      .my-modal-nombre{font-size:1.1rem}
+    @media(max-width:380px){
+      .my-cat-nombre{font-size:.85rem}
     }
   </style>
 </head>
@@ -105,36 +70,16 @@
   <button class="my-share-btn" onclick="compartirCatalogo()">🔗 COMPARTIR</button>
 </header>
 
-<!-- Buscador -->
-<div class="my-search-wrap">
-  <input class="my-search" id="mySearch" placeholder="🔍 Buscar producto de mayoreo..." oninput="filtrar(this.value)">
+<!-- Hero -->
+<div class="my-hero">
+  <div class="my-hero-label">PARA CADA OCASIÓN</div>
+  <div class="my-hero-title">TIPOS DE<br>EVENTOS</div>
+  <p class="my-hero-desc">Selecciona tu tipo de evento para ver los productos disponibles</p>
 </div>
 
-<!-- Grid -->
-<div class="my-grid" id="myGrid">
+<!-- Grid de categorías -->
+<div class="my-cats-grid" id="myCatsGrid">
   <div class="my-empty" style="grid-column:1/-1;padding:2rem;text-align:center;font-family:var(--font-mono);font-size:.6rem;color:var(--gray)">Cargando...</div>
-</div>
-
-<!-- Modal detalle -->
-<div class="my-modal-overlay" id="myModalOverlay" onclick="if(event.target===this)cerrarModal()">
-  <div class="my-modal" id="myModal">
-    <button class="my-modal-close" onclick="cerrarModal()">✕</button>
-    <div id="myModalMedia"></div>
-    <div class="my-modal-body">
-      <div class="my-modal-badge">MAYOREO SARUX</div>
-      <div class="my-modal-nombre" id="myModalNombre"></div>
-      <div class="my-modal-precio" id="myModalPrecio"></div>
-      <div class="my-modal-desc" id="myModalDesc"></div>
-      <div id="myModalContenidoWrap" style="display:none">
-        <div class="my-modal-sec">CONTENIDO DEL PAQUETE</div>
-        <div class="my-modal-contenido" id="myModalContenido"></div>
-      </div>
-      <div class="my-modal-btns">
-        <button class="my-modal-wa" id="myModalWA">📱 COTIZAR POR WHATSAPP</button>
-        <button class="my-modal-share" onclick="compartirProducto()">🔗 COPIAR ENLACE DE ESTE PRODUCTO</button>
-      </div>
-    </div>
-  </div>
 </div>
 
 <!-- Toast -->
@@ -144,155 +89,53 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 const sb = window.supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
-let PRODUCTOS = [];
-let PROD_ACTIVO = null;
-let NEGOCIO_WA = '';
 
-// Cargar número WhatsApp de config
-async function cargarConfig(){
+async function cargarCategorias(){
+  const grid = document.getElementById('myCatsGrid');
   try {
-    const { data } = await sb.from('site_config').select('config_data').eq('id',1).single();
-    if(data && data.config_data && data.config_data.NEGOCIO){
-      NEGOCIO_WA = data.config_data.NEGOCIO.whatsapp || '';
-    }
-  } catch(e){}
-}
-
-async function cargarProductos(){
-  const grid = document.getElementById('myGrid');
-  // Leer filtro de evento desde URL
-  const params = new URLSearchParams(window.location.search);
-  const eventoFiltro = params.get('evento');
-  try {
-    let query = sb
-      .from('mayoreo_productos')
+    const { data, error } = await sb
+      .from('mayoreo_categorias')
       .select('*')
-      .eq('activo', true)
-      .order('orden', {ascending: true})
-      .order('created_at', {ascending: false});
+      .eq('activa', true)
+      .order('orden', { ascending: true })
+      .order('created_at', { ascending: true });
 
-    // Si hay filtro de evento, aplicarlo en Supabase directamente
-    if(eventoFiltro){
-      query = query.ilike('evento', eventoFiltro);
+    if(error) throw error;
+    const cats = data || [];
+
+    if(!cats.length){
+      grid.innerHTML = `<div class="my-empty"><div class="my-empty-icon">🎊</div><div class="my-empty-text">PRÓXIMAMENTE CATEGORÍAS</div></div>`;
+      return;
     }
 
-    const { data, error } = await query;
-    if(error) throw error;
-    PRODUCTOS = data || [];
-    renderGrid(PRODUCTOS);
+    // Contar productos por categoría
+    const { data: counts } = await sb
+      .from('mayoreo_productos')
+      .select('categoria_id')
+      .eq('activo', true);
+
+    const cmap = {};
+    (counts||[]).forEach(r => { cmap[r.categoria_id] = (cmap[r.categoria_id]||0)+1; });
+
+    grid.innerHTML = cats.map(c => {
+      const imgEl = c.imagen_url
+        ? `<div class="my-cat-img"><img src="${c.imagen_url}" alt="${c.nombre}" loading="lazy"></div>`
+        : `<div class="my-cat-emoji">${c.emoji||'🎊'}</div>`;
+      const cnt = cmap[c.id] || 0;
+      const countEl = cnt > 0 ? `<div class="my-cat-count">✦ ${cnt} producto${cnt!==1?'s':''}</div>` : '';
+      return `<a class="my-cat-card" href="mayoreo-cat-productos.html?cat=${encodeURIComponent(c.nombre)}&id=${c.id}">
+        ${imgEl}
+        <div class="my-cat-body">
+          <div class="my-cat-nombre">${c.nombre}</div>
+          <div class="my-cat-desc">${c.descripcion||''}</div>
+          ${countEl}
+          <span class="my-cat-ver">VER PRODUCTOS →</span>
+        </div>
+      </a>`;
+    }).join('');
+
   } catch(e){
-    grid.innerHTML = `<div class="my-empty"><div class="my-empty-icon">📦</div><div class="my-empty-text">Error cargando productos</div></div>`;
-  }
-}
-
-function renderGrid(prods){
-  const grid = document.getElementById('myGrid');
-  if(!prods.length){
-    grid.innerHTML = `<div class="my-empty"><div class="my-empty-icon">📦</div><div class="my-empty-text">PRÓXIMAMENTE PRODUCTOS DE MAYOREO</div></div>`;
-    return;
-  }
-  grid.innerHTML = prods.map((p,i) => {
-    const mediaEl = p.imagen_url
-      ? `<div class="my-card-img-wrap"><img src="${p.imagen_url}" alt="${p.nombre}" loading="lazy"></div>`
-      : `<div class="my-card-emoji">${p.emoji||'📦'}</div>`;
-    const precioEl = p.precio ? `<div class="my-card-precio">$${Number(p.precio).toLocaleString('es-MX')} MXN</div>` : '';
-    return `<div class="my-card" onclick="abrirModal(${i})">
-      ${mediaEl}
-      <div class="my-card-overlay"></div>
-      <div class="my-card-arrow">→</div>
-      <div class="my-card-info">
-        <div class="my-card-nombre">${p.nombre}</div>
-        ${precioEl}
-      </div>
-    </div>`;
-  }).join('');
-}
-
-function filtrar(q){
-  const term = q.trim().toLowerCase();
-  if(!term){ renderGrid(PRODUCTOS); return; }
-  const res = PRODUCTOS.filter(p =>
-    (p.nombre||'').toLowerCase().includes(term) ||
-    (p.descripcion||'').toLowerCase().includes(term) ||
-    (p.piezas||'').toLowerCase().includes(term)
-  );
-  renderGrid(res);
-  if(!res.length){
-    document.getElementById('myGrid').innerHTML = `
-      <div class="my-empty">
-        <div class="my-empty-icon">🔍</div>
-        <div class="my-empty-text">SIN RESULTADOS PARA "${q.trim().toUpperCase()}"</div>
-      </div>`;
-  }
-}
-
-function abrirModal(idx){
-  const p = PRODUCTOS[idx];
-  PROD_ACTIVO = p;
-  // Media
-  const media = document.getElementById('myModalMedia');
-  media.innerHTML = p.imagen_url
-    ? `<div class="my-modal-img"><img src="${p.imagen_url}" alt="${p.nombre}"></div>`
-    : `<div class="my-modal-no-img">${p.emoji||'📦'}</div>`;
-  // Info
-  document.getElementById('myModalNombre').textContent = p.nombre;
-  document.getElementById('myModalPrecio').textContent = p.precio ? `$${Number(p.precio).toLocaleString('es-MX')} MXN` : '';
-  document.getElementById('myModalDesc').textContent = p.descripcion || '';
-  // Contenido paquete
-  const cWrap = document.getElementById('myModalContenidoWrap');
-  const cEl = document.getElementById('myModalContenido');
-  if(p.contenido_activo && p.contenido){
-    try {
-      const items = typeof p.contenido === 'string' ? JSON.parse(p.contenido) : p.contenido;
-      if(items && items.length){
-        cEl.innerHTML = items.map(it => `<div class="my-modal-contenido-item"><span>${it.cantidad}</span>${it.producto}</div>`).join('');
-        cWrap.style.display = 'block';
-      } else { cWrap.style.display='none'; }
-    } catch(e){ cWrap.style.display='none'; }
-  } else { cWrap.style.display='none'; }
-  // WA button
-  const waBtn = document.getElementById('myModalWA');
-  const msg = encodeURIComponent(`Hola! Me interesa cotizar por mayoreo: *${p.nombre}*${p.precio ? ' — $'+Number(p.precio).toLocaleString('es-MX')+' MXN' : ''}. ¿Me pueden dar más información?`);
-  waBtn.onclick = () => window.open(`https://wa.me/${NEGOCIO_WA}?text=${msg}`, '_blank');
-  // Abrir — pushState para que el botón regresar del cel cierre el modal
-  history.pushState({ modal: true, idx }, '', window.location.href.split('#')[0] + '#modal');
-  document.getElementById('myModalOverlay').classList.add('open');
-  document.body.style.overflow = 'hidden';
-}
-
-function cerrarModal(){
-  document.getElementById('myModalOverlay').classList.remove('open');
-  document.body.style.overflow = '';
-  PROD_ACTIVO = null;
-  // Quitar la entrada #modal del historial si existe
-  if(window.location.hash === '#modal'){
-    history.back();
-  }
-}
-
-
-function getShareUrl(prod){
-  const base = window.location.href.split('?')[0];
-  return base + '?prod=' + encodeURIComponent(prod.nombre);
-}
-
-function compartirProducto(){
-  if(!PROD_ACTIVO) return;
-  const url = getShareUrl(PROD_ACTIVO);
-  if(navigator.share){
-    navigator.share({ title: PROD_ACTIVO.nombre + ' | SARUX Mayoreo', url }).catch(()=>{});
-  } else {
-    navigator.clipboard.writeText(url).then(()=>toast('🔗 Link copiado')).catch(()=>toast('🔗 '+url));
-  }
-}
-
-function compartirProductoIdx(idx){
-  const p = PRODUCTOS[idx];
-  const url = getShareUrl(p);
-  if(navigator.share){
-    navigator.share({ title: p.nombre + ' | SARUX Mayoreo', url }).catch(()=>{});
-  } else {
-    navigator.clipboard.writeText(url).then(()=>toast('🔗 Link copiado')).catch(()=>toast('🔗 '+url));
+    grid.innerHTML = `<div class="my-empty"><div class="my-empty-icon">⚠️</div><div class="my-empty-text">Error cargando categorías</div></div>`;
   }
 }
 
@@ -312,67 +155,7 @@ function toast(msg){
   setTimeout(()=>t.classList.remove('show'), 2500);
 }
 
-// Deep link — actualizar UI según parámetros de URL
-function checkDeepLink(){
-  const params = new URLSearchParams(window.location.search);
-  const evento = params.get('evento');
-  if(evento){
-    const emojis = {'bodas':'💍','xv años':'👑','graduaciones':'🎓','empresas':'🏢'};
-    const emoji = emojis[evento.toLowerCase()] || '🎉';
-    // Actualizar título del header
-    const titleEl = document.querySelector('.my-header-title');
-    if(titleEl) titleEl.textContent = emoji + ' ' + evento.toUpperCase();
-    // Actualizar placeholder del buscador
-    const searchEl = document.getElementById('mySearch');
-    if(searchEl) searchEl.placeholder = `🔍 Buscar en ${evento}...`;
-    // Actualizar botón compartir para que comparta esta vista de categoría
-    const shareBtn = document.querySelector('.my-share-btn');
-    if(shareBtn){
-      const urlCat = window.location.href.split('?')[0] + '?evento=' + encodeURIComponent(evento);
-      shareBtn.onclick = () => {
-        if(navigator.share){
-          navigator.share({ title: `${evento} | SARUX Mayoreo`, url: urlCat }).catch(()=>{});
-        } else {
-          navigator.clipboard.writeText(urlCat).then(()=>toast('🔗 Link de '+evento+' copiado')).catch(()=>toast('🔗 '+urlCat));
-        }
-      };
-    }
-  }
-  // Deep link a producto específico
-  const prod = params.get('prod');
-  if(prod){
-    const idx = PRODUCTOS.findIndex(p => p.nombre === prod);
-    if(idx >= 0) abrirModal(idx);
-  }
-}
-
-// Init
-(async function(){
-  // Garantizar que siempre haya una entrada "atrás" en el historial.
-  // Si llegaron aquí sin pasar por el index (link directo, WhatsApp, etc.),
-  // insertamos el index como página previa para que regresar nunca saque.
-  if(history.length <= 1 || !document.referrer || document.referrer === ''){
-    history.replaceState({ base: true }, '', window.location.href);
-    history.pushState({ catalogo: true }, '', window.location.href);
-  }
-
-  await cargarConfig();
-  await cargarProductos();
-  checkDeepLink();
-})();
-
-// Botón regresar del celular: si hay modal abierto lo cierra, si no regresa al index
-window.addEventListener('popstate', function(e){
-  const overlay = document.getElementById('myModalOverlay');
-  if(overlay && overlay.classList.contains('open')){
-    overlay.classList.remove('open');
-    document.body.style.overflow = '';
-    PROD_ACTIVO = null;
-  } else {
-    // Regresar siempre al index en la sección mayoreo
-    window.location.href = 'index.html#mayoreo';
-  }
-});
+cargarCategorias();
 </script>
 </body>
 </html>
