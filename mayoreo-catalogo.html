@@ -298,9 +298,43 @@ function toast(msg){
   setTimeout(()=>t.classList.remove('show'), 2500);
 }
 
-// Deep link — abrir producto desde URL
+// Deep link — abrir producto desde URL o filtrar por evento
 function checkDeepLink(){
   const params = new URLSearchParams(window.location.search);
+  // Filtro por evento (cuando viene de tarjeta Bodas / XV / etc.)
+  const evento = params.get('evento');
+  if(evento){
+    const emojis = {'bodas':'💍','xv años':'👑','graduaciones':'🎓','empresas':'🏢'};
+    const emoji = emojis[evento.toLowerCase()] || '🎉';
+    // Actualizar título del header
+    const titleEl = document.querySelector('.my-header-title');
+    if(titleEl) titleEl.textContent = emoji + ' ' + evento.toUpperCase();
+    // Actualizar placeholder del buscador
+    const searchEl = document.getElementById('mySearch');
+    if(searchEl) searchEl.placeholder = `🔍 Buscar en ${evento}...`;
+    // Filtrar productos si tienen campo 'evento' o 'categoria'
+    const filtrados = PRODUCTOS.filter(p =>
+      (p.evento && p.evento.toLowerCase() === evento.toLowerCase()) ||
+      (p.categoria && p.categoria.toLowerCase() === evento.toLowerCase())
+    );
+    // Si hay productos con esa categoría, mostrar solo esos; si no, mostrar todos
+    if(filtrados.length > 0){
+      renderGrid(filtrados);
+    }
+    // Actualizar botón compartir para que comparta esta vista de categoría
+    const shareBtn = document.querySelector('.my-share-btn');
+    if(shareBtn){
+      const urlCat = window.location.href.split('?')[0] + '?evento=' + encodeURIComponent(evento);
+      shareBtn.onclick = () => {
+        if(navigator.share){
+          navigator.share({ title: `${evento} | SARUX Mayoreo`, url: urlCat }).catch(()=>{});
+        } else {
+          navigator.clipboard.writeText(urlCat).then(()=>toast('🔗 Link de '+evento+' copiado')).catch(()=>toast('🔗 '+urlCat));
+        }
+      };
+    }
+  }
+  // Deep link a producto específico
   const prod = params.get('prod');
   if(prod){
     const idx = PRODUCTOS.findIndex(p => p.nombre === prod);

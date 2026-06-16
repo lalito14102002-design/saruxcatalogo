@@ -314,6 +314,12 @@ function compartirCategoria(){
   }
 }
 
+// Abrir catálogo de mayoreo filtrado por evento (Bodas, XV Años, Graduaciones...)
+function abrirCatalogoEvento(nombreEvento){
+  const url = 'mayoreo-catalogo.html?evento=' + encodeURIComponent(nombreEvento);
+  window.location.href = url;
+}
+
 // Al cargar la página, leer ?cat= y abrir esa categoría automáticamente
 function checkCatParam(){
   const params = new URLSearchParams(location.search);
@@ -1078,8 +1084,7 @@ function renderMayoreo(){
         <div style="font-family:var(--font-display);font-size:1rem;letter-spacing:2px;color:var(--white);margin-bottom:.2rem">${e.emoji||''} ${e.nombre}</div>
         ${e.descripcion?`<div style="font-size:.75rem;color:var(--gray);font-weight:300;line-height:1.5;margin-bottom:.7rem">${e.descripcion}</div>`:'<div style="margin-bottom:.7rem"></div>'}
         <div style="display:flex;gap:.5rem">
-          <a href="${waUrl}" target="_blank" style="flex:1;background:var(--neon);color:#000;font-family:var(--font-mono);font-size:.55rem;letter-spacing:2px;padding:.6rem .4rem;text-align:center;text-decoration:none;display:block">📱 COTIZAR</a>
-          <button onclick="(function(){const u='${window.location.origin}/index.html#mayoreo';if(navigator.share){navigator.share({title:'${e.nombre} | SARUX Mayoreo',url:u}).catch(()=>{})}else{navigator.clipboard.writeText(u).then(()=>showToast('🔗 Link copiado')).catch(()=>showToast('🔗 '+u))}})()" style="background:none;border:1px solid var(--border);color:var(--gray);font-size:.75rem;padding:.6rem .7rem;cursor:pointer;transition:border-color .2s,color .2s" onmouseover="this.style.borderColor='var(--neon)';this.style.color='var(--neon)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--gray)'">🔗</button>
+          <button onclick="abrirCatalogoEvento('${e.nombre}')" style="flex:1;background:var(--neon);color:#000;font-family:var(--font-mono);font-size:.55rem;letter-spacing:2px;padding:.6rem .4rem;text-align:center;border:none;cursor:pointer">📂 VER CATÁLOGO</button>
         </div>
       </div>
     </div>`;
@@ -1097,7 +1102,6 @@ function renderMayoreo(){
       </div>
       <div style="display:flex;gap:1rem;justify-content:center;flex-wrap:wrap">
         <a href="https://wa.me/${NEGOCIO.whatsapp}?text=${encodeURIComponent(MAYOREO_D.whatsapp_msg)}" target="_blank" class="btn-neon">📱 Cotizar ahora</a>
-        <a href="mayoreo-catalogo.html" class="btn-outline" style="border-color:var(--neon);color:var(--neon)">📦 Ver catálogo mayoreo</a>
       </div>
     </div>
 
