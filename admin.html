@@ -277,7 +277,7 @@
         <button class="admin-nav-btn" onclick="showSec('ig-posts',this)">📸 Instagram</button>
         <button class="admin-nav-btn" onclick="showSec('tt-posts',this)">🎵 TikTok</button>
         <button class="admin-nav-btn" onclick="showSec('creaciones',this);cargarCreacionesAdmin()">✨ Mis Creaciones</button>
-        <button class="admin-nav-btn" onclick="showSec('mayoreo-prods',this);cargarMayoreoProductosAdmin()">📦 Catálogo Mayoreo</button>
+        <button class="admin-nav-btn" onclick="showSec('mayoreo-prods',this);cargarMayoreoProductosAdmin();actualizarSelectEvento()">📦 Catálogo Mayoreo</button>
         <button class="admin-nav-btn" onclick="showSec('fotos-clientes',this);cargarFotosClientesAdmin()">📷 Fotos Reales</button>
         <button class="admin-nav-btn" onclick="showSec('nosotros',this)">ℹ️ Sobre nosotros</button>
         <button class="admin-nav-btn" onclick="showSec('pasos',this)">👣 Cómo pedir</button>
@@ -838,12 +838,6 @@ Casi listo...
           <div class="admin-field-label">EVENTO / CATEGORÍA <span style="color:var(--neon);font-size:.5rem">* REQUERIDO para filtrar por catálogo</span></div>
           <select id="mp-evento" class="admin-input" style="margin-bottom:.8rem">
             <option value="">— Sin categoría (aparece en todos) —</option>
-            <option value="Bodas">💍 Bodas</option>
-            <option value="XV Años">👑 XV Años</option>
-            <option value="Graduaciones">🎓 Graduaciones</option>
-            <option value="Bautizos">🕊️ Bautizos</option>
-            <option value="Fiestas Infantiles">🎈 Fiestas Infantiles</option>
-            <option value="Empresas">🏢 Empresas</option>
           </select>
 
           <div class="admin-field-label">ORDEN <span style="color:var(--gray);font-size:.5rem">(menor = primero)</span></div>
@@ -1629,6 +1623,21 @@ Casi listo...
   // ── CATÁLOGO MAYOREO ───────────────────────────────────────────────────────
   let _mpItems = [];
 
+  // Llena el select de evento desde los eventos configurados en Mayoreo
+  function actualizarSelectEvento(valorActual){
+    const sel = document.getElementById('mp-evento');
+    if(!sel) return;
+    const eventos = (MAYOREO_D && MAYOREO_D.eventos) || [];
+    sel.innerHTML = '<option value="">— Sin categoría (aparece en todos) —</option>';
+    eventos.forEach(e => {
+      const opt = document.createElement('option');
+      opt.value = e.nombre;
+      opt.textContent = (e.emoji||'') + ' ' + e.nombre;
+      if(valorActual && e.nombre === valorActual) opt.selected = true;
+      sel.appendChild(opt);
+    });
+  }
+
   function previewMPFile(input){
     const f = input.files[0]; if(!f) return;
     document.getElementById('mp-file-name').textContent = f.name;
@@ -1666,7 +1675,7 @@ Casi listo...
     document.getElementById('mp-precio').value = '';
     document.getElementById('mp-desc').value = '';
     document.getElementById('mp-emoji').value = '';
-    document.getElementById('mp-evento').value = '';
+    actualizarSelectEvento('');
     document.getElementById('mp-orden').value = '99';
     document.getElementById('mp-activo').checked = true;
     document.getElementById('mp-contenido-activo').checked = false;
@@ -1767,7 +1776,7 @@ Casi listo...
     document.getElementById('mp-precio').value = data.precio||'';
     document.getElementById('mp-desc').value = data.descripcion||'';
     document.getElementById('mp-emoji').value = data.emoji||'';
-    document.getElementById('mp-evento').value = data.evento||'';
+    actualizarSelectEvento(data.evento||'');
     document.getElementById('mp-orden').value = data.orden||99;
     document.getElementById('mp-activo').checked = data.activo !== false;
     if(data.imagen_url){

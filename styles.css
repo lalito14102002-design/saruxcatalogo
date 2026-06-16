@@ -210,6 +210,24 @@ nav{position:fixed;top:0;left:0;right:0;z-index:500}
 .search-clear-btn{background:none;border:none;color:var(--gray);cursor:pointer;font-size:.9rem;padding:0 .2rem;line-height:1;transition:color .3s;display:none}
 .search-clear-btn:hover{color:var(--white)}
 
+/* WRAPPER PC — centra el contenido en pantallas grandes */
+.topbar-inner,.navbar-inner,.sec-inner{max-width:1400px;margin:0 auto;width:100%}
+.topbar{padding:.5rem 3rem}
+.topbar .topbar-inner{display:flex;justify-content:flex-end;align-items:center;gap:1.5rem}
+.navbar{padding:.8rem 3rem}
+.navbar .navbar-inner{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.5rem;width:100%}
+section > .sec-inner{padding:0}
+section{padding:5rem 3rem}
+
+@media(min-width:1400px){
+  .topbar{padding:.5rem calc((100vw - 1400px)/2 + 3rem)}
+  .navbar{padding:.8rem calc((100vw - 1400px)/2 + 3rem)}
+  section{padding:5rem calc((100vw - 1400px)/2 + 3rem)}
+  .hero{padding:9rem calc((100vw - 1400px)/2 + 3rem) 4rem}
+  footer{padding:4rem calc((100vw - 1400px)/2 + 3rem)}
+  .mayoreo-hero{padding:4rem calc((100vw - 1400px)/2 + 3rem)}
+}
+
 /*  HERO */
 .hero{min-height:100vh;display:flex;align-items:center;padding:9rem 3rem 4rem;position:relative;overflow:hidden}
 .hero-bg{position:absolute;inset:0;background:radial-gradient(ellipse 70% 60% at 65% 50%,rgba(232,25,44,.07) 0%,transparent 70%),radial-gradient(ellipse 40% 50% at 20% 80%,rgba(200,0,20,.04) 0%,transparent 60%)}

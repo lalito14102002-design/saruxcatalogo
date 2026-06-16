@@ -12,6 +12,7 @@
 
     /* ── Header ── */
     .my-header{background:var(--black);border-bottom:2px solid var(--neon);padding:1rem 1.5rem;display:flex;align-items:center;gap:1rem;position:sticky;top:0;z-index:100}
+    .my-header-inner{max-width:1200px;margin:0 auto;width:100%;display:flex;align-items:center;gap:1rem}
     .my-back{background:none;border:1px solid rgba(232,25,44,.35);color:var(--neon);font-family:var(--font-mono);font-size:.6rem;letter-spacing:2px;padding:.5rem .9rem;cursor:pointer;text-decoration:none;transition:background .2s}
     .my-back:hover{background:rgba(232,25,44,.1)}
     .my-header-title{font-family:var(--font-display);font-size:1.1rem;letter-spacing:6px;color:var(--white)}
@@ -26,7 +27,9 @@
     .my-search::placeholder{color:var(--gray)}
 
     /* ── Grid de productos ── */
-    .my-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:1px;background:var(--border);padding:0}
+    .my-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:1px;background:var(--border);padding:0;max-width:1200px;margin:0 auto}
+    @media(min-width:600px){.my-grid{grid-template-columns:repeat(3,1fr)}}
+    @media(min-width:900px){.my-grid{grid-template-columns:repeat(4,1fr)}}
     .my-card{background:var(--card);cursor:pointer;transition:background .2s;position:relative;overflow:hidden;display:flex;flex-direction:column}
     .my-card:hover{background:rgba(20,0,3,1)}
     .my-card:active{background:var(--card2)}
