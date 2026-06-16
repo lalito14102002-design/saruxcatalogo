@@ -1065,7 +1065,65 @@ function cerrarPaqueteModal(){
 function renderMayoreo(){
   if(!MAYOREO_D.activo){document.getElementById('mayoreo').innerHTML='';return;}
   const paquetesHTML=(MAYOREO_D.paquetes||[]).map((p,i)=>`<div class="paquete-card" style="cursor:pointer" onclick="abrirPaqueteModal(${i})"><span class="paquete-emoji">${p.emoji}</span><div class="paquete-nombre">${p.nombre}</div><div class="paquete-piezas">${p.piezas}</div><div class="paquete-precio">${p.precio}</div><div class="paquete-incluye">${p.incluye}</div><div style="margin-top:.8rem;font-family:var(--font-mono);font-size:.5rem;letter-spacing:2px;color:var(--neon);border:1px solid rgba(232,25,44,.3);padding:.3rem .8rem;display:inline-block">VER DETALLES →</div></div>`).join('');
-  document.getElementById('mayoreo').innerHTML=`<div class="mayoreo-hero"><div class="mayoreo-titulo">VENTA AL <span>MAYOREO</span></div><div class="mayoreo-subtitulo">${MAYOREO_D.subtitulo}</div><p class="mayoreo-desc">${MAYOREO_D.descripcion}</p><div class="mayoreo-badges"><span class="mayoreo-badge-item">✦ ${MAYOREO_D.minimo}</span><span class="mayoreo-badge-item">✦ ${MAYOREO_D.descuento}</span><span class="mayoreo-badge-item">✦ ${MAYOREO_D.entrega}</span></div><div style="display:flex;gap:1rem;justify-content:center;flex-wrap:wrap;position:relative"><a href="https://wa.me/${NEGOCIO.whatsapp}?text=${encodeURIComponent(MAYOREO_D.whatsapp_msg)}" target="_blank" class="btn-neon">📱 Cotizar ahora</a><a href="mayoreo-catalogo.html" class="btn-outline" style="border-color:var(--neon);color:var(--neon)">📦 Ver catálogo mayoreo</a></div></div><div style="padding:4rem 3rem 0"><div class="sec-header"><div><div class="sec-label">Para cada ocasión</div><h2 class="sec-title">TIPOS DE EVENTOS</h2></div></div><div class="eventos-grid">${(MAYOREO_D.eventos||[]).map(e=>`<div class="evento-card"><span class="evento-emoji">${e.emoji}</span><div class="evento-nombre">${e.nombre}</div><div class="evento-desc">${e.descripcion}</div></div>`).join('')}</div></div><div style="padding:3rem 3rem 0"><div class="sec-header"><div><div class="sec-label">Así funciona</div><h2 class="sec-title">PROCESO</h2></div></div><div class="proceso-grid">${(MAYOREO_D.proceso||[]).map(p=>`<div class="proceso-card"><div class="proceso-paso">${p.paso}</div><div class="proceso-titulo">${p.titulo}</div><div class="proceso-desc">${p.desc}</div></div>`).join('')}</div></div><div style="padding:2rem 3rem 5rem"><div class="mayoreo-cta"><h3>¿LISTO PARA COTIZAR?</h3><p>Escríbenos por WhatsApp y te enviamos una cotización personalizada en menos de 24 horas.</p><a href="https://wa.me/${NEGOCIO.whatsapp}?text=${encodeURIComponent(MAYOREO_D.whatsapp_msg)}" target="_blank" class="btn-neon">📱 Solicitar cotización gratis</a></div></div>`;
+  const eventosHTML = (MAYOREO_D.eventos||[]).map((e,i)=>{
+    const waMsg = encodeURIComponent(`Hola! Me interesa cotizar para *${e.nombre}*. ¿Me pueden dar información y precios de mayoreo?`);
+    const waUrl = `https://wa.me/${NEGOCIO.whatsapp}?text=${waMsg}`;
+    const shareUrl = window.location.origin + '/index.html#mayoreo';
+    const imgEl = e.imagen
+      ? `<div style="width:100%;aspect-ratio:4/3;overflow:hidden;background:#111"><img src="${e.imagen}" alt="${e.nombre}" style="width:100%;height:100%;object-fit:cover;display:block;transition:transform .4s" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'"></div>`
+      : `<div style="width:100%;aspect-ratio:4/3;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#0a0000,#1a0005);font-size:3.5rem">${e.emoji||'🎉'}</div>`;
+    return `<div style="background:var(--card);border:1px solid var(--border);overflow:hidden;transition:border-color .25s" onmouseover="this.style.borderColor='var(--neon)'" onmouseout="this.style.borderColor='var(--border)'">
+      ${imgEl}
+      <div style="padding:.8rem">
+        <div style="font-family:var(--font-display);font-size:1rem;letter-spacing:2px;color:var(--white);margin-bottom:.2rem">${e.emoji||''} ${e.nombre}</div>
+        ${e.descripcion?`<div style="font-size:.75rem;color:var(--gray);font-weight:300;line-height:1.5;margin-bottom:.7rem">${e.descripcion}</div>`:'<div style="margin-bottom:.7rem"></div>'}
+        <div style="display:flex;gap:.5rem">
+          <a href="${waUrl}" target="_blank" style="flex:1;background:var(--neon);color:#000;font-family:var(--font-mono);font-size:.55rem;letter-spacing:2px;padding:.6rem .4rem;text-align:center;text-decoration:none;display:block">📱 COTIZAR</a>
+          <button onclick="(function(){const u='${window.location.origin}/index.html#mayoreo';if(navigator.share){navigator.share({title:'${e.nombre} | SARUX Mayoreo',url:u}).catch(()=>{})}else{navigator.clipboard.writeText(u).then(()=>showToast('🔗 Link copiado')).catch(()=>showToast('🔗 '+u))}})()" style="background:none;border:1px solid var(--border);color:var(--gray);font-size:.75rem;padding:.6rem .7rem;cursor:pointer;transition:border-color .2s,color .2s" onmouseover="this.style.borderColor='var(--neon)';this.style.color='var(--neon)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--gray)'">🔗</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+
+  document.getElementById('mayoreo').innerHTML=`
+    <div class="mayoreo-hero">
+      <div class="mayoreo-titulo">VENTA AL <span>MAYOREO</span></div>
+      <div class="mayoreo-subtitulo">${MAYOREO_D.subtitulo}</div>
+      <p class="mayoreo-desc">${MAYOREO_D.descripcion}</p>
+      <div class="mayoreo-badges">
+        <span class="mayoreo-badge-item">✦ ${MAYOREO_D.minimo}</span>
+        <span class="mayoreo-badge-item">✦ ${MAYOREO_D.descuento}</span>
+        <span class="mayoreo-badge-item">✦ ${MAYOREO_D.entrega}</span>
+      </div>
+      <div style="display:flex;gap:1rem;justify-content:center;flex-wrap:wrap">
+        <a href="https://wa.me/${NEGOCIO.whatsapp}?text=${encodeURIComponent(MAYOREO_D.whatsapp_msg)}" target="_blank" class="btn-neon">📱 Cotizar ahora</a>
+        <a href="mayoreo-catalogo.html" class="btn-outline" style="border-color:var(--neon);color:var(--neon)">📦 Ver catálogo mayoreo</a>
+      </div>
+    </div>
+
+    <div style="padding:3rem 1.5rem 0">
+      <div class="sec-header">
+        <div>
+          <div class="sec-label">Para cada ocasión</div>
+          <h2 class="sec-title">TIPOS DE EVENTOS</h2>
+        </div>
+        <button onclick="(function(){const u=window.location.origin+'/index.html#mayoreo';if(navigator.share){navigator.share({title:'Mayoreo SARUX',url:u}).catch(()=>{})}else{navigator.clipboard.writeText(u).then(()=>showToast('🔗 Link copiado')).catch(()=>showToast('🔗 '+u))}})()" style="background:none;border:1px solid var(--border);color:var(--gray);font-family:var(--font-mono);font-size:.55rem;letter-spacing:2px;padding:.5rem .8rem;cursor:pointer" onmouseover="this.style.borderColor='var(--neon)';this.style.color='var(--neon)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--gray)'">🔗 COMPARTIR</button>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:1px;background:var(--border);margin-top:1rem">${eventosHTML}</div>
+    </div>
+
+    <div style="padding:3rem 1.5rem 0">
+      <div class="sec-header"><div><div class="sec-label">Así funciona</div><h2 class="sec-title">PROCESO</h2></div></div>
+      <div class="proceso-grid">${(MAYOREO_D.proceso||[]).map(p=>`<div class="proceso-card"><div class="proceso-paso">${p.paso}</div><div class="proceso-titulo">${p.titulo}</div><div class="proceso-desc">${p.desc}</div></div>`).join('')}</div>
+    </div>
+
+    <div style="padding:2rem 1.5rem 5rem">
+      <div class="mayoreo-cta">
+        <h3>¿LISTO PARA COTIZAR?</h3>
+        <p>Escríbenos por WhatsApp y te enviamos una cotización personalizada en menos de 24 horas.</p>
+        <a href="https://wa.me/${NEGOCIO.whatsapp}?text=${encodeURIComponent(MAYOREO_D.whatsapp_msg)}" target="_blank" class="btn-neon">📱 Solicitar cotización gratis</a>
+      </div>
+    </div>`;
 }
 
 // COUNTDOWN — persiste usando timestamp de inicio guardado en Supabase

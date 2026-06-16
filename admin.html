@@ -308,7 +308,7 @@
     PROMOCIONES: [],
     MAS_VENDIDOS: [{ nombre:"Playera Eclipse", categoria:"Playeras", precio:350, emoji:"👕", imagen:"", badge:"Popular", tallas:["S","M","L"], colores:["Negro"] }],
     CATALOGO: [{ nombre:"Tazas", emoji:"☕", activa:true, imagen_portada:"", productos:[{ nombre:"Taza Goku", precio:180, colores:["Negro"], tallas:[], stock:10, imagen:"", descripcion:"Taza anime", temas:["Anime"], subtema:"Dragon Ball", disenos:[] }] }],
-    MAYOREO: { activo:true, subtitulo:"Bodas · XV Años", descripcion:"Precios especiales", minimo:"10 piezas", descuento:"30%", entrega:"7 días", whatsapp_msg:"Hola, quiero cotizar mayoreo", eventos:[{ nombre:"Bodas", emoji:"💍", descripcion:"Recuerdos personalizados" }], paquetes:[{ nombre:"Pack Básico", piezas:"10-24", precio:"$300", emoji:"📦", incluye:"Playera" }] },
+    MAYOREO: { activo:true, subtitulo:"Bodas · XV Años · Bautizos · Fiestas", descripcion:"Precios especiales por volumen", minimo:"10 piezas", descuento:"30%", entrega:"7 días", whatsapp_msg:"Hola, quiero cotizar mayoreo", eventos:[{nombre:"Bodas",emoji:"💍",descripcion:"Recuerdos y detalles para tu boda",imagen:""},{nombre:"XV Años",emoji:"👑",descripcion:"Diseños exclusivos para quinceañeras",imagen:""},{nombre:"Bautizos y Primera Comunión",emoji:"🕊️",descripcion:"Recuerdos personalizados para este día especial",imagen:""},{nombre:"Fiestas Infantiles",emoji:"🎈",descripcion:"Diseños divertidos para los más pequeños",imagen:""}], paquetes:[] },
     LANZAMIENTOS: [{ nombre:"Colección Verano", fecha:"Mayo", descripcion:"Nuevos diseños", emoji:"🔥", imagen:"", activo:true }],
     FAQS: [{ pregunta:"¿Hacen envíos?", respuesta:"Sí, a toda la República." }],
     RESENAS: [{ texto:"Excelente calidad", autor:"Cliente", estrellas:5, activa:true }],
@@ -1484,13 +1484,14 @@ Casi listo...
     const cont = document.getElementById('admin-eventos-list'); if(!cont) return;
     cont.innerHTML = '';
     (MAYOREO_D.eventos||[]).forEach((e,i)=>{
-      cont.innerHTML += `<div class="admin-card"><div class="admin-card-title">${e.nombre}<button class="admin-btn-sm danger" style="float:right" onclick="confirmDelete('¿Eliminar?',()=>{MAYOREO_D.eventos.splice(${i},1);renderAdminEventos()})">🗑️</button></div>
+      cont.innerHTML += `<div class="admin-card"><div class="admin-card-title">${e.emoji||'🎉'} ${e.nombre}<button class="admin-btn-sm danger" style="float:right" onclick="confirmDelete('¿Eliminar?',()=>{MAYOREO_D.eventos.splice(${i},1);renderAdminEventos()})">🗑️</button></div>
         <div class="admin-field"><label>Nombre</label><input class="admin-input" value="${e.nombre}" oninput="MAYOREO_D.eventos[${i}].nombre=this.value"></div>
-        <div class="admin-field"><label>Emoji</label><input class="admin-input" value="${e.emoji}" oninput="MAYOREO_D.eventos[${i}].emoji=this.value"></div>
-        <div class="admin-field"><label>Descripción</label><textarea class="admin-textarea" oninput="MAYOREO_D.eventos[${i}].descripcion=this.value">${e.descripcion}</textarea></div></div>`;
+        <div class="admin-field"><label>Emoji</label><input class="admin-input" value="${e.emoji||''}" oninput="MAYOREO_D.eventos[${i}].emoji=this.value" style="width:80px"></div>
+        <div class="admin-field"><label>Imagen URL <span style="color:var(--gray);font-size:.55rem">(sube imagen en Storage y pega la URL)</span></label><input class="admin-input" value="${e.imagen||''}" oninput="MAYOREO_D.eventos[${i}].imagen=this.value" placeholder="https://..."></div>
+        <div class="admin-field"><label>Descripción corta</label><textarea class="admin-textarea" oninput="MAYOREO_D.eventos[${i}].descripcion=this.value">${e.descripcion||''}</textarea></div></div>`;
     });
   }
-  function addEvento(){ if(!MAYOREO_D.eventos) MAYOREO_D.eventos=[]; MAYOREO_D.eventos.push({nombre:"Nuevo evento",emoji:"🎉",descripcion:""}); renderAdminEventos(); }
+  function addEvento(){ if(!MAYOREO_D.eventos) MAYOREO_D.eventos=[]; MAYOREO_D.eventos.push({nombre:"Nuevo evento",emoji:"🎉",descripcion:"",imagen:""}); renderAdminEventos(); }
 
   function renderAdminPaquetes(){
     const cont = document.getElementById('admin-paquetes-list'); if(!cont) return;
