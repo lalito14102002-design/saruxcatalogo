@@ -835,6 +835,17 @@ Casi listo...
             </div>
           </div>
 
+          <div class="admin-field-label">EVENTO / CATEGORÍA <span style="color:var(--neon);font-size:.5rem">* REQUERIDO para filtrar por catálogo</span></div>
+          <select id="mp-evento" class="admin-input" style="margin-bottom:.8rem">
+            <option value="">— Sin categoría (aparece en todos) —</option>
+            <option value="Bodas">💍 Bodas</option>
+            <option value="XV Años">👑 XV Años</option>
+            <option value="Graduaciones">🎓 Graduaciones</option>
+            <option value="Bautizos">🕊️ Bautizos</option>
+            <option value="Fiestas Infantiles">🎈 Fiestas Infantiles</option>
+            <option value="Empresas">🏢 Empresas</option>
+          </select>
+
           <div class="admin-field-label">ORDEN <span style="color:var(--gray);font-size:.5rem">(menor = primero)</span></div>
           <input id="mp-orden" type="number" value="99" class="admin-input" style="width:80px;margin-bottom:.6rem">
 
@@ -1655,6 +1666,7 @@ Casi listo...
     document.getElementById('mp-precio').value = '';
     document.getElementById('mp-desc').value = '';
     document.getElementById('mp-emoji').value = '';
+    document.getElementById('mp-evento').value = '';
     document.getElementById('mp-orden').value = '99';
     document.getElementById('mp-activo').checked = true;
     document.getElementById('mp-contenido-activo').checked = false;
@@ -1672,6 +1684,7 @@ Casi listo...
     const precio = parseFloat(document.getElementById('mp-precio').value) || null;
     const desc   = document.getElementById('mp-desc').value.trim();
     const emoji  = document.getElementById('mp-emoji').value.trim() || '📦';
+    const evento = document.getElementById('mp-evento').value.trim() || null;
     const orden  = parseInt(document.getElementById('mp-orden').value) || 99;
     const activo = document.getElementById('mp-activo').checked;
     const conActivo = document.getElementById('mp-contenido-activo').checked;
@@ -1695,7 +1708,7 @@ Casi listo...
       }
 
       const contenido = conActivo ? JSON.stringify(_mpItems.filter(it=>it.producto)) : null;
-      const payload = { nombre, precio, descripcion: desc||null, emoji, orden, activo, contenido_activo: conActivo, contenido };
+      const payload = { nombre, precio, descripcion: desc||null, emoji, evento, orden, activo, contenido_activo: conActivo, contenido };
       if(imagen_url) payload.imagen_url = imagen_url;
 
       let err;
@@ -1731,6 +1744,7 @@ Casi listo...
             <div class="admin-card-title" style="display:flex;align-items:center;gap:.5rem">
               ${p.nombre}
               <span style="font-family:var(--font-mono);font-size:.45rem;letter-spacing:1px;background:${p.activo?'rgba(76,175,80,.15)':'rgba(255,255,255,.05)'};color:${p.activo?'#4caf50':'var(--gray)'};padding:.15rem .4rem">${p.activo?'ACTIVO':'OCULTO'}</span>
+              ${p.evento ? `<span style="font-family:var(--font-mono);font-size:.45rem;letter-spacing:1px;background:rgba(232,25,44,.15);color:var(--neon);padding:.15rem .4rem">${p.evento.toUpperCase()}</span>` : ''}
             </div>
             ${p.precio ? `<div style="font-family:var(--font-mono);font-size:.7rem;color:var(--neon)">$${Number(p.precio).toLocaleString('es-MX')} MXN</div>` : ''}
             ${p.descripcion ? `<div style="font-size:.75rem;color:var(--gray);margin-top:.2rem;line-height:1.4">${p.descripcion}</div>` : ''}
@@ -1753,6 +1767,7 @@ Casi listo...
     document.getElementById('mp-precio').value = data.precio||'';
     document.getElementById('mp-desc').value = data.descripcion||'';
     document.getElementById('mp-emoji').value = data.emoji||'';
+    document.getElementById('mp-evento').value = data.evento||'';
     document.getElementById('mp-orden').value = data.orden||99;
     document.getElementById('mp-activo').checked = data.activo !== false;
     if(data.imagen_url){
