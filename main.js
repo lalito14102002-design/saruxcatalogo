@@ -163,7 +163,7 @@ function renderPage(){
 
   if(POPUP_D.activo){
     document.getElementById('popup').innerHTML=`<div class="popup-overlay"><div class="popup-box"><button class="popup-close" onclick="cerrarPopup()">✕</button><div style="font-size:2rem;margin-bottom:.5rem">${POPUP_D.emoji||'🎁'}</div>${logoTag(50)}<div class="popup-title" style="margin-top:1rem">${POPUP_D.titulo}</div><p class="popup-desc">${POPUP_D.descripcion}</p><button class="popup-btn" onclick="cerrarPopup()">${POPUP_D.boton}</button></div></div>`;
-    setTimeout(cerrarPopup,8000);
+    // El popup solo se cierra cuando el usuario lo cierra manualmente
   }
 
   const t2=[...TICKER_D,...TICKER_D].map(t=>`<span>${t}</span><span>✦</span>`).join('');
@@ -1075,22 +1075,9 @@ function renderMayoreo(){
         <span class="mayoreo-badge-item">✦ ${MAYOREO_D.descuento}</span>
         <span class="mayoreo-badge-item">✦ ${MAYOREO_D.entrega}</span>
       </div>
-      <div style="display:flex;gap:1rem;justify-content:center;flex-wrap:wrap">
+      <div style="display:flex;gap:1rem;justify-content:center;flex-wrap:wrap;padding-bottom:3rem">
         <a href="https://wa.me/${NEGOCIO.whatsapp}?text=${encodeURIComponent(MAYOREO_D.whatsapp_msg)}" target="_blank" class="btn-neon">📱 Cotizar ahora</a>
         <a href="mayoreo-catalogo.html" class="btn-outline" style="border-color:var(--neon);color:var(--neon)">📦 Ver catálogo mayoreo</a>
-      </div>
-    </div>
-
-    <div style="padding:3rem 1.5rem 0">
-      <div class="sec-header"><div><div class="sec-label">Así funciona</div><h2 class="sec-title">PROCESO</h2></div></div>
-      <div class="proceso-grid">${(MAYOREO_D.proceso||[]).map(p=>`<div class="proceso-card"><div class="proceso-paso">${p.paso}</div><div class="proceso-titulo">${p.titulo}</div><div class="proceso-desc">${p.desc}</div></div>`).join('')}</div>
-    </div>
-
-    <div style="padding:2rem 1.5rem 5rem">
-      <div class="mayoreo-cta">
-        <h3>¿LISTO PARA COTIZAR?</h3>
-        <p>Escríbenos por WhatsApp y te enviamos una cotización personalizada en menos de 24 horas.</p>
-        <a href="https://wa.me/${NEGOCIO.whatsapp}?text=${encodeURIComponent(MAYOREO_D.whatsapp_msg)}" target="_blank" class="btn-neon">📱 Solicitar cotización gratis</a>
       </div>
     </div>`;
 }
@@ -2058,7 +2045,7 @@ function reproducirVideoResena(wrapper, url){
     return {};
   }
   const loaderCfg   = getLoaderCfg();
-  const LOADER_MIN_MS = Math.min(5, Math.max(1, loaderCfg.segundos || 3)) * 1000;
+  const LOADER_MIN_MS = Math.min(30, Math.max(1, loaderCfg.segundos || 3)) * 1000;
   const LOADER_MSGS = loaderCfg.mensajes && loaderCfg.mensajes.length
     ? loaderCfg.mensajes
     : ['Cargando productos...','Preparando catálogo...','Cargando imágenes...','Casi listo...','¡Ya mero!'];
@@ -2071,19 +2058,28 @@ function reproducirVideoResena(wrapper, url){
   // Animar barra y mensajes durante el tiempo configurado
   function animarBarra(){
     if(!barra) return;
+    const startTime = Date.now();
+    const TICK = 50; // actualizar cada 50ms
     let paso = 0;
     const intervaloMsg = LOADER_MIN_MS / LOADER_MSGS.length;
     if(texto) texto.textContent = LOADER_MSGS[0];
-    const intervalMsg = setInterval(function(){
-      paso++;
-      if(texto && LOADER_MSGS[paso]) texto.textContent = LOADER_MSGS[paso];
-      if(paso >= LOADER_MSGS.length - 1) clearInterval(intervalMsg);
-    }, intervaloMsg);
-    barra.style.transition = 'width ' + LOADER_MIN_MS + 'ms linear';
-    barra.style.animationName = 'none';
-    requestAnimationFrame(function(){
-      requestAnimationFrame(function(){ barra.style.width = '100%'; });
-    });
+    barra.style.transition = 'none';
+    barra.style.width = '0%';
+
+    const tick = setInterval(function(){
+      const elapsed = Date.now() - startTime;
+      const pct = Math.min(100, (elapsed / LOADER_MIN_MS) * 100);
+      barra.style.width = pct + '%';
+
+      // Cambiar mensaje
+      const pasoActual = Math.floor(elapsed / intervaloMsg);
+      if(pasoActual > paso && pasoActual < LOADER_MSGS.length){
+        paso = pasoActual;
+        if(texto) texto.textContent = LOADER_MSGS[paso];
+      }
+
+      if(pct >= 100) clearInterval(tick);
+    }, TICK);
   }
   animarBarra();
 

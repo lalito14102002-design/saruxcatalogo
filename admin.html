@@ -283,6 +283,7 @@
         <button class="admin-nav-btn" onclick="showSec('nosotros',this)">ℹ️ Sobre nosotros</button>
         <button class="admin-nav-btn" onclick="showSec('pasos',this)">👣 Cómo pedir</button>
         <button class="admin-nav-btn" onclick="showSec('ticker',this)">📢 Ticker</button>
+        <button class="admin-nav-btn" onclick="showSec('storage',this);cargarStorage()">💾 Almacenamiento</button>
         <button class="admin-nav-btn" onclick="showSec('nube',this)">☁️ Subir a internet</button>
       </div>
     </div>
@@ -1007,6 +1008,59 @@ Casi listo...
       <div id="sec-nosotros" class="admin-section"><div class="admin-section-title">SOBRE NOSOTROS</div><div class="admin-card"><div class="admin-field"><label>Título</label><input class="admin-input" id="n-titulo"></div><div class="admin-field"><label>Párrafo 1</label><textarea class="admin-textarea" id="n-p1"></textarea></div><div class="admin-field"><label>Párrafo 2</label><textarea class="admin-textarea" id="n-p2"></textarea></div><div class="admin-field"><label>Párrafo 3</label><textarea class="admin-textarea" id="n-p3"></textarea></div></div><div class="admin-card"><div class="admin-card-title">🖼️ Fotos (4 imágenes)</div><div id="admin-fotos-list"></div></div></div>
       <div id="sec-pasos" class="admin-section"><div class="admin-section-title">CÓMO PEDIR</div><div class="admin-card"><div class="admin-field"><label>Etiqueta pequeña</label><input class="admin-input" id="pasos-label-inp"></div><div class="admin-field"><label>Título grande</label><input class="admin-input" id="pasos-titulo-inp"></div></div><div class="admin-card"><div class="admin-card-title">Pasos</div><div id="admin-pasos-list"></div><button class="admin-btn-add" onclick="addPaso()">+ Agregar paso</button></div></div>
       <div id="sec-ticker" class="admin-section"><div class="admin-section-title">TICKER</div><div class="admin-card"><textarea class="admin-textarea" id="a-ticker" rows="5" placeholder="Una palabra por línea"></textarea></div></div>
+      <div id="sec-storage" class="admin-section">
+        <div class="admin-section-title">💾 ALMACENAMIENTO</div>
+        <div class="admin-section-sub">Espacio usado en Supabase Storage para tus imágenes</div>
+
+        <!-- Card principal -->
+        <div style="background:var(--card2);border:1px solid var(--border);padding:1.5rem;margin-bottom:1rem">
+          <div id="storage-loading" style="font-family:var(--font-mono);font-size:.65rem;color:var(--gray)">Calculando...</div>
+
+          <!-- Barra visual -->
+          <div id="storage-main" style="display:none">
+            <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:.6rem">
+              <div>
+                <div style="font-family:var(--font-mono);font-size:.5rem;letter-spacing:3px;color:var(--gray);margin-bottom:.2rem">USADO</div>
+                <div id="storage-usado-label" style="font-family:var(--font-display);font-size:2rem;letter-spacing:2px;color:var(--white)">--</div>
+              </div>
+              <div style="text-align:right">
+                <div style="font-family:var(--font-mono);font-size:.5rem;letter-spacing:3px;color:var(--gray);margin-bottom:.2rem">DISPONIBLE</div>
+                <div id="storage-libre-label" style="font-family:var(--font-display);font-size:1.2rem;letter-spacing:2px;color:var(--neon)">--</div>
+              </div>
+            </div>
+            <!-- Barra de progreso -->
+            <div style="background:rgba(255,255,255,.07);height:8px;width:100%;overflow:hidden">
+              <div id="storage-barra" style="height:100%;background:var(--neon);width:0%;transition:width .8s ease"></div>
+            </div>
+            <div style="display:flex;justify-content:space-between;margin-top:.3rem">
+              <span id="storage-pct" style="font-family:var(--font-mono);font-size:.5rem;color:var(--gray)">0%</span>
+              <span style="font-family:var(--font-mono);font-size:.5rem;color:var(--gray)">LÍMITE: <span id="storage-limit-label">1 GB</span></span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Desglose por bucket/carpeta -->
+        <div style="background:var(--card2);border:1px solid var(--border);padding:1.2rem;margin-bottom:1rem">
+          <div class="admin-card-title" style="margin-bottom:.8rem">📁 DESGLOSE POR CARPETA</div>
+          <div id="storage-desglose">
+            <div style="font-family:var(--font-mono);font-size:.6rem;color:var(--gray)">Cargando...</div>
+          </div>
+        </div>
+
+        <!-- Info y recomendaciones -->
+        <div style="background:rgba(232,25,44,.04);border:1px solid rgba(232,25,44,.2);padding:1rem;margin-bottom:1rem">
+          <div style="font-family:var(--font-mono);font-size:.5rem;letter-spacing:2px;color:var(--neon);margin-bottom:.6rem">ℹ️ INFORMACIÓN</div>
+          <div style="font-size:.72rem;color:var(--gray);line-height:1.8">
+            • Supabase plan gratuito incluye <strong style="color:var(--white)">1 GB</strong> de almacenamiento<br>
+            • Sube imágenes comprimidas para ahorrar espacio<br>
+            • Imágenes recomendadas: máximo <strong style="color:var(--white)">500 KB</strong> cada una<br>
+            • Si llegas al límite, las imágenes nuevas no se guardarán
+          </div>
+        </div>
+
+        <button class="admin-btn" onclick="cargarStorage()">🔄 ACTUALIZAR</button>
+      </div>
+
       <div id="sec-nube" class="admin-section"><div class="admin-section-title">☁️ CONECTAR A INTERNET</div><div class="admin-card"><div class="admin-card-title">Tus datos ya se guardan automáticamente en Supabase.</div><p style="font-size:0.7rem; color:var(--gray)">No necesitas configuración adicional.</p></div></div>
     `;
   }
@@ -2320,6 +2374,123 @@ Casi listo...
     document.querySelectorAll('#gc-ratio .grid-col-btn').forEach(b=>{ if(b.getAttribute('onclick')?.includes(CARD_RATIO.replace('/',''))) b.classList.add('active'); else b.classList.remove('active'); });
     document.querySelectorAll('#gc-fit .grid-col-btn').forEach(b=>{ if(b.getAttribute('onclick')?.includes(CARD_FIT)) b.classList.add('active'); else b.classList.remove('active'); });
   }
+
+  // ═══════════════════════════════════════════════
+  // ALMACENAMIENTO SUPABASE
+  // ═══════════════════════════════════════════════
+  async function cargarStorage(){
+    const loading = document.getElementById('storage-loading');
+    const main    = document.getElementById('storage-main');
+    const desglose= document.getElementById('storage-desglose');
+    if(!loading) return;
+
+    loading.style.display = 'block';
+    if(main) main.style.display = 'none';
+    if(desglose) desglose.innerHTML = '<div style="font-family:var(--font-mono);font-size:.6rem;color:var(--gray)">Calculando...</div>';
+
+    try {
+      // Listar todos los archivos del bucket "images"
+      const BUCKET = 'images';
+      const LIMIT_BYTES = 1 * 1024 * 1024 * 1024; // 1 GB plan gratis
+
+      // Función para listar recursivamente una carpeta
+      async function listarCarpeta(prefijo){
+        const { data, error } = await sb.storage.from(BUCKET).list(prefijo, { limit: 1000 });
+        if(error || !data) return [];
+        let archivos = [];
+        for(const item of data){
+          if(item.id){ // es archivo
+            archivos.push({ nombre: (prefijo ? prefijo+'/' : '') + item.name, size: item.metadata?.size || 0 });
+          } else { // es carpeta
+            const sub = await listarCarpeta((prefijo ? prefijo+'/' : '') + item.name);
+            archivos = archivos.concat(sub);
+          }
+        }
+        return archivos;
+      }
+
+      // Listar raíz para ver carpetas
+      const { data: raiz, error: raizErr } = await sb.storage.from(BUCKET).list('', { limit: 200 });
+      if(raizErr) throw raizErr;
+
+      const carpetas = {};
+      let totalBytes = 0;
+
+      for(const item of (raiz||[])){
+        if(item.id){
+          // archivo en raíz
+          const sz = item.metadata?.size || 0;
+          carpetas['(raíz)'] = (carpetas['(raíz)'] || 0) + sz;
+          totalBytes += sz;
+        } else {
+          // carpeta — listar sus archivos
+          const archivos = await listarCarpeta(item.name);
+          let folderBytes = 0;
+          archivos.forEach(a => { folderBytes += a.size; });
+          carpetas[item.name] = folderBytes;
+          totalBytes += folderBytes;
+        }
+      }
+
+      // Mostrar totales
+      const usadoMB = (totalBytes / (1024*1024)).toFixed(2);
+      const libreMB = ((LIMIT_BYTES - totalBytes) / (1024*1024)).toFixed(2);
+      const libreGB = (libreMB / 1024).toFixed(2);
+      const pct     = Math.min(100, ((totalBytes / LIMIT_BYTES) * 100)).toFixed(1);
+
+      // Elegir unidad para "usado"
+      const usadoLabel = totalBytes < 1024*1024
+        ? (totalBytes/1024).toFixed(0) + ' KB'
+        : usadoMB + ' MB';
+      const libreLabel = libreMB > 900
+        ? libreGB + ' GB'
+        : libreMB + ' MB';
+
+      loading.style.display = 'none';
+      main.style.display = 'block';
+      document.getElementById('storage-usado-label').textContent = usadoLabel;
+      document.getElementById('storage-libre-label').textContent = libreLabel + ' libres';
+      document.getElementById('storage-pct').textContent = pct + '%';
+
+      // Color de barra según uso
+      const barraEl = document.getElementById('storage-barra');
+      barraEl.style.width = '0%';
+      barraEl.style.background = pct > 80 ? 'red' : pct > 60 ? 'orange' : 'var(--neon)';
+      setTimeout(() => { barraEl.style.width = pct + '%'; }, 100);
+
+      // Desglose por carpeta
+      const carpetasArr = Object.entries(carpetas).sort((a,b) => b[1]-a[1]);
+      if(!carpetasArr.length){
+        desglose.innerHTML = '<div style="font-family:var(--font-mono);font-size:.6rem;color:var(--gray)">Sin imágenes aún</div>';
+      } else {
+        desglose.innerHTML = carpetasArr.map(([nombre, bytes]) => {
+          const mb = (bytes / (1024*1024)).toFixed(2);
+          const kb = (bytes / 1024).toFixed(0);
+          const label = bytes < 1024*1024 ? kb + ' KB' : mb + ' MB';
+          const carpPct = totalBytes > 0 ? Math.round((bytes/totalBytes)*100) : 0;
+          const iconos = {
+            'productos':'📦','mayoreo-cats':'🎊','mayoreo':'📦','logo':'🖼️','creaciones':'✨',
+            'nosotros':'ℹ️','reseñas':'⭐','resenas':'⭐','fotos-clientes':'📷','(raíz)':'📁'
+          };
+          const icon = iconos[nombre] || '📁';
+          return `<div style="display:flex;align-items:center;gap:.6rem;padding:.5rem 0;border-bottom:1px solid rgba(255,255,255,.04)">
+            <span style="font-size:.9rem">${icon}</span>
+            <div style="flex:1;min-width:0">
+              <div style="font-family:var(--font-mono);font-size:.58rem;color:var(--white);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${nombre}</div>
+              <div style="background:rgba(255,255,255,.06);height:4px;margin-top:.25rem;width:100%">
+                <div style="background:var(--neon);height:100%;width:${carpPct}%"></div>
+              </div>
+            </div>
+            <div style="font-family:var(--font-mono);font-size:.6rem;color:var(--neon);white-space:nowrap">${label}</div>
+          </div>`;
+        }).join('');
+      }
+
+    } catch(e){
+      if(loading) loading.textContent = '❌ Error: ' + e.message;
+    }
+  }
+  // ═══════════════════════════════════════════════
 
   async function guardarTodo() {
     APP_DATA.NEGOCIO = {

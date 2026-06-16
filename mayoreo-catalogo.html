@@ -62,7 +62,7 @@
 
 <!-- Header -->
 <header class="my-header">
-  <a href="index.html#mayoreo" class="my-back">← VOLVER</a>
+  <a href="javascript:void(0)" onclick="volverAtras()" class="my-back">← VOLVER</a>
   <div>
     <span class="my-header-title">MAYOREO</span>
     <span class="my-header-badge">SARUX</span>
@@ -89,6 +89,15 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 const sb = window.supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
+
+function volverAtras(){
+  // Si hay historial dentro del sitio, retroceder. Si no, ir a index#mayoreo
+  if(document.referrer && document.referrer.includes(window.location.hostname)){
+    history.back();
+  } else {
+    window.location.href = 'index.html#mayoreo';
+  }
+}
 
 async function cargarCategorias(){
   const grid = document.getElementById('myCatsGrid');
