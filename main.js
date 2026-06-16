@@ -162,8 +162,7 @@ function renderPage(){
   document.getElementById('heroContent').innerHTML=`<div class="hero-logo-wrap"><img src="${getLogoSrc()}" alt="${NEGOCIO.nombre}" class="hero-logo-img"></div><div class="eyebrow">Diseños 100% originales</div><h1>${NEGOCIO.hero_frase1||'DISEÑO'}<br><span class="outline">${NEGOCIO.hero_frase2||'QUE'}</span><br>${NEGOCIO.hero_frase3||'HABLA'}</h1><p>${NEGOCIO.descripcion}</p><div class="hero-btns"><a href="#catalogo" class="btn-neon">Ver catálogo</a><a href="#mayoreo" class="btn-outline">Mayoreo 🎊</a></div>`;
 
   if(POPUP_D.activo){
-    document.getElementById('popup').innerHTML=`<div class="popup-overlay"><div class="popup-box"><button class="popup-close" onclick="cerrarPopup()">✕</button><div style="font-size:2rem;margin-bottom:.5rem">${POPUP_D.emoji||'🎁'}</div>${logoTag(50)}<div class="popup-title" style="margin-top:1rem">${POPUP_D.titulo}</div><p class="popup-desc">${POPUP_D.descripcion}</p><button class="popup-btn" onclick="cerrarPopup()">${POPUP_D.boton}</button></div></div>`;
-    setTimeout(cerrarPopup,8000);
+    // El popup se muestra desde el INIT, después del loader — no aquí
   }
 
   const t2=[...TICKER_D,...TICKER_D].map(t=>`<span>${t}</span><span>✦</span>`).join('');
@@ -2081,27 +2080,48 @@ function reproducirVideoResena(wrapper, url){
 
 // INIT — loader configurable desde el admin, página carga en segundo plano
 (async function(){
-  // Leer config del loader (desde caché local si existe, si no defaults)
-  function getLoaderCfg(){
-    try {
-      const cached = localStorage.getItem('sarux_cfg');
-      if(cached){
-        const parsed = JSON.parse(cached);
-        return parsed.LOADER_CONFIG || {};
-      }
-    } catch(e){}
-    return {};
-  }
-  const loaderCfg   = getLoaderCfg();
-  const LOADER_MIN_MS = Math.min(5, Math.max(1, loaderCfg.segundos || 3)) * 1000;
-  const LOADER_MSGS = loaderCfg.mensajes && loaderCfg.mensajes.length
-    ? loaderCfg.mensajes
-    : ['Cargando productos...','Preparando catálogo...','Cargando imágenes...','Casi listo...','¡Ya mero!'];
-
   const tiempoInicio = Date.now();
   const loader = document.getElementById('sarux-loader');
   const barra  = loader ? loader.querySelector('.loader-barra') : null;
   const texto  = loader ? loader.querySelector('.loader-texto') : null;
+  let _popupYaMostrado = false;
+
+  // PASO 1: cargar config real de Supabase (con caché como fallback)
+  let configData = null;
+  try {
+    // Intentar Supabase primero (timeout 4s para no bloquear demasiado)
+    const supabasePromise = sb.from('site_config').select('config_data').eq('id',1).single();
+    const timeoutPromise = new Promise((_,rej) => setTimeout(()=>rej(new Error('timeout')), 4000));
+    const res = await Promise.race([supabasePromise, timeoutPromise]);
+    if(res && res.data && !res.error){
+      configData = res.data.config_data;
+      try{ localStorage.setItem('sarux_cfg', JSON.stringify(configData)); }catch(e){}
+    }
+  } catch(e){
+    // Si falla o hay timeout, usar caché local
+    try {
+      const cached = localStorage.getItem('sarux_cfg');
+      if(cached) configData = JSON.parse(cached);
+    } catch(e2){}
+  }
+
+  // Aplicar config
+  if(configData){
+    APP_DATA = { ...DEFAULTS, ...configData };
+    if(!APP_DATA.IMAGENES_PERSONALIZACION) APP_DATA.IMAGENES_PERSONALIZACION = [];
+    if(!APP_DATA.IMAGEN_LLUVIA) APP_DATA.IMAGEN_LLUVIA = "";
+  } else {
+    APP_DATA = JSON.parse(JSON.stringify(DEFAULTS));
+  }
+  syncGlobalsFromAppData();
+  try { applyStyles(); } catch(e){}
+
+  // Leer duración exacta del admin (sin límite artificial)
+  const loaderCfg = (APP_DATA.LOADER_CONFIG) || {};
+  const LOADER_MIN_MS = Math.max(1, loaderCfg.segundos || 3) * 1000;
+  const LOADER_MSGS = loaderCfg.mensajes && loaderCfg.mensajes.length
+    ? loaderCfg.mensajes
+    : ['Cargando productos...','Preparando catálogo...','Cargando imágenes...','Casi listo...','¡Ya mero!'];
 
   // Animar barra y mensajes durante el tiempo configurado
   function animarBarra(){
@@ -2122,43 +2142,22 @@ function reproducirVideoResena(wrapper, url){
   }
   animarBarra();
 
-  const ocultarLoader = function(){
-    if(loader) loader.classList.add('oculto');
-  };
+  // PASO 2: renderizar página en segundo plano (sin popup todavía)
+  try { renderPage(true); } catch(e){}
 
-  // PASO 1: preparar página en background con DEFAULTS
-  APP_DATA = JSON.parse(JSON.stringify(DEFAULTS));
-  syncGlobalsFromAppData();
-  try { applyStyles(); } catch(e){}
-  try { renderPage(); } catch(e){}
-
-  // PASO 2: cargar caché local y Supabase en paralelo, en segundo plano
-  try {
-    const cached = localStorage.getItem('sarux_cfg');
-    if(cached){
-      const parsed = JSON.parse(cached);
-      APP_DATA = { ...DEFAULTS, ...parsed };
-      syncGlobalsFromAppData();
-      try { applyStyles(); } catch(e){}
-      try { renderPage(); } catch(e){}
-    }
-    sb.from('site_config').select('config_data').eq('id',1).single().then(function(res){
-      const data = res.data, error = res.error;
-      if(!error && data){
-        try{ localStorage.setItem('sarux_cfg', JSON.stringify(data.config_data)); }catch(e){}
-        APP_DATA = { ...DEFAULTS, ...data.config_data };
-        syncGlobalsFromAppData();
-        try { applyStyles(); } catch(e){}
-        try { renderPage(); } catch(e){}
-      }
-    });
-  } catch(e){}
-
-  // PASO 3: esperar el tiempo configurado, luego quitar loader
+  // PASO 3: esperar el tiempo exacto configurado, luego quitar loader y mostrar popup
   const transcurrido = Date.now() - tiempoInicio;
   const espera = Math.max(0, LOADER_MIN_MS - transcurrido);
   setTimeout(function(){
-    ocultarLoader();
+    if(loader) loader.classList.add('oculto');
+    // Mostrar popup de bienvenida UNA sola vez, después del loader
+    if(!_popupYaMostrado && POPUP_D && POPUP_D.activo){
+      _popupYaMostrado = true;
+      try {
+        document.getElementById('popup').innerHTML=`<div class="popup-overlay"><div class="popup-box"><button class="popup-close" onclick="cerrarPopup()">✕</button><div style="font-size:2rem;margin-bottom:.5rem">${POPUP_D.emoji||'🎁'}</div><div class="popup-title" style="margin-top:1rem">${POPUP_D.titulo}</div><p class="popup-desc">${POPUP_D.descripcion}</p><button class="popup-btn" onclick="cerrarPopup()">${POPUP_D.boton}</button></div></div>`;
+        setTimeout(cerrarPopup, 8000);
+      } catch(e){}
+    }
     try { iniciarLluviaImagen(); } catch(e){}
   }, espera);
 })();

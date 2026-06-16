@@ -156,14 +156,23 @@ async function cargarConfig(){
 
 async function cargarProductos(){
   const grid = document.getElementById('myGrid');
+  // Leer filtro de evento desde URL
+  const params = new URLSearchParams(window.location.search);
+  const eventoFiltro = params.get('evento');
   try {
-    const { data, error } = await sb
+    let query = sb
       .from('mayoreo_productos')
       .select('*')
       .eq('activo', true)
       .order('orden', {ascending: true})
       .order('created_at', {ascending: false});
 
+    // Si hay filtro de evento, aplicarlo en Supabase directamente
+    if(eventoFiltro){
+      query = query.ilike('evento', eventoFiltro);
+    }
+
+    const { data, error } = await query;
     if(error) throw error;
     PRODUCTOS = data || [];
     renderGrid(PRODUCTOS);
@@ -246,7 +255,8 @@ function abrirModal(idx){
   const waBtn = document.getElementById('myModalWA');
   const msg = encodeURIComponent(`Hola! Me interesa cotizar por mayoreo: *${p.nombre}*${p.precio ? ' — $'+Number(p.precio).toLocaleString('es-MX')+' MXN' : ''}. ¿Me pueden dar más información?`);
   waBtn.onclick = () => window.open(`https://wa.me/${NEGOCIO_WA}?text=${msg}`, '_blank');
-  // Abrir
+  // Abrir — pushState para que el botón regresar del cel cierre el modal
+  history.pushState({ modal: true, idx }, '', window.location.href.split('#')[0] + '#modal');
   document.getElementById('myModalOverlay').classList.add('open');
   document.body.style.overflow = 'hidden';
 }
@@ -255,7 +265,20 @@ function cerrarModal(){
   document.getElementById('myModalOverlay').classList.remove('open');
   document.body.style.overflow = '';
   PROD_ACTIVO = null;
+  // Si el modal estaba en el historial, quitar la entrada
+  if(window.location.hash === '#modal'){
+    history.back();
+  }
 }
+
+// Botón regresar del celular cierra el modal en vez de salir de la página
+window.addEventListener('popstate', function(e){
+  if(document.getElementById('myModalOverlay').classList.contains('open')){
+    document.getElementById('myModalOverlay').classList.remove('open');
+    document.body.style.overflow = '';
+    PROD_ACTIVO = null;
+  }
+});
 
 function getShareUrl(prod){
   const base = window.location.href.split('?')[0];
@@ -298,10 +321,9 @@ function toast(msg){
   setTimeout(()=>t.classList.remove('show'), 2500);
 }
 
-// Deep link — abrir producto desde URL o filtrar por evento
+// Deep link — actualizar UI según parámetros de URL
 function checkDeepLink(){
   const params = new URLSearchParams(window.location.search);
-  // Filtro por evento (cuando viene de tarjeta Bodas / XV / etc.)
   const evento = params.get('evento');
   if(evento){
     const emojis = {'bodas':'💍','xv años':'👑','graduaciones':'🎓','empresas':'🏢'};
@@ -312,15 +334,6 @@ function checkDeepLink(){
     // Actualizar placeholder del buscador
     const searchEl = document.getElementById('mySearch');
     if(searchEl) searchEl.placeholder = `🔍 Buscar en ${evento}...`;
-    // Filtrar productos si tienen campo 'evento' o 'categoria'
-    const filtrados = PRODUCTOS.filter(p =>
-      (p.evento && p.evento.toLowerCase() === evento.toLowerCase()) ||
-      (p.categoria && p.categoria.toLowerCase() === evento.toLowerCase())
-    );
-    // Si hay productos con esa categoría, mostrar solo esos; si no, mostrar todos
-    if(filtrados.length > 0){
-      renderGrid(filtrados);
-    }
     // Actualizar botón compartir para que comparta esta vista de categoría
     const shareBtn = document.querySelector('.my-share-btn');
     if(shareBtn){
