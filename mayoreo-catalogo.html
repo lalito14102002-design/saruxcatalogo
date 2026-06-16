@@ -26,31 +26,32 @@
     .my-search:focus{border-color:var(--neon)}
     .my-search::placeholder{color:var(--gray)}
 
-    /* ── Grid de productos ── */
-    .my-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:1px;background:var(--border);padding:0;max-width:1200px;margin:0 auto}
+    /* ── Grid de productos — igual que catálogo normal ── */
+    .my-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:1rem;padding:1rem;max-width:1200px;margin:0 auto;background:transparent}
     @media(min-width:600px){.my-grid{grid-template-columns:repeat(3,1fr)}}
     @media(min-width:900px){.my-grid{grid-template-columns:repeat(4,1fr)}}
-    .my-card{background:var(--card);cursor:pointer;transition:background .2s;position:relative;overflow:hidden;display:flex;flex-direction:column}
-    .my-card:hover{background:rgba(20,0,3,1)}
-    .my-card:active{background:var(--card2)}
 
-    /* Banda diagonal MAYOREO */
-    .my-card::before{content:'MAYOREO';position:absolute;top:10px;right:-22px;background:var(--neon);color:#000;font-family:var(--font-mono);font-size:.38rem;letter-spacing:2px;padding:.15rem 1.8rem;transform:rotate(35deg);font-weight:700;z-index:2}
+    .my-card{
+      position:relative;border-radius:8px;overflow:hidden;
+      background:var(--card);border:1px solid rgba(255,255,255,.07);
+      cursor:pointer;aspect-ratio:4/5;
+      transition:transform .2s,border-color .2s,box-shadow .2s;
+    }
+    .my-card:active{transform:scale(.97)}
+    .my-card:hover{border-color:rgba(232,25,44,.4);box-shadow:0 0 20px rgba(232,25,44,.15)}
 
-    .my-card-img{width:100%;aspect-ratio:1;overflow:hidden;position:relative;background:#111}
-    .my-card-img img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .4s}
-    .my-card:hover .my-card-img img{transform:scale(1.05)}
-    .my-card-no-img{width:100%;aspect-ratio:1;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#0a0000,#1a0005);font-size:3rem}
+    .my-card-img-wrap{width:100%;height:100%;overflow:hidden}
+    .my-card-img-wrap img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .35s}
+    .my-card:hover .my-card-img-wrap img{transform:scale(1.04)}
+    .my-card-emoji{width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:3.5rem;background:var(--card2)}
 
-    .my-card-body{padding:.8rem;flex:1;display:flex;flex-direction:column;gap:.3rem;border-top:1px solid rgba(232,25,44,.15)}
-    .my-card-nombre{font-family:var(--font-display);font-size:.95rem;letter-spacing:2px;color:var(--white);line-height:1.2}
-    .my-card-precio{font-family:var(--font-mono);font-size:.9rem;color:var(--neon);letter-spacing:1px;font-weight:700}
-    .my-card-desc{font-size:.72rem;color:var(--gray);font-weight:300;line-height:1.5;flex:1}
-    .my-card-piezas{font-family:var(--font-mono);font-size:.5rem;letter-spacing:2px;color:rgba(232,25,44,.7);margin-top:.2rem}
-    .my-card-footer{display:flex;align-items:center;justify-content:space-between;margin-top:.5rem}
-    .my-card-ver{font-family:var(--font-mono);font-size:.45rem;letter-spacing:2px;color:var(--neon);border:1px solid rgba(232,25,44,.3);padding:.25rem .6rem}
-    .my-card-share{background:none;border:none;color:var(--gray);font-size:.9rem;cursor:pointer;padding:.2rem;transition:color .2s}
-    .my-card-share:hover{color:var(--neon)}
+    .my-card-overlay{position:absolute;inset:0;background:linear-gradient(to top,rgba(0,0,0,.82) 0%,rgba(0,0,0,.1) 55%,transparent 100%)}
+    .my-card-info{position:absolute;bottom:0;left:0;right:0;padding:.9rem .85rem .75rem}
+    .my-card-nombre{font-family:var(--font-display);font-size:1.05rem;letter-spacing:2px;color:#fff;line-height:1.1;text-transform:uppercase}
+    .my-card-precio{font-family:var(--font-mono);font-size:.6rem;letter-spacing:2px;color:rgba(255,255,255,.6);margin-top:.25rem}
+
+    .my-card-arrow{position:absolute;top:.7rem;right:.7rem;width:28px;height:28px;border-radius:50%;background:rgba(232,25,44,.8);display:flex;align-items:center;justify-content:center;font-size:.75rem;opacity:0;transition:opacity .2s}
+    .my-card:hover .my-card-arrow{opacity:1}
 
     /* ── Empty state ── */
     .my-empty{grid-column:1/-1;padding:4rem 1.5rem;text-align:center;color:var(--gray)}
@@ -191,22 +192,17 @@ function renderGrid(prods){
     return;
   }
   grid.innerHTML = prods.map((p,i) => {
-    const imgEl = p.imagen_url
-      ? `<div class="my-card-img"><img src="${p.imagen_url}" alt="${p.nombre}" loading="lazy"></div>`
-      : `<div class="my-card-no-img">${p.emoji||'📦'}</div>`;
-    const piezasEl = p.piezas ? `<div class="my-card-piezas">✦ ${p.piezas}</div>` : '';
+    const mediaEl = p.imagen_url
+      ? `<div class="my-card-img-wrap"><img src="${p.imagen_url}" alt="${p.nombre}" loading="lazy"></div>`
+      : `<div class="my-card-emoji">${p.emoji||'📦'}</div>`;
     const precioEl = p.precio ? `<div class="my-card-precio">$${Number(p.precio).toLocaleString('es-MX')} MXN</div>` : '';
     return `<div class="my-card" onclick="abrirModal(${i})">
-      ${imgEl}
-      <div class="my-card-body">
+      ${mediaEl}
+      <div class="my-card-overlay"></div>
+      <div class="my-card-arrow">→</div>
+      <div class="my-card-info">
         <div class="my-card-nombre">${p.nombre}</div>
         ${precioEl}
-        ${piezasEl}
-        <div class="my-card-desc">${p.descripcion||''}</div>
-        <div class="my-card-footer">
-          <span class="my-card-ver">VER DETALLES →</span>
-          <button class="my-card-share" onclick="event.stopPropagation();compartirProductoIdx(${i})" title="Copiar enlace">🔗</button>
-        </div>
       </div>
     </div>`;
   }).join('');
@@ -268,20 +264,12 @@ function cerrarModal(){
   document.getElementById('myModalOverlay').classList.remove('open');
   document.body.style.overflow = '';
   PROD_ACTIVO = null;
-  // Si el modal estaba en el historial, quitar la entrada
+  // Quitar la entrada #modal del historial si existe
   if(window.location.hash === '#modal'){
     history.back();
   }
 }
 
-// Botón regresar del celular cierra el modal en vez de salir de la página
-window.addEventListener('popstate', function(e){
-  if(document.getElementById('myModalOverlay').classList.contains('open')){
-    document.getElementById('myModalOverlay').classList.remove('open');
-    document.body.style.overflow = '';
-    PROD_ACTIVO = null;
-  }
-});
 
 function getShareUrl(prod){
   const base = window.location.href.split('?')[0];
@@ -360,10 +348,31 @@ function checkDeepLink(){
 
 // Init
 (async function(){
+  // Garantizar que siempre haya una entrada "atrás" en el historial.
+  // Si llegaron aquí sin pasar por el index (link directo, WhatsApp, etc.),
+  // insertamos el index como página previa para que regresar nunca saque.
+  if(history.length <= 1 || !document.referrer || document.referrer === ''){
+    history.replaceState({ base: true }, '', window.location.href);
+    history.pushState({ catalogo: true }, '', window.location.href);
+  }
+
   await cargarConfig();
   await cargarProductos();
   checkDeepLink();
 })();
+
+// Botón regresar del celular: si hay modal abierto lo cierra, si no regresa al index
+window.addEventListener('popstate', function(e){
+  const overlay = document.getElementById('myModalOverlay');
+  if(overlay && overlay.classList.contains('open')){
+    overlay.classList.remove('open');
+    document.body.style.overflow = '';
+    PROD_ACTIVO = null;
+  } else {
+    // Regresar siempre al index en la sección mayoreo
+    window.location.href = 'index.html#mayoreo';
+  }
+});
 </script>
 </body>
 </html>
