@@ -1413,7 +1413,16 @@ Casi listo...
     if(pi===-1) CATALOGO_D[ci].productos.push(prod); else CATALOGO_D[ci].productos[pi]=prod;
     closeProdModal(); renderAdminCatalogo(); showNotif('Producto guardado (recuerda guardar todo)');
   }
-  const TEMAS_DISPONIBLES=['Anime','Fútbol','Cine','Videojuegos','Memes','Series','Música','Otros'];
+  // TEMAS_DISPONIBLES se llena desde los filtros globales + lo que ya existe en productos
+  function getTemasDisponibles(){
+    const fromFiltros = (window.FILTROS_GLOBALES_D && window.FILTROS_GLOBALES_D.categorias) || [];
+    const fromProductos = [];
+    (CATALOGO_D||[]).forEach(cat=>(cat.productos||[]).forEach(p=>{
+      (p.temas||[]).forEach(t=>{ if(t&&t.trim()&&!fromProductos.includes(t.trim())) fromProductos.push(t.trim()); });
+    }));
+    const base = ['Anime','Fútbol','Cine','Videojuegos','Memes','Series','Música','Otros'];
+    return [...new Set([...fromFiltros, ...fromProductos, ...base])].sort();
+  }
   function renderTipoDropdown(selected){
     const sel = document.getElementById('pm-tipo'); if(!sel) return;
     const tipos = new Set((window.FILTROS_GLOBALES_D && window.FILTROS_GLOBALES_D.tipos) || []);
@@ -1423,13 +1432,18 @@ Casi listo...
     sel.innerHTML = '<option value="">Sin tipo</option>' + lista.map(t=>`<option value="${t}" ${t===selected?'selected':''}>${t}</option>`).join('');
   }
 
-  function renderTemasCheckboxes(selected){ const w=document.getElementById('pm-temas-checkboxes'); if(!w) return; const all=[...new Set([...TEMAS_DISPONIBLES,...(selected||[])])]; w.innerHTML=all.map(t=>`<label><input type="checkbox" value="${t}" ${(selected||[]).includes(t)?'checked':''}> ${t}</label>`).join(''); }
+  function renderTemasCheckboxes(selected){ const w=document.getElementById('pm-temas-checkboxes'); if(!w) return; const all=[...new Set([...getTemasDisponibles(),...(selected||[])])].sort(); w.innerHTML=all.map(t=>`<label style="display:flex;align-items:center;gap:.3rem;font-size:.75rem;cursor:pointer"><input type="checkbox" value="${t}" ${(selected||[]).includes(t)?'checked':''}> ${t}</label>`).join(''); }
   function getTemasSeleccionados(){ const boxes=document.querySelectorAll('#pm-temas-checkboxes input'); return Array.from(boxes).filter(b=>b.checked).map(b=>b.value); }
   function agregarTemaCustom(){
     const input=document.getElementById('pm-tema-custom');
     const val=input.value.trim();
     if(!val) return;
-    if(!TEMAS_DISPONIBLES.includes(val)) TEMAS_DISPONIBLES.push(val);
+    // Agregar a filtros globales para que persista
+    if(!window.FILTROS_GLOBALES_D) window.FILTROS_GLOBALES_D={tipos:[],categorias:[],disenos:[]};
+    if(!window.FILTROS_GLOBALES_D.categorias) window.FILTROS_GLOBALES_D.categorias=[];
+    if(!window.FILTROS_GLOBALES_D.categorias.includes(val)){
+      window.FILTROS_GLOBALES_D.categorias.push(val);
+    }
     const actuales=getTemasSeleccionados();
     actuales.push(val);
     renderTemasCheckboxes([...new Set(actuales)]);
