@@ -13,6 +13,7 @@ const DEFAULTS = {
   LOGO:"",
   PROMOCIONES:[],
   MAS_VENDIDOS:[{nombre:"Playera Eclipse",categoria:"Playeras",precio:350,emoji:"👕",imagen:"",badge:"Popular",tallas:["S","M","L","XL","XXL"],colores:["Negro","Blanco","Gris"]},{nombre:"Taza Mágica",categoria:"Tazas",precio:180,emoji:"☕",imagen:"",badge:"Más vendido",tallas:[],colores:["Negro","Blanco","Rojo"]},{nombre:"Termo Eclipse",categoria:"Termos",precio:280,emoji:"🧊",imagen:"",badge:"Popular",tallas:[],colores:["Negro","Plata"]},{nombre:"Sudadera Nebula",categoria:"Sudaderas",precio:550,emoji:"🧥",imagen:"",badge:"Nuevo",tallas:["S","M","L","XL","XXL"],colores:["Negro","Gris oscuro"]}],
+  MAS_VENDIDOS_CONFIG:{cantidad:4,horas:24},
   CATALOGO:[{nombre:"Tazas",emoji:"☕",activa:true,imagen_portada:"",productos:[{nombre:"Taza Clásica",precio:150,colores:["Negro","Blanco"],tallas:[],stock:20,imagen:"",descripcion:"Taza clásica con diseño Sarux",temas:[],subtema:"",disenos:[]}]},{nombre:"Playeras",emoji:"👕",activa:true,imagen_portada:"",productos:[{nombre:"Playera Clásica",precio:350,colores:["Negro"],tallas:["S","M","L","XL","XXL"],stock:25,imagen:"",descripcion:"Playera básica Sarux",temas:[],subtema:"",disenos:[]}]}],
   MAYOREO:{activo:true,titulo:"VENTA AL MAYOREO",subtitulo:"Bodas · XV Años · Graduaciones · Empresas",descripcion:"¿Necesitas piezas personalizadas para un evento especial?",minimo:"Mínimo 10 piezas",descuento:"Hasta 30% de descuento",entrega:"Entrega en 7-15 días hábiles",whatsapp_msg:"Hola! Me interesa una cotización de MAYOREO para un evento 🎊",eventos:[{nombre:"Bodas",emoji:"💍",descripcion:"Recuerdos personalizados con los nombres de los novios"},{nombre:"XV Años",emoji:"👑",descripcion:"Diseños exclusivos con el nombre de la quinceañera"},{nombre:"Graduaciones",emoji:"🎓",descripcion:"Playeras y termos con el logo de tu escuela"}],paquetes:[{nombre:"Pack Básico",piezas:"10-24 piezas",precio:"Desde $300 c/u",emoji:"📦",incluye:"Playera + Diseño personalizado"}],proceso:[{paso:"01",titulo:"Contáctanos",desc:"Escríbenos con la cantidad y tipo de evento"},{paso:"02",titulo:"Cotización",desc:"Te enviamos cotización en menos de 24 horas"},{paso:"03",titulo:"Producción",desc:"Producimos con la mayor calidad"}]},
   LANZAMIENTOS:[{nombre:"Colección Verano 2026",fecha:"Mayo 2026",descripcion:"Nueva línea de playeras y tazas",emoji:"🔥",imagen:"",activo:true}],
@@ -607,7 +608,9 @@ function _seedRandom(seed){
 }
 
 function getMasVendidosAutomaticos(){
-  const CANTIDAD = 8; // cuántos productos mostrar
+  const cfg = (typeof APP_DATA!=='undefined' && APP_DATA.MAS_VENDIDOS_CONFIG) || {};
+  const CANTIDAD = cfg.cantidad || 4;
+  const HORAS = cfg.horas || 24;
 
   // Reunir todos los productos del catálogo con su categoría
   const todos = [];
@@ -621,13 +624,14 @@ function getMasVendidosAutomaticos(){
   if(!todos.length) return [];
   if(todos.length <= CANTIDAD) return todos;
 
-  // Semilla = fecha de hoy (cambia automáticamente cada 24h, igual para todos los visitantes)
-  const hoy = new Date();
-  const seedStr = `${hoy.getFullYear()}${hoy.getMonth()}${hoy.getDate()}`;
-  const seed = parseInt(seedStr, 10);
+  // Semilla = bloque de tiempo actual según las horas configuradas
+  // (cambia automáticamente cada X horas, igual para todos los visitantes)
+  const ahoraMs = Date.now();
+  const bloqueMs = HORAS * 60 * 60 * 1000;
+  const seed = Math.floor(ahoraMs / bloqueMs);
   const rand = _seedRandom(seed);
 
-  // Fisher-Yates shuffle determinista con la semilla del día
+  // Fisher-Yates shuffle determinista con la semilla del bloque de tiempo
   const arr = [...todos];
   for(let i=arr.length-1; i>0; i--){
     const j = Math.floor(rand() * (i+1));
