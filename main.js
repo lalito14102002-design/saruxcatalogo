@@ -1032,7 +1032,7 @@ function abrirModal(p,catNombre,catEmoji){
 
   document.getElementById('modalOverlay').classList.add('open');
   document.body.style.overflow='hidden';
-  cargarResenasModal();
+  cargarResenasModal(p.nombre);
 }
 function cerrarModal(){
   document.getElementById('modalOverlay').classList.remove('open');
@@ -1043,23 +1043,18 @@ function cerrarModal(){
   document.body.style.overflow='';
 }
 
-async function cargarResenasModal(){
+async function cargarResenasModal(prodNombre){
   const el = document.getElementById('modalReviewsList');
   if(!el) return;
-  // Reusar caché de fotos si ya existe, evita query extra
-  if(_fotosClientesCache && _fotosClientesCache.length){
-    const data = _fotosClientesCache.slice(0,8);
-    el.innerHTML = data.map(function(r){
-      const estrellas = '\u2B50'.repeat(Math.min(5, Math.max(1, r.estrellas || 5)));
-      const texto = r.resena || r.producto || '';
-      return estrellas + ' \u2014 "' + texto + '" \u2014 <span style="color:var(--neon);font-family:var(--font-mono);font-size:.6rem">' + (r.nombre||'CLIENTE').toUpperCase() + '</span>';
-    }).join('<br><br>');
+  if(!prodNombre){
+    el.innerHTML = '<span style="font-family:var(--font-mono);font-size:.6rem;letter-spacing:2px;opacity:.5">S\xe9 el primero en dejar tu rese\xf1a \u2728</span>';
     return;
   }
   el.innerHTML = '<span style="font-family:var(--font-mono);font-size:.6rem;letter-spacing:2px;opacity:.5">Cargando rese\xf1as...</span>';
   try {
     const { data, error } = await sb.from('fotos_clientes')
       .select('nombre, producto, resena, estrellas')
+      .eq('producto', prodNombre)
       .order('created_at', { ascending: false })
       .limit(8);
     if(error) throw error;
@@ -1069,7 +1064,7 @@ async function cargarResenasModal(){
     }
     el.innerHTML = data.map(function(r){
       const estrellas = '\u2B50'.repeat(Math.min(5, Math.max(1, r.estrellas || 5)));
-      const texto = r.resena || r.producto || '';
+      const texto = r.resena || '';
       return estrellas + ' \u2014 "' + texto + '" \u2014 <span style="color:var(--neon);font-family:var(--font-mono);font-size:.6rem">' + (r.nombre||'CLIENTE').toUpperCase() + '</span>';
     }).join('<br><br>');
   } catch(e){
@@ -2583,11 +2578,15 @@ function abrirFrModalDesdeProducto(){
   // Pequeño delay para que se vea la transición
   setTimeout(()=>{
     abrirFrModal();
-    // Pre-rellenar el nombre del producto si está disponible
+    // Pre-rellenar el nombre del producto si está disponible y bloquear el campo
+    // (así la reseña siempre queda ligada exactamente al producto correcto)
     const prod = window._modalProdActivo;
-    if(prod && prod.p && prod.p.nombre){
-      const frProd = document.getElementById('frProducto');
-      if(frProd) frProd.value = prod.p.nombre;
+    const frProd = document.getElementById('frProducto');
+    if(prod && prod.p && prod.p.nombre && frProd){
+      frProd.value = prod.p.nombre;
+      frProd.readOnly = true;
+      frProd.style.opacity = '.7';
+      frProd.style.cursor = 'not-allowed';
     }
   }, 200);
 }
@@ -2596,6 +2595,9 @@ function abrirFrModalDesdeProducto(){
 function abrirFrModal(){
   document.getElementById('frModalOverlay').classList.add('open');
   document.body.style.overflow = 'hidden';
+  // Asegurar que el campo producto esté editable (por si quedó bloqueado de una reseña anterior)
+  const frProd = document.getElementById('frProducto');
+  if(frProd){ frProd.readOnly = false; frProd.style.opacity = ''; frProd.style.cursor = ''; }
   // Init stars
   window._frStars = 0;
   const stars = document.querySelectorAll('.star-opt');
