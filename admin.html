@@ -763,7 +763,25 @@ Casi listo...
           <button class="admin-btn-add" onclick="sincronizarFiltrosDesdeProductos()">📥 Importar filtros desde mis productos</button>
         </div>
       </div>
-      <div id="sec-vendidos" class="admin-section"><div class="admin-section-title">MÁS VENDIDOS</div><div id="admin-vendidos-list"></div><button class="admin-btn-add" onclick="addVendido()">+ Agregar producto destacado</button></div>
+      <div id="sec-vendidos" class="admin-section">
+        <div class="admin-section-title">⭐ MÁS VENDIDOS</div>
+        <div style="background:rgba(232,25,44,.06);border:1px solid rgba(232,25,44,.25);padding:1.2rem;margin-bottom:1rem">
+          <div style="font-family:var(--font-mono);font-size:.65rem;letter-spacing:2px;color:var(--neon);margin-bottom:.6rem">🔄 MODO AUTOMÁTICO ACTIVADO</div>
+          <p style="font-size:.8rem;color:var(--light);line-height:1.7;margin:0 0 .6rem">
+            Esta sección ahora elige productos <strong>automáticamente</strong> de tu catálogo. Cada 24 horas la selección cambia sola — no necesitas subir ni editar nada aquí.
+          </p>
+          <p style="font-size:.75rem;color:var(--gray);line-height:1.6;margin:0">
+            Todos tus visitantes ven los mismos productos destacados el mismo día. Al día siguiente, el sistema elige otros 8 productos diferentes de tu catálogo de forma aleatoria.
+          </p>
+        </div>
+        <div style="background:var(--card2);border:1px solid var(--border);padding:1rem">
+          <div style="font-family:var(--font-mono);font-size:.55rem;letter-spacing:2px;color:var(--gray);margin-bottom:.5rem">¿QUÉ PRODUCTOS APARECEN?</div>
+          <p style="font-size:.75rem;color:var(--gray);line-height:1.6;margin:0">
+            Se toman únicamente de las categorías <strong style="color:var(--white)">activas</strong> en tu Catálogo. Si quieres que un producto nunca aparezca aquí, desactívalo o muévelo a una categoría oculta. Mientras más productos tengas en el catálogo, más variedad verán tus clientes día a día.
+          </p>
+        </div>
+      </div>
+      <div id="sec-vendidos-OLD" class="admin-section" style="display:none"><div class="admin-section-title">MÁS VENDIDOS</div><div id="admin-vendidos-list"></div><button class="admin-btn-add" onclick="addVendido()">+ Agregar producto destacado</button></div>
       <div id="sec-mayoreo" class="admin-section"><div class="admin-section-title">MAYOREO</div><div class="admin-card"><div class="admin-field"><label class="admin-toggle"><input type="checkbox" id="my-activo"><div class="toggle-track"></div><span>Mostrar sección mayoreo</span></label></div><div class="admin-field"><label>Subtítulo</label><input class="admin-input" id="my-subtitulo"></div><div class="admin-field"><label>Descripción</label><textarea class="admin-textarea" id="my-descripcion"></textarea></div><div class="admin-field"><label>Mínimo de piezas</label><input class="admin-input" id="my-minimo"></div><div class="admin-field"><label>Descuento</label><input class="admin-input" id="my-descuento"></div><div class="admin-field"><label>Tiempo de entrega</label><input class="admin-input" id="my-entrega"></div><div class="admin-field"><label>Mensaje WhatsApp mayoreo</label><input class="admin-input" id="my-msg"></div></div><div class="admin-card"><div class="admin-card-title">🎉 Tipos de eventos</div><div id="admin-eventos-list"></div><button class="admin-btn-add" onclick="addEvento()">+ Agregar evento</button></div><div class="admin-card"><div class="admin-card-title">📦 Paquetes de mayoreo</div><div id="admin-paquetes-list"></div><button class="admin-btn-add" onclick="addPaquete()">+ Agregar paquete</button></div></div>
       <div id="sec-resenas" class="admin-section"><div class="admin-section-title">RESEÑAS</div><div id="admin-resenas-list"></div><button class="admin-btn-add" onclick="addResena()">+ Agregar reseña</button></div>
       <div id="sec-estadisticas" class="admin-section">

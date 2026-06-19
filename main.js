@@ -162,7 +162,8 @@ function renderPage(){
   document.getElementById('heroContent').innerHTML=`<div class="hero-logo-wrap"><img src="${getLogoSrc()}" alt="${NEGOCIO.nombre}" class="hero-logo-img"></div><div class="eyebrow">Diseños 100% originales</div><h1>${NEGOCIO.hero_frase1||'DISEÑO'}<br><span class="outline">${NEGOCIO.hero_frase2||'QUE'}</span><br>${NEGOCIO.hero_frase3||'HABLA'}</h1><p>${NEGOCIO.descripcion}</p><div class="hero-btns"><a href="#catalogo" class="btn-neon">Ver catálogo</a><a href="#mayoreo" class="btn-outline">Mayoreo 🎊</a></div>`;
 
   if(POPUP_D.activo){
-    document.getElementById('popup').innerHTML=`<div class="popup-overlay"><div class="popup-box"><button class="popup-close" onclick="cerrarPopup()">✕</button><div style="font-size:2rem;margin-bottom:.5rem">${POPUP_D.emoji||'🎁'}</div>${logoTag(50)}<div class="popup-title" style="margin-top:1rem">${POPUP_D.titulo}</div><p class="popup-desc">${POPUP_D.descripcion}</p><button class="popup-btn" onclick="cerrarPopup()">${POPUP_D.boton}</button></div></div>`;
+    const popupEmojiHtml = (POPUP_D.emoji && POPUP_D.emoji.trim()) ? `<div style="font-size:2rem;margin-bottom:.5rem">${POPUP_D.emoji}</div>` : '';
+    document.getElementById('popup').innerHTML=`<div class="popup-overlay"><div class="popup-box"><button class="popup-close" onclick="cerrarPopup()">✕</button>${popupEmojiHtml}${logoTag(50)}<div class="popup-title" style="margin-top:1rem">${POPUP_D.titulo}</div><p class="popup-desc">${POPUP_D.descripcion}</p><button class="popup-btn" onclick="cerrarPopup()">${POPUP_D.boton}</button></div></div>`;
     // El popup solo se cierra cuando el usuario lo cierra manualmente
   }
 
@@ -182,7 +183,7 @@ function renderPage(){
 
   const mv=document.getElementById('masVendidosGrid');
   mv.setAttribute('data-cols',GRID_CONFIG.masVendidos);
-  mv.innerHTML=MAS_VENDIDOS_D.map(p=>mkCard(p,p.categoria,p.emoji)).join('');
+  mv.innerHTML=getMasVendidosAutomaticos().map(({p,catNombre,catEmoji})=>mkCard(p,catNombre,catEmoji)).join('');
 
   renderTabs();renderMayoreo();
 
@@ -590,6 +591,50 @@ function renderCat(){
   } else {
     cg.innerHTML=_catSearchQ.trim()?`<div style="padding:3rem;color:var(--gray);font-family:var(--font-mono);font-size:.7rem;letter-spacing:2px;text-align:center">Sin resultados para "${_catSearchQ}"</div>`:'';
   }
+}
+
+// ── MÁS VENDIDOS AUTOMÁTICOS ─────────────────────────────────────────
+// Selecciona productos aleatorios del catálogo real, usando el día actual
+// como semilla. Así todos los visitantes ven los mismos productos ese día,
+// y la selección cambia automáticamente cada 24 horas sin intervención manual.
+function _seedRandom(seed){
+  let s = seed % 2147483647;
+  if(s <= 0) s += 2147483646;
+  return function(){
+    s = (s * 16807) % 2147483647;
+    return (s - 1) / 2147483646;
+  };
+}
+
+function getMasVendidosAutomaticos(){
+  const CANTIDAD = 8; // cuántos productos mostrar
+
+  // Reunir todos los productos del catálogo con su categoría
+  const todos = [];
+  (CATALOGO_D||[]).forEach(cat=>{
+    if(!cat.activa) return;
+    (cat.productos||[]).forEach(p=>{
+      todos.push({ p, catNombre: cat.nombre, catEmoji: cat.emoji });
+    });
+  });
+
+  if(!todos.length) return [];
+  if(todos.length <= CANTIDAD) return todos;
+
+  // Semilla = fecha de hoy (cambia automáticamente cada 24h, igual para todos los visitantes)
+  const hoy = new Date();
+  const seedStr = `${hoy.getFullYear()}${hoy.getMonth()}${hoy.getDate()}`;
+  const seed = parseInt(seedStr, 10);
+  const rand = _seedRandom(seed);
+
+  // Fisher-Yates shuffle determinista con la semilla del día
+  const arr = [...todos];
+  for(let i=arr.length-1; i>0; i--){
+    const j = Math.floor(rand() * (i+1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+
+  return arr.slice(0, CANTIDAD);
 }
 
 function mkCard(p,catNombre,catEmoji){
