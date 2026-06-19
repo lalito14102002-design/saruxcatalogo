@@ -76,7 +76,24 @@ body{background:var(--black);color:var(--light);font-family:var(--font-body);ove
 .carrito-del:hover{color:var(--neon)}
 .carrito-empty{text-align:center;padding:3rem 1rem;color:var(--gray)}
 .carrito-empty div{font-size:3rem;margin-bottom:.8rem}
+@keyframes pulseVer{0%,100%{opacity:1}50%{opacity:.3}}
 .carrito-empty p{font-family:var(--font-mono);font-size:.6rem;letter-spacing:2px}
+.carrito-cupon-wrap{padding:.9rem 1.5rem;border-top:1px solid var(--border);flex-shrink:0}
+.carrito-cupon-row{display:flex;gap:.5rem}
+.carrito-cupon-input{flex:1;background:var(--card2);border:1px solid var(--border);color:var(--white);padding:.6rem .8rem;font-family:var(--font-mono);font-size:.65rem;letter-spacing:1px;outline:none;transition:border-color .2s;text-transform:uppercase}
+.carrito-cupon-input:focus{border-color:var(--neon)}
+.carrito-cupon-input::placeholder{color:var(--gray);text-transform:none}
+.carrito-cupon-btn{background:none;border:1px solid var(--neon);color:var(--neon);font-family:var(--font-mono);font-size:.6rem;letter-spacing:2px;padding:.6rem 1rem;cursor:pointer;white-space:nowrap;transition:background .2s}
+.carrito-cupon-btn:hover{background:rgba(232,25,44,.1)}
+.carrito-cupon-msg{font-family:var(--font-mono);font-size:.58rem;letter-spacing:1px;margin-top:.5rem}
+.carrito-cupon-msg.error{color:var(--neon)}
+.carrito-cupon-msg.success{color:#4caf50}
+.carrito-ref-wrap{margin:0 1.5rem .9rem;padding:.7rem .9rem;background:rgba(255,152,0,.08);border:1px dashed rgba(255,152,0,.4);font-family:var(--font-mono);font-size:.6rem;letter-spacing:1px;color:#ff9800;cursor:pointer;text-align:center;transition:background .2s}
+.carrito-ref-wrap:hover{background:rgba(255,152,0,.15)}
+.carrito-cupon-aplicado{display:flex;justify-content:space-between;align-items:center;background:rgba(76,175,80,.1);border:1px solid rgba(76,175,80,.3);padding:.6rem .8rem;margin-top:.3rem}
+.carrito-cupon-aplicado-info{font-family:var(--font-mono);font-size:.6rem;letter-spacing:1px;color:#4caf50}
+.carrito-cupon-aplicado button{background:none;border:none;color:var(--gray);cursor:pointer;font-size:.85rem}
+.carrito-descuento-row{display:flex;justify-content:space-between;align-items:center;font-family:var(--font-mono);font-size:.65rem;color:#4caf50;margin-bottom:.5rem}
 .carrito-footer{padding:1.2rem 1.5rem;border-top:1px solid var(--border);flex-shrink:0}
 .carrito-total{display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem}
 .carrito-total-label{font-family:var(--font-mono);font-size:.6rem;letter-spacing:2px;color:var(--gray)}

@@ -283,6 +283,8 @@
         <button class="admin-nav-btn" onclick="showSec('nosotros',this)">ℹ️ Sobre nosotros</button>
         <button class="admin-nav-btn" onclick="showSec('pasos',this)">👣 Cómo pedir</button>
         <button class="admin-nav-btn" onclick="showSec('ticker',this)">📢 Ticker</button>
+        <button class="admin-nav-btn" onclick="showSec('referidos',this);cargarReferidosAdmin()">🎁 Referidos</button>
+        <button class="admin-nav-btn" onclick="showSec('cupones',this);cargarCuponesAdmin()">🎟️ Cupones</button>
         <button class="admin-nav-btn" onclick="showSec('storage',this);cargarStorage()">💾 Almacenamiento</button>
         <button class="admin-nav-btn" onclick="showSec('nube',this)">☁️ Subir a internet</button>
       </div>
@@ -1057,6 +1059,94 @@ Casi listo...
       <div id="sec-nosotros" class="admin-section"><div class="admin-section-title">SOBRE NOSOTROS</div><div class="admin-card"><div class="admin-field"><label>Título</label><input class="admin-input" id="n-titulo"></div><div class="admin-field"><label>Párrafo 1</label><textarea class="admin-textarea" id="n-p1"></textarea></div><div class="admin-field"><label>Párrafo 2</label><textarea class="admin-textarea" id="n-p2"></textarea></div><div class="admin-field"><label>Párrafo 3</label><textarea class="admin-textarea" id="n-p3"></textarea></div></div><div class="admin-card"><div class="admin-card-title">🖼️ Fotos (4 imágenes)</div><div id="admin-fotos-list"></div></div></div>
       <div id="sec-pasos" class="admin-section"><div class="admin-section-title">CÓMO PEDIR</div><div class="admin-card"><div class="admin-field"><label>Etiqueta pequeña</label><input class="admin-input" id="pasos-label-inp"></div><div class="admin-field"><label>Título grande</label><input class="admin-input" id="pasos-titulo-inp"></div></div><div class="admin-card"><div class="admin-card-title">Pasos</div><div id="admin-pasos-list"></div><button class="admin-btn-add" onclick="addPaso()">+ Agregar paso</button></div></div>
       <div id="sec-ticker" class="admin-section"><div class="admin-section-title">TICKER</div><div class="admin-card"><textarea class="admin-textarea" id="a-ticker" rows="5" placeholder="Una palabra por línea"></textarea></div></div>
+      <!-- CUPONES -->
+      <!-- REFERIDOS -->
+      <div id="sec-referidos" class="admin-section">
+        <div class="admin-section-title">🎁 PROGRAMA DE REFERIDOS</div>
+        <div class="admin-section-sub">Cada visitante tiene un link único. Cuando comparten su link y un amigo compra, el amigo recibe descuento automáticamente. Tú decides el premio que le das a quien refirió.</div>
+
+        <div style="background:var(--card2);border:1px solid var(--border);padding:1.2rem;margin-bottom:1rem">
+          <div class="admin-field">
+            <label class="admin-toggle"><input type="checkbox" id="ref-activo"><div class="toggle-track"></div><span>Activar programa de referidos</span></label>
+          </div>
+          <div class="admin-field-label">DESCUENTO PARA EL AMIGO REFERIDO</div>
+          <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.8rem">
+            <input id="ref-porcentaje" type="number" min="1" max="100" value="10" class="admin-input" style="width:100px">
+            <span style="font-family:var(--font-mono);font-size:.7rem;color:var(--gray)">% de descuento automático en su primera compra</span>
+          </div>
+          <div class="admin-field-label">NOTA PARA TI <span style="color:var(--gray);font-size:.5rem">(solo informativo, no se muestra al público)</span></div>
+          <textarea id="ref-premio-texto" class="admin-textarea" rows="2" placeholder="Ej: Le doy 50 pesos de descuento en su siguiente compra" style="margin-bottom:.8rem"></textarea>
+          <button class="admin-btn" onclick="guardarConfigReferidos()">💾 GUARDAR CONFIGURACIÓN</button>
+          <div id="ref-config-msg" style="font-family:var(--font-mono);font-size:.6rem;margin-top:.5rem"></div>
+        </div>
+
+        <div style="background:rgba(255,152,0,.06);border:1px solid rgba(255,152,0,.25);padding:1rem;margin-bottom:1rem">
+          <div style="font-family:var(--font-mono);font-size:.55rem;letter-spacing:2px;color:#ff9800;margin-bottom:.5rem">ℹ️ CÓMO FUNCIONA</div>
+          <p style="font-size:.72rem;color:var(--gray);line-height:1.7;margin:0">
+            1. Cada visitante de tu web obtiene un link único automáticamente (no necesita registrarse).<br>
+            2. Cuando comparte ese link y alguien entra y compra, el descuento se aplica solo, sin que el amigo tenga que escribir ningún código.<br>
+            3. Aquí abajo ves cuántas compras generó cada link, y decides manualmente qué premio le das a quien refirió — por WhatsApp, como tú prefieras.
+          </p>
+        </div>
+
+        <div class="admin-card-title" style="margin-bottom:.8rem">📊 RANKING DE REFERIDORES</div>
+        <div id="admin-referidos-list">
+          <div style="font-family:var(--font-mono);font-size:.6rem;color:var(--gray)">Cargando...</div>
+        </div>
+      </div>
+
+      <div id="sec-cupones" class="admin-section">
+        <div class="admin-section-title">🎟️ CUPONES DE DESCUENTO</div>
+        <div class="admin-section-sub">Crea códigos de descuento para tus clientes. Pueden aplicar a todo el catálogo, solo a ciertas categorías, o tener un límite de usos.</div>
+
+        <!-- Formulario -->
+        <div style="background:var(--card2);border:1px solid var(--border);padding:1.2rem;margin-bottom:1.5rem">
+          <input type="hidden" id="cup-edit-id">
+
+          <div class="admin-field-label">CÓDIGO DEL CUPÓN *</div>
+          <input id="cup-codigo" placeholder="Ej: SARUX10" class="admin-input" style="margin-bottom:.8rem;text-transform:uppercase" oninput="this.value=this.value.toUpperCase()">
+
+          <div class="admin-field-label">PORCENTAJE DE DESCUENTO *</div>
+          <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.8rem">
+            <input id="cup-porcentaje" type="number" min="1" max="100" value="10" class="admin-input" style="width:100px">
+            <span style="font-family:var(--font-mono);font-size:.7rem;color:var(--gray)">% de descuento</span>
+          </div>
+
+          <div class="admin-field-label">¿DÓNDE APLICA?</div>
+          <select id="cup-aplica-a" class="admin-input" style="margin-bottom:.8rem" onchange="toggleCupAplicaA()">
+            <option value="todo">Todo el catálogo</option>
+            <option value="categorias">Solo ciertas categorías</option>
+          </select>
+
+          <div id="cup-categorias-wrap" style="display:none;margin-bottom:.8rem">
+            <div class="admin-field-label">SELECCIONA LAS CATEGORÍAS</div>
+            <div id="cup-categorias-checks" style="display:flex;flex-wrap:wrap;gap:.5rem;background:rgba(255,255,255,.03);padding:.7rem;border:1px solid var(--border)"></div>
+          </div>
+
+          <div class="admin-field-label">LÍMITE DE USOS <span style="color:var(--gray);font-size:.5rem">(déjalo vacío para ilimitado)</span></div>
+          <input id="cup-limite" type="number" min="1" placeholder="Ej: 10" class="admin-input" style="margin-bottom:.8rem;width:140px">
+
+          <div class="admin-field-label">FECHA DE EXPIRACIÓN <span style="color:var(--gray);font-size:.5rem">(opcional)</span></div>
+          <input id="cup-expira" type="date" class="admin-input" style="margin-bottom:.8rem;width:200px">
+
+          <div style="display:flex;align-items:center;gap:.8rem;margin-bottom:1rem">
+            <label style="display:flex;align-items:center;gap:.4rem;cursor:pointer;font-family:var(--font-mono);font-size:.55rem;color:var(--gray)">
+              <input type="checkbox" id="cup-activo" checked> CUPÓN ACTIVO
+            </label>
+          </div>
+
+          <div id="cup-msg" style="font-family:var(--font-mono);font-size:.6rem;margin-bottom:.6rem"></div>
+          <div style="display:flex;gap:.6rem;flex-wrap:wrap">
+            <button class="admin-btn" onclick="guardarCupon()">💾 GUARDAR CUPÓN</button>
+            <button class="admin-btn" style="background:rgba(255,255,255,.05);border-color:var(--border);color:var(--gray)" onclick="limpiarCupForm()">✕ CANCELAR</button>
+          </div>
+        </div>
+
+        <div id="admin-cupones-list">
+          <div style="font-family:var(--font-mono);font-size:.6rem;color:var(--gray)">Cargando...</div>
+        </div>
+      </div>
+
       <div id="sec-storage" class="admin-section">
         <div class="admin-section-title">💾 ALMACENAMIENTO</div>
         <div class="admin-section-sub">Espacio usado en Supabase Storage para tus imágenes</div>
@@ -1955,6 +2045,326 @@ Casi listo...
         (data||[]).map(c => `<option value="${c.id}">${c.nombre}</option>`).join('');
       if(actual) sel.value = actual;
     } catch(e){}
+  }
+
+  // ═══════════════════════════════════════════════
+
+  // ═══════════════════════════════════════════════
+  // PROGRAMA DE REFERIDOS
+  // ═══════════════════════════════════════════════
+
+  async function cargarConfigReferidosAdmin(){
+    try {
+      const { data } = await sb.from('referidos_config').select('*').eq('id',1).single();
+      if(data){
+        document.getElementById('ref-activo').checked = data.activo !== false;
+        document.getElementById('ref-porcentaje').value = data.porcentaje_descuento || 10;
+        document.getElementById('ref-premio-texto').value = data.premio_referidor_texto || '';
+      }
+    } catch(e){}
+  }
+
+  async function guardarConfigReferidos(){
+    const msg = document.getElementById('ref-config-msg');
+    const payload = {
+      activo: document.getElementById('ref-activo').checked,
+      porcentaje_descuento: parseFloat(document.getElementById('ref-porcentaje').value) || 10,
+      premio_referidor_texto: document.getElementById('ref-premio-texto').value.trim()
+    };
+    msg.style.color = 'var(--gray)'; msg.textContent = 'Guardando...';
+    try {
+      const { error } = await sb.from('referidos_config').update(payload).eq('id',1);
+      if(error){ msg.style.color='red'; msg.textContent='❌ Error: '+error.message; return; }
+      msg.style.color='#4caf50'; msg.textContent='✅ Configuración guardada';
+      setTimeout(()=>{ msg.textContent=''; }, 3000);
+    } catch(e){ msg.style.color='red'; msg.textContent='❌ Error: '+e.message; }
+  }
+
+  async function cargarReferidosAdmin(){
+    cargarConfigReferidosAdmin();
+    const cont = document.getElementById('admin-referidos-list');
+    if(!cont) return;
+    cont.innerHTML = '<div style="font-family:var(--font-mono);font-size:.6rem;color:var(--gray)">Cargando...</div>';
+    try {
+      const { data, error } = await sb.from('referidos').select('*').gt('total_referidos',0).order('total_referidos',{ascending:false}).limit(50);
+      if(error) throw error;
+      if(!data || !data.length){
+        cont.innerHTML = '<div style="font-family:var(--font-mono);font-size:.6rem;color:var(--gray);padding:.8rem 0">Aún nadie ha generado compras con su link. Cuando suceda, aparecerá aquí.</div>';
+        return;
+      }
+      cont.innerHTML = data.map((r,i) => {
+        const medalla = i===0?'🥇':i===1?'🥈':i===2?'🥉':'🎟️';
+        return `<div style="display:flex;align-items:center;gap:.8rem;padding:.7rem;border-bottom:1px solid var(--border);background:var(--card2)">
+          <span style="font-size:1.2rem">${medalla}</span>
+          <div style="flex:1;min-width:0">
+            <div style="font-family:var(--font-mono);font-size:.7rem;color:var(--white)">${r.codigo}</div>
+            <div style="font-size:.6rem;color:var(--gray)">Creado: ${new Date(r.created_at).toLocaleDateString('es-MX')}</div>
+          </div>
+          <div style="font-family:var(--font-display);font-size:1.1rem;color:var(--neon)">${r.total_referidos}</div>
+          <div style="font-family:var(--font-mono);font-size:.5rem;color:var(--gray)">COMPRA${r.total_referidos!==1?'S':''}</div>
+        </div>`;
+      }).join('');
+    } catch(e){ cont.innerHTML = `<div style="color:var(--neon);font-size:.6rem">${e.message}</div>`; }
+  }
+
+  // ═══════════════════════════════════════════════
+  // CUPONES DE DESCUENTO
+  // ═══════════════════════════════════════════════
+
+  function toggleCupAplicaA(){
+    const val = document.getElementById('cup-aplica-a').value;
+    const wrap = document.getElementById('cup-categorias-wrap');
+    if(val === 'categorias'){
+      wrap.style.display = 'block';
+      renderCupCategoriasChecks();
+    } else {
+      wrap.style.display = 'none';
+    }
+  }
+
+  function renderCupCategoriasChecks(selected){
+    const cont = document.getElementById('cup-categorias-checks');
+    if(!cont) return;
+    const cats = (CATALOGO_D||[]).map(c => c.nombre);
+    if(!cats.length){
+      cont.innerHTML = '<span style="font-family:var(--font-mono);font-size:.55rem;color:var(--gray)">No hay categorías en tu catálogo aún</span>';
+      return;
+    }
+    cont.innerHTML = cats.map(nombre => {
+      const checked = (selected||[]).includes(nombre) ? 'checked' : '';
+      return `<label style="display:flex;align-items:center;gap:.3rem;font-size:.7rem;color:var(--light);cursor:pointer;background:rgba(255,255,255,.04);padding:.3rem .6rem;border:1px solid var(--border)">
+        <input type="checkbox" value="${nombre}" class="cup-cat-check" ${checked}> ${nombre}
+      </label>`;
+    }).join('');
+  }
+
+  function getCupCategoriasSeleccionadas(){
+    const boxes = document.querySelectorAll('.cup-cat-check');
+    return Array.from(boxes).filter(b=>b.checked).map(b=>b.value);
+  }
+
+  function limpiarCupForm(){
+    document.getElementById('cup-edit-id').value = '';
+    document.getElementById('cup-codigo').value = '';
+    document.getElementById('cup-porcentaje').value = '10';
+    document.getElementById('cup-aplica-a').value = 'todo';
+    document.getElementById('cup-categorias-wrap').style.display = 'none';
+    document.getElementById('cup-limite').value = '';
+    document.getElementById('cup-expira').value = '';
+    document.getElementById('cup-activo').checked = true;
+    document.getElementById('cup-msg').textContent = '';
+  }
+
+  async function guardarCupon(){
+    const codigo = document.getElementById('cup-codigo').value.trim().toUpperCase();
+    const porcentaje = parseFloat(document.getElementById('cup-porcentaje').value);
+    const aplicaA = document.getElementById('cup-aplica-a').value;
+    const limiteRaw = document.getElementById('cup-limite').value.trim();
+    const limite = limiteRaw ? parseInt(limiteRaw) : null;
+    const expiraRaw = document.getElementById('cup-expira').value;
+    const expira = expiraRaw ? new Date(expiraRaw + 'T23:59:59').toISOString() : null;
+    const activo = document.getElementById('cup-activo').checked;
+    const editId = document.getElementById('cup-edit-id').value;
+    const msg = document.getElementById('cup-msg');
+
+    if(!codigo){ msg.style.color='var(--neon)'; msg.textContent='⚠️ Escribe un código'; return; }
+    if(!porcentaje || porcentaje < 1 || porcentaje > 100){ msg.style.color='var(--neon)'; msg.textContent='⚠️ El porcentaje debe ser entre 1 y 100'; return; }
+
+    const categorias = aplicaA === 'categorias' ? getCupCategoriasSeleccionadas() : [];
+    if(aplicaA === 'categorias' && !categorias.length){ msg.style.color='var(--neon)'; msg.textContent='⚠️ Selecciona al menos una categoría'; return; }
+
+    msg.style.color='var(--gray)'; msg.textContent='Guardando...';
+
+    try {
+      const payload = {
+        codigo, porcentaje, aplica_a: aplicaA, categorias,
+        limite_usos: limite, fecha_expira: expira, activo
+      };
+
+      let err;
+      if(editId){
+        ({ error: err } = await sb.from('cupones').update(payload).eq('id', editId));
+      } else {
+        payload.usos_actuales = 0;
+        ({ error: err } = await sb.from('cupones').insert([payload]));
+      }
+      if(err){
+        if(err.message && err.message.includes('duplicate')){
+          msg.style.color='red'; msg.textContent='❌ Ese código ya existe';
+        } else {
+          msg.style.color='red'; msg.textContent='❌ Error: ' + err.message;
+        }
+        return;
+      }
+
+      msg.style.color='#4caf50'; msg.textContent='✅ Cupón guardado';
+      limpiarCupForm();
+      setTimeout(()=>{ msg.textContent=''; }, 3000);
+      cargarCuponesAdmin();
+    } catch(e){ msg.style.color='red'; msg.textContent='❌ Error: ' + e.message; }
+  }
+
+  async function cargarCuponesAdmin(){
+    const cont = document.getElementById('admin-cupones-list');
+    if(!cont) return;
+    cont.innerHTML = '<div style="font-family:var(--font-mono);font-size:.6rem;color:var(--gray)">Cargando...</div>';
+    try {
+      const { data, error } = await sb.from('cupones').select('*').order('created_at',{ascending:false});
+      if(error) throw error;
+      if(!data || !data.length){
+        cont.innerHTML = '<div style="font-family:var(--font-mono);font-size:.6rem;color:var(--gray);padding:.8rem 0">Aún no hay cupones. Crea el primero arriba.</div>';
+        return;
+      }
+      cont.innerHTML = data.map(c => {
+        const ahora = new Date();
+        const expirado = c.fecha_expira && new Date(c.fecha_expira) < ahora;
+        const agotado = c.limite_usos !== null && c.usos_actuales >= c.limite_usos;
+        const estaActivo = c.activo && !expirado && !agotado;
+
+        let estadoLabel, estadoColor;
+        if(!c.activo){ estadoLabel='DESACTIVADO'; estadoColor='var(--gray)'; }
+        else if(expirado){ estadoLabel='EXPIRADO'; estadoColor='#ff9800'; }
+        else if(agotado){ estadoLabel='AGOTADO'; estadoColor='var(--neon)'; }
+        else { estadoLabel='ACTIVO'; estadoColor='#4caf50'; }
+
+        const aplicaLabel = c.aplica_a === 'todo' ? 'Todo el catálogo' : `Solo: ${(c.categorias||[]).join(', ')}`;
+        const usosLabel = c.limite_usos !== null ? `${c.usos_actuales} / ${c.limite_usos} usos` : `${c.usos_actuales} usos (ilimitado)`;
+        const expiraLabel = c.fecha_expira ? new Date(c.fecha_expira).toLocaleDateString('es-MX') : 'Sin expiración';
+
+        return `<div style="background:var(--card2);border:1px solid var(--border);padding:1rem;margin-bottom:.6rem">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:.6rem;margin-bottom:.5rem">
+            <div>
+              <div style="font-family:var(--font-display);font-size:1.1rem;letter-spacing:2px;color:var(--white)">${c.codigo}</div>
+              <div style="font-family:var(--font-mono);font-size:.6rem;color:var(--neon);margin-top:.2rem">${c.porcentaje}% DE DESCUENTO</div>
+            </div>
+            <span style="font-family:var(--font-mono);font-size:.45rem;letter-spacing:2px;padding:.25rem .6rem;border:1px solid ${estadoColor};color:${estadoColor};white-space:nowrap">${estadoLabel}</span>
+          </div>
+          <div style="font-size:.72rem;color:var(--gray);line-height:1.8;margin-bottom:.6rem">
+            📦 ${aplicaLabel}<br>
+            🎯 ${usosLabel}<br>
+            📅 ${expiraLabel}
+          </div>
+          <div style="display:flex;gap:.4rem;flex-wrap:wrap">
+            <button class="admin-btn-sm" onclick="editarCupon('${c.id}')">✏️ Editar</button>
+            <button class="admin-btn-sm" onclick="generarImagenCupon('${c.id}')">🖼️ Imagen para redes</button>
+            <button class="admin-btn-sm" style="background:${c.activo?'rgba(76,175,80,.15)':'rgba(255,255,255,.05)'}" onclick="toggleCuponActivo('${c.id}',${c.activo})">${c.activo?'✅ Activo':'👁️ Activar'}</button>
+            <button class="admin-btn-sm" style="border-color:rgba(232,25,44,.4)" onclick="eliminarCupon('${c.id}')">🗑️</button>
+          </div>
+        </div>`;
+      }).join('');
+    } catch(e){ cont.innerHTML = `<div style="color:var(--neon);font-size:.6rem">${e.message}</div>`; }
+  }
+
+  async function editarCupon(id){
+    const { data, error } = await sb.from('cupones').select('*').eq('id',id).single();
+    if(error||!data) return;
+    document.getElementById('cup-edit-id').value = data.id;
+    document.getElementById('cup-codigo').value = data.codigo||'';
+    document.getElementById('cup-porcentaje').value = data.porcentaje||10;
+    document.getElementById('cup-aplica-a').value = data.aplica_a||'todo';
+    document.getElementById('cup-limite').value = data.limite_usos !== null ? data.limite_usos : '';
+    document.getElementById('cup-expira').value = data.fecha_expira ? data.fecha_expira.slice(0,10) : '';
+    document.getElementById('cup-activo').checked = data.activo !== false;
+    if(data.aplica_a === 'categorias'){
+      document.getElementById('cup-categorias-wrap').style.display = 'block';
+      renderCupCategoriasChecks(data.categorias||[]);
+    } else {
+      document.getElementById('cup-categorias-wrap').style.display = 'none';
+    }
+    document.getElementById('cup-msg').textContent = '';
+    document.getElementById('sec-cupones').scrollIntoView({behavior:'smooth'});
+  }
+
+  async function toggleCuponActivo(id, actual){
+    await sb.from('cupones').update({ activo: !actual }).eq('id', id);
+    cargarCuponesAdmin();
+  }
+
+  function eliminarCupon(id){
+    confirmDelete('¿Eliminar este cupón? Esta acción no se puede deshacer.', async()=>{
+      const { error } = await sb.from('cupones').delete().eq('id', id);
+      if(!error){ cargarCuponesAdmin(); showNotif('Cupón eliminado'); }
+    });
+  }
+
+  // Generar imagen de publicidad del cupón (PNG descargable, lista para redes)
+  async function generarImagenCupon(id){
+    const { data: c, error } = await sb.from('cupones').select('*').eq('id',id).single();
+    if(error||!c){ showNotif('❌ Error al cargar el cupón'); return; }
+
+    const canvas = document.createElement('canvas');
+    canvas.width = 1080; canvas.height = 1080;
+    const ctx = canvas.getContext('2d');
+
+    // Fondo degradado negro→rojo oscuro
+    const grad = ctx.createRadialGradient(540,540,100,540,540,800);
+    grad.addColorStop(0, '#1a0005');
+    grad.addColorStop(1, '#000000');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0,0,1080,1080);
+
+    // Marco decorativo
+    ctx.strokeStyle = 'rgba(232,25,44,.5)';
+    ctx.lineWidth = 3;
+    ctx.strokeRect(40,40,1000,1000);
+
+    // Texto: "OFERTA ESPECIAL"
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#e8192c';
+    ctx.font = '700 32px monospace';
+    ctx.fillText('★ OFERTA ESPECIAL ★', 540, 220);
+
+    // Logo / nombre marca
+    ctx.fillStyle = '#ffffff';
+    ctx.font = '900 64px Arial';
+    ctx.fillText('SARUX', 540, 310);
+
+    // Porcentaje gigante
+    ctx.fillStyle = '#ffffff';
+    ctx.font = '900 220px Arial';
+    ctx.fillText(c.porcentaje + '%', 540, 560);
+
+    ctx.fillStyle = '#e8192c';
+    ctx.font = '700 48px Arial';
+    ctx.fillText('DE DESCUENTO', 540, 630);
+
+    // Código del cupón en caja
+    ctx.fillStyle = '#e8192c';
+    ctx.fillRect(240, 700, 600, 110);
+    ctx.fillStyle = '#000000';
+    ctx.font = '900 56px monospace';
+    ctx.fillText(c.codigo, 540, 775);
+
+    // Texto inferior
+    ctx.fillStyle = 'rgba(255,255,255,.6)';
+    ctx.font = '400 26px Arial';
+    let infoLine = 'Usa este código en tu compra';
+    if(c.limite_usos){
+      infoLine = `¡Solo ${c.limite_usos} cupones disponibles!`;
+    }
+    ctx.fillText(infoLine, 540, 870);
+
+    if(c.fecha_expira){
+      const fecha = new Date(c.fecha_expira).toLocaleDateString('es-MX',{day:'numeric',month:'long',year:'numeric'});
+      ctx.fillStyle = 'rgba(255,255,255,.4)';
+      ctx.font = '400 22px Arial';
+      ctx.fillText('Válido hasta el ' + fecha, 540, 910);
+    }
+
+    ctx.fillStyle = 'rgba(255,255,255,.3)';
+    ctx.font = '400 20px monospace';
+    ctx.fillText('WhatsApp · Instagram · Facebook · TikTok', 540, 990);
+
+    // Descargar
+    canvas.toBlob(blob => {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `cupon-${c.codigo}.png`;
+      a.click();
+      URL.revokeObjectURL(url);
+      showNotif('✅ Imagen descargada — listo para subir a redes');
+    }, 'image/png');
   }
 
   // ═══════════════════════════════════════════════

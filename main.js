@@ -834,8 +834,52 @@ function limpiarBusqueda() {
 }
 
 // MODAL PRODUCTO
+// ── "VIENDO AHORA" — contador en tiempo real vía Supabase Presence ──────────
+let _presenceChannel = null;
+let _presenceClientId = Math.random().toString(36).slice(2);
+
+function salirCanalPresencia(){
+  if(_presenceChannel){
+    try { sb.removeChannel(_presenceChannel); } catch(e){}
+    _presenceChannel = null;
+  }
+  const wrap = document.getElementById('modalViendoAhora');
+  if(wrap) wrap.style.display = 'none';
+}
+
+function entrarCanalPresencia(prodNombre){
+  salirCanalPresencia();
+  if(!prodNombre) return;
+
+  const canalId = 'viendo:' + prodNombre.replace(/[^a-zA-Z0-9]/g,'_').slice(0,80);
+  const channel = sb.channel(canalId, { config: { presence: { key: _presenceClientId } } });
+
+  channel.on('presence', { event: 'sync' }, () => {
+    const state = channel.presenceState();
+    const count = Object.keys(state).length;
+    const wrap = document.getElementById('modalViendoAhora');
+    const texto = document.getElementById('modalViendoAhoraTexto');
+    if(!wrap || !texto) return;
+    if(count >= 2){
+      wrap.style.display = 'flex';
+      texto.textContent = `${count} personas viendo esto ahora`;
+    } else {
+      wrap.style.display = 'none';
+    }
+  });
+
+  channel.subscribe(async (status) => {
+    if(status === 'SUBSCRIBED'){
+      await channel.track({ online_at: new Date().toISOString() });
+    }
+  });
+
+  _presenceChannel = channel;
+}
+
 function abrirModal(p,catNombre,catEmoji){
   trackView(p.nombre);
+  entrarCanalPresencia(p.nombre);
   window._modalProdActivo = {p, catNombre, catEmoji};
   window._modalDisenoIdx = 0;
   // Actualizar OG metas para compartir con imagen correcta
@@ -992,6 +1036,7 @@ function abrirModal(p,catNombre,catEmoji){
 }
 function cerrarModal(){
   document.getElementById('modalOverlay').classList.remove('open');
+  salirCanalPresencia();
   // Si el panel de categoría sigue abierto, mantener overflow hidden
   const panel=document.getElementById('catPanel');
   if(panel && panel.classList.contains('open')) return;
@@ -1384,6 +1429,208 @@ function guardarCarrito(){
   localStorage.setItem('sarux_carrito', JSON.stringify(carrito));
 }
 
+// ── PROGRAMA DE REFERIDOS ─────────────────────────────────────────────────────
+const REF_STORAGE_KEY = 'sarux_ref_codigo';
+let REFERIDOS_CFG = { activo: true, porcentaje_descuento: 10 };
+
+function generarCodigoReferido(){
+  return 'REF-' + Math.random().toString(36).slice(2,7).toUpperCase();
+}
+
+// Obtiene (o crea) el código propio del visitante actual, para que pueda compartir su link
+async function obtenerMiCodigoReferido(){
+  let codigo = localStorage.getItem(REF_STORAGE_KEY);
+  if(codigo) return codigo;
+
+  codigo = generarCodigoReferido();
+  try {
+    const { error } = await sb.from('referidos').insert([{ codigo, total_referidos: 0 }]);
+    if(error){
+      // Si por alguna rara colisión ya existe, generar otro
+      codigo = generarCodigoReferido();
+      await sb.from('referidos').insert([{ codigo, total_referidos: 0 }]);
+    }
+    localStorage.setItem(REF_STORAGE_KEY, codigo);
+  } catch(e){}
+  return codigo;
+}
+
+function getMiLinkReferido(){
+  const codigo = localStorage.getItem(REF_STORAGE_KEY);
+  if(!codigo) return SHARE_BASE;
+  return SHARE_BASE + '/?ref=' + codigo;
+}
+
+async function compartirMiLinkReferido(){
+  await obtenerMiCodigoReferido();
+  const link = getMiLinkReferido();
+  const texto = `¡Échale un ojo a SARUX! 🔥 Diseños originales en playeras, tazas, sudaderas y más. Usa mi link y obtén descuento en tu primera compra:`;
+  if(navigator.share){
+    navigator.share({ title: 'SARUX', text: texto, url: link }).catch(()=>{});
+  } else {
+    navigator.clipboard.writeText(link).then(()=>showToast('🔗 Tu link de referido fue copiado')).catch(()=>showToast('🔗 '+link));
+  }
+}
+
+// Detecta ?ref=CODIGO en la URL al cargar la página y lo guarda como "referido pendiente"
+function detectarRefEnURL(){
+  const params = new URLSearchParams(window.location.search);
+  const ref = params.get('ref');
+  if(ref){
+    // No nos referimos a nosotros mismos con nuestro propio código
+    const miCodigo = localStorage.getItem(REF_STORAGE_KEY);
+    if(ref !== miCodigo){
+      localStorage.setItem('sarux_referido_por', ref);
+    }
+  }
+}
+
+async function cargarConfigReferidos(){
+  try {
+    const { data } = await sb.from('referidos_config').select('*').eq('id',1).single();
+    if(data) REFERIDOS_CFG = data;
+  } catch(e){}
+}
+
+// Si el visitante llegó por un link de referido y aún no ha aplicado su cupón de bienvenida,
+// se lo aplica automáticamente en el carrito (silencioso, no se le pide código)
+async function aplicarDescuentoReferidoSiAplica(){
+  if(!REFERIDOS_CFG.activo) return;
+  const refPor = localStorage.getItem('sarux_referido_por');
+  const yaUsado = localStorage.getItem('sarux_referido_usado');
+  if(!refPor || yaUsado) return;
+  if(cuponAplicado) return; // si ya hay un cupón manual aplicado, no pisarlo
+
+  cuponAplicado = {
+    id: null, codigo: refPor, porcentaje: REFERIDOS_CFG.porcentaje_descuento,
+    aplica_a: 'todo', categorias: [], esReferido: true
+  };
+  renderCarrito();
+}
+
+// Se llama cuando el referido completa su pedido — suma 1 al contador del referidor
+async function registrarUsoReferido(){
+  const refPor = localStorage.getItem('sarux_referido_por');
+  if(!refPor) return;
+  try {
+    const { data } = await sb.from('referidos').select('total_referidos').eq('codigo', refPor).single();
+    if(data){
+      await sb.from('referidos').update({ total_referidos: (data.total_referidos||0) + 1 }).eq('codigo', refPor);
+      localStorage.setItem('sarux_referido_usado', '1');
+    }
+  } catch(e){}
+}
+
+// ── CUPONES DE DESCUENTO ──────────────────────────────────────────────────────
+let cuponAplicado = null; // { codigo, porcentaje, aplica_a, categorias, id }
+
+function calcularSubtotalCarrito(){
+  return carrito.reduce((s,i)=>s+(i.precio*i.qty),0);
+}
+
+function calcularDescuentoCupon(){
+  if(!cuponAplicado) return 0;
+  let base = 0;
+  if(cuponAplicado.aplica_a === 'todo'){
+    base = calcularSubtotalCarrito();
+  } else {
+    // Solo aplica a items cuya categoría esté en la lista del cupón
+    base = carrito.reduce((s,i)=>{
+      if((cuponAplicado.categorias||[]).includes(i.cat)) return s + (i.precio*i.qty);
+      return s;
+    }, 0);
+  }
+  return Math.round(base * (cuponAplicado.porcentaje/100));
+}
+
+function calcularTotalCarrito(){
+  return Math.max(0, calcularSubtotalCarrito() - calcularDescuentoCupon());
+}
+
+async function aplicarCuponCarrito(){
+  const input = document.getElementById('carritoCuponInput');
+  const msgEl = document.getElementById('carritoCuponMsg');
+  const codigo = (input.value||'').trim().toUpperCase();
+
+  if(!codigo){ return; }
+  if(!carrito.length){
+    msgEl.className = 'carrito-cupon-msg error';
+    msgEl.textContent = 'Agrega productos antes de usar un cupón';
+    return;
+  }
+
+  msgEl.className = 'carrito-cupon-msg';
+  msgEl.textContent = 'Verificando código...';
+
+  try {
+    const { data, error } = await sb.from('cupones').select('*').eq('codigo', codigo).single();
+
+    if(error || !data){
+      msgEl.className = 'carrito-cupon-msg error';
+      msgEl.textContent = '❌ Código no válido';
+      return;
+    }
+
+    // Validar estado
+    if(!data.activo){
+      msgEl.className = 'carrito-cupon-msg error';
+      msgEl.textContent = '❌ Este código ya no está disponible';
+      return;
+    }
+    if(data.fecha_expira && new Date(data.fecha_expira) < new Date()){
+      msgEl.className = 'carrito-cupon-msg error';
+      msgEl.textContent = '❌ Este código ha expirado';
+      return;
+    }
+    if(data.limite_usos !== null && data.usos_actuales >= data.limite_usos){
+      msgEl.className = 'carrito-cupon-msg error';
+      msgEl.textContent = '❌ Código agotado — ya alcanzó su límite de usos';
+      return;
+    }
+
+    // Validar que aplique a algo del carrito si es por categorías
+    if(data.aplica_a === 'categorias'){
+      const aplica = carrito.some(i => (data.categorias||[]).includes(i.cat));
+      if(!aplica){
+        msgEl.className = 'carrito-cupon-msg error';
+        msgEl.textContent = `❌ Este código solo aplica a: ${(data.categorias||[]).join(', ')}`;
+        return;
+      }
+    }
+
+    // Cupón válido
+    cuponAplicado = {
+      id: data.id, codigo: data.codigo, porcentaje: data.porcentaje,
+      aplica_a: data.aplica_a, categorias: data.categorias||[]
+    };
+    msgEl.textContent = '';
+    input.value = '';
+    renderCarrito();
+    showToast(`🎟️ Cupón ${data.codigo} aplicado — ${data.porcentaje}% de descuento`);
+
+  } catch(e){
+    msgEl.className = 'carrito-cupon-msg error';
+    msgEl.textContent = '❌ Error al verificar el código';
+  }
+}
+
+function quitarCuponCarrito(){
+  cuponAplicado = null;
+  renderCarrito();
+  showToast('Cupón removido');
+}
+
+// Incrementa el contador de usos del cupón en Supabase (se llama al confirmar pedido)
+async function registrarUsoCupon(){
+  if(!cuponAplicado) return;
+  try {
+    const { data } = await sb.from('cupones').select('usos_actuales').eq('id', cuponAplicado.id).single();
+    if(data){
+      await sb.from('cupones').update({ usos_actuales: (data.usos_actuales||0) + 1 }).eq('id', cuponAplicado.id);
+    }
+  } catch(e){}
+}
+
 // ── FAVORITOS ─────────────────────────────────────────────────────────────────
 var _favoritos = [];
 function _cargarFavs(){ try{ _favoritos=JSON.parse(localStorage.getItem('sarux_favs')||'[]'); }catch(e){ _favoritos=[]; } }
@@ -1532,7 +1779,7 @@ function cambiarQty(id, delta){
 }
 
 function vaciarCarrito(){
-  carrito = []; guardarCarrito(); actualizarBadge(); renderCarrito();
+  carrito = []; cuponAplicado = null; guardarCarrito(); actualizarBadge(); renderCarrito();
   showToast('Carrito vaciado');
 }
 
@@ -1581,8 +1828,37 @@ function renderCarrito(){
       </div>
     </div>`;
   }).join('');
-  const total = carrito.reduce((s,i)=>s+(i.precio*i.qty),0);
-  if(totalEl) totalEl.textContent = '$' + total.toLocaleString() + ' MXN';
+  const subtotal = calcularSubtotalCarrito();
+  const descuento = calcularDescuentoCupon();
+  const total = calcularTotalCarrito();
+  if(totalEl){
+    if(cuponAplicado && descuento > 0){
+      totalEl.innerHTML = `<span style="text-decoration:line-through;color:var(--gray);font-size:.75em;margin-right:.4rem">$${subtotal.toLocaleString()}</span>$${total.toLocaleString()} MXN`;
+    } else {
+      totalEl.textContent = '$' + total.toLocaleString() + ' MXN';
+    }
+  }
+
+  // Mostrar/ocultar UI de cupón aplicado
+  const inputRow = document.getElementById('carritoCuponInputRow');
+  const aplicadoWrap = document.getElementById('carritoCuponAplicado');
+  if(cuponAplicado){
+    if(inputRow) inputRow.style.display = 'none';
+    if(aplicadoWrap){
+      aplicadoWrap.style.display = 'block';
+      const label = cuponAplicado.esReferido
+        ? `🎁 Descuento de bienvenida (-${cuponAplicado.porcentaje}% · -$${descuento.toLocaleString()})`
+        : `🎟️ ${cuponAplicado.codigo} aplicado (-${cuponAplicado.porcentaje}% · -$${descuento.toLocaleString()})`;
+      aplicadoWrap.innerHTML = `<div class="carrito-cupon-aplicado">
+        <span class="carrito-cupon-aplicado-info">${label}</span>
+        <button onclick="quitarCuponCarrito()" title="Quitar cupón">✕</button>
+      </div>`;
+    }
+  } else {
+    if(inputRow) inputRow.style.display = 'flex';
+    if(aplicadoWrap){ aplicadoWrap.style.display = 'none'; aplicadoWrap.innerHTML = ''; }
+  }
+
   // Historial "También te interesó"
   try {
     const hw = document.getElementById('carritoHistorial');
@@ -1607,9 +1883,25 @@ function pedirPorWhatsApp(){
     const linkProd = SHARE_BASE + '/?prod=' + encodeURIComponent(i.nombre);
     return `• *${i.nombre}* x${i.qty} — $${(i.precio*i.qty).toLocaleString()} MXN%0A   🔗 ${linkProd}`;
   }).join('%0A%0A');
-  const total = carrito.reduce((s,i)=>s+(i.precio*i.qty),0);
-  const msg = `Hola! Quiero hacer el siguiente pedido en SARUX 🛍️%0A%0A${lineas}%0A%0A*TOTAL: $${total.toLocaleString()} MXN*%0A%0A¿Me pueden confirmar disponibilidad?`;
+  const subtotal = calcularSubtotalCarrito();
+  const descuento = calcularDescuentoCupon();
+  const total = calcularTotalCarrito();
+
+  let resumenTotal;
+  if(cuponAplicado && descuento > 0){
+    resumenTotal = `Subtotal: $${subtotal.toLocaleString()} MXN%0ACupón *${cuponAplicado.codigo}* (-${cuponAplicado.porcentaje}%25): -$${descuento.toLocaleString()} MXN%0A*TOTAL: $${total.toLocaleString()} MXN*`;
+  } else {
+    resumenTotal = `*TOTAL: $${total.toLocaleString()} MXN*`;
+  }
+
+  const msg = `Hola! Quiero hacer el siguiente pedido en SARUX 🛍️%0A%0A${lineas}%0A%0A${resumenTotal}%0A%0A¿Me pueden confirmar disponibilidad?`;
   window.open(`https://wa.me/${NEGOCIO.whatsapp}?text=${msg}`, '_blank');
+
+  if(cuponAplicado){
+    if(cuponAplicado.esReferido) registrarUsoReferido();
+    else registrarUsoCupon();
+  }
+
   setTimeout(()=>{ mostrarConfirmacionPedido(carrito, total); }, 400);
 }
 
@@ -2137,10 +2429,14 @@ function reproducirVideoResena(wrapper, url){
   };
 
   // PASO 1: preparar página en background con DEFAULTS
+  detectarRefEnURL();
   APP_DATA = JSON.parse(JSON.stringify(DEFAULTS));
   syncGlobalsFromAppData();
   try { applyStyles(); } catch(e){}
   try { renderPage(); } catch(e){}
+
+  // Cargar config de referidos y aplicar descuento de bienvenida si aplica (no bloqueante)
+  cargarConfigReferidos().then(()=>{ try{ aplicarDescuentoReferidoSiAplica(); }catch(e){} });
 
   // PASO 2: cargar caché local y Supabase en paralelo, en segundo plano
   try {

@@ -125,6 +125,10 @@
       <div id="modalTallasWrap"><div class="modal-sec-title">Tallas disponibles</div><div class="sizes-wrap" id="modalTallas"></div></div>
       <div id="modalColoresWrap"><div class="modal-sec-title">Colores disponibles</div><div class="colors-wrap" id="modalColores"></div></div>
       <div class="modal-stock" id="modalStock"></div>
+      <div id="modalViendoAhora" style="display:none;font-family:var(--font-mono);font-size:.6rem;letter-spacing:1px;color:#ff9800;margin-top:.3rem;display:flex;align-items:center;gap:.4rem">
+        <span style="display:inline-block;width:6px;height:6px;background:#ff9800;border-radius:50%;animation:pulseVer 1.5s ease-in-out infinite"></span>
+        <span id="modalViendoAhoraTexto"></span>
+      </div>
       <div id="modalCantidadWrap" style="display:flex;align-items:center;gap:.8rem;margin:.8rem 0">
         <span style="font-family:var(--font-mono);font-size:.55rem;letter-spacing:2px;color:var(--gray)">CANTIDAD</span>
         <div style="display:flex;align-items:center;gap:.5rem;border:1px solid rgba(232,25,44,.2);padding:.2rem .5rem">
@@ -466,6 +470,17 @@
   <div id="carritoHistorial">
     <div class="hist-label">TAMBIÉN TE INTERESÓ</div>
     <div id="carritoHistorialItems"></div>
+  </div>
+  <div class="carrito-cupon-wrap" id="carritoCuponWrap">
+    <div class="carrito-cupon-row" id="carritoCuponInputRow">
+      <input id="carritoCuponInput" class="carrito-cupon-input" placeholder="🎟️ ¿Tienes un código de descuento?" maxlength="30" onkeydown="if(event.key==='Enter')aplicarCuponCarrito()">
+      <button class="carrito-cupon-btn" onclick="aplicarCuponCarrito()">Aplicar</button>
+    </div>
+    <div id="carritoCuponMsg" class="carrito-cupon-msg"></div>
+    <div id="carritoCuponAplicado" style="display:none"></div>
+  </div>
+  <div class="carrito-ref-wrap" id="carritoRefWrap" onclick="compartirMiLinkReferido()">
+    🎁 <span>Comparte tu link y gana recompensas</span>
   </div>
   <div class="carrito-footer">
     <div class="carrito-total">
