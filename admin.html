@@ -3041,12 +3041,26 @@ Casi listo...
   function eliminarImagenStorage(path, nombreCarpeta){
     confirmDelete('¿Eliminar esta imagen? Esta acción no se puede deshacer y la imagen dejará de mostrarse en donde esté siendo usada.', async()=>{
       try {
-        const { error } = await sb.storage.from('images').remove([path]);
-        if(error){ showNotif('❌ Error al eliminar: ' + error.message); return; }
-        showNotif('✅ Imagen eliminada');
+        const { data: removeData, error } = await sb.storage.from('images').remove([path]);
+        if(error){
+          showNotif('❌ Error al eliminar: ' + error.message);
+          console.error('Error eliminando imagen:', error);
+          return;
+        }
+        // Verificar que realmente se eliminó (a veces Supabase devuelve éxito sin error pero data vacía,
+        // lo cual normalmente indica que faltan políticas RLS de Storage para DELETE)
+        if(!removeData || !removeData.length){
+          showNotif('⚠️ No se eliminó — probablemente falten permisos (RLS) en Supabase Storage. Ejecuta SUPABASE_SQL_STORAGE_POLICIES.sql');
+          console.warn('remove() no devolvió datos para el path:', path);
+          return;
+        }
+        showNotif('✅ Imagen eliminada de Supabase');
         await cargarStorage();
         renderStorageDesgloseCarpeta(nombreCarpeta);
-      } catch(e){ showNotif('❌ Error: ' + e.message); }
+      } catch(e){
+        showNotif('❌ Error: ' + e.message);
+        console.error(e);
+      }
     });
   }
 
