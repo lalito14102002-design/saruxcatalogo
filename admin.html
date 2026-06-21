@@ -406,7 +406,7 @@
   // SUBIDA DE IMÁGENES A SUPABASE STORAGE
   // Comprime una imagen en el navegador antes de subirla, manteniendo buena calidad visual.
   // Reduce dimensiones máximas y ajusta la calidad JPEG hasta quedar bajo el límite de tamaño.
-  async function comprimirImagen(file, maxKB = 350, maxDimension = 1600) {
+  async function comprimirImagen(file, maxKB = 200, maxDimension = 1400) {
     // No tocar GIFs (se rompería la animación) ni archivos que no sean imagen
     if (!file.type.startsWith('image/') || file.type === 'image/gif') return file;
     // Si ya pesa menos del límite, no hace falta comprimir
@@ -431,7 +431,7 @@
         const intentarCalidad = (q) => {
           canvas.toBlob((blob) => {
             if (!blob) { resolve(file); return; }
-            if (blob.size <= maxKB * 1024 || q <= 0.4) {
+            if (blob.size <= maxKB * 1024 || q <= 0.3) {
               const nuevoArchivo = new File([blob], file.name.replace(/\.[^.]+$/, '.jpg'), { type: 'image/jpeg' });
               resolve(nuevoArchivo);
             } else {
@@ -3031,7 +3031,7 @@ Casi listo...
       </div>`;
     }).join('');
 
-    const totalPesadas = Object.values(_storageArchivosPorCarpeta).flat().filter(a => a.size > 400*1024).length;
+    const totalPesadas = Object.values(_storageArchivosPorCarpeta).flat().filter(a => a.size > 200*1024).length;
     if(totalPesadas > 0){
       desglose.innerHTML = `<button class="admin-btn-sm" style="width:100%;margin-bottom:.8rem" onclick="comprimirTodoElStorage()">🗜️ Comprimir TODAS las imágenes pesadas (${totalPesadas})</button><div id="storage-compresion-progreso" style="margin-bottom:.6rem"></div>` + desglose.innerHTML;
     }
@@ -3040,7 +3040,7 @@ Casi listo...
   async function comprimirTodoElStorage(){
     const todasPesadas = [];
     Object.entries(_storageArchivosPorCarpeta).forEach(([carpeta, archivos]) => {
-      archivos.filter(a => a.size > 400*1024).forEach(a => todasPesadas.push({ ...a, carpeta }));
+      archivos.filter(a => a.size > 200*1024).forEach(a => todasPesadas.push({ ...a, carpeta }));
     });
     if(!todasPesadas.length){ showNotif('No hay imágenes pesadas'); return; }
 
@@ -3088,19 +3088,24 @@ Casi listo...
     }
 
     const totalCarpeta = archivos.reduce((s,a)=>s+a.size,0);
-    const pesadasCount = archivos.filter(a => a.size > 400*1024).length;
+    const pesadasCount = archivos.filter(a => a.size > 200*1024).length;
+    const optimizadasCount = archivos.length - pesadasCount;
+    const promedioKB = archivos.length ? Math.round((totalCarpeta/archivos.length)/1024) : 0;
     const header = `<div style="margin-bottom:.5rem">
       <div onclick="renderStorageDesgloseGeneral()" style="display:flex;align-items:center;gap:.5rem;padding:.5rem 0;border-bottom:1px solid var(--border);cursor:pointer;color:var(--neon);font-family:var(--font-mono);font-size:.6rem;letter-spacing:1px">
         ← VOLVER &nbsp;|&nbsp; 📁 ${nombreCarpeta} (${archivos.length} archivos, ${(totalCarpeta/(1024*1024)).toFixed(2)} MB)
       </div>
-      ${pesadasCount > 0 ? `<button class="admin-btn-sm" style="margin-top:.5rem;width:100%" onclick="comprimirCarpetaCompleta('${nombreCarpeta.replace(/'/g,"\\'")}')">🗜️ Comprimir ${pesadasCount} imagen${pesadasCount!==1?'es':''} pesada${pesadasCount!==1?'s':''} de esta carpeta</button>` : ''}
+      <div style="font-family:var(--font-mono);font-size:.55rem;color:var(--gray);margin-top:.4rem">
+        ✅ ${optimizadasCount} ya optimizadas (≤200KB) &nbsp;·&nbsp; ${pesadasCount>0?'⚠️':'✅'} ${pesadasCount} pesadas (&gt;200KB) &nbsp;·&nbsp; promedio: ${promedioKB} KB/imagen
+      </div>
+      ${pesadasCount > 0 ? `<button class="admin-btn-sm" style="margin-top:.5rem;width:100%" onclick="comprimirCarpetaCompleta('${nombreCarpeta.replace(/'/g,"\\'")}')">🗜️ Comprimir ${pesadasCount} imagen${pesadasCount!==1?'es':''} pesada${pesadasCount!==1?'s':''} de esta carpeta</button>` : `<div style="margin-top:.5rem;font-family:var(--font-mono);font-size:.55rem;color:#4caf50">✅ Todas las imágenes de esta carpeta ya están optimizadas</div>`}
       <div id="storage-compresion-progreso" style="margin-top:.4rem"></div>
     </div>`;
 
     const filas = archivos.map((a,idx) => {
       const mb = (a.size / (1024*1024));
       const label = a.size < 1024*1024 ? (a.size/1024).toFixed(0) + ' KB' : mb.toFixed(2) + ' MB';
-      const pesado = mb > 1; // marcar si pesa más de 1MB — candidato a comprimir
+      const pesado = a.size > 200*1024; // marcar si pesa más de 200KB — fuera de tu meta de compresión
       const nombreCorto = a.nombre.split('/').pop();
       const { data: urlData } = sb.storage.from('images').getPublicUrl(a.path);
       const publicUrl = urlData.publicUrl;
@@ -3125,7 +3130,7 @@ Casi listo...
   // descarga cada una, la comprime en el navegador y la resube al MISMO path,
   // así cualquier producto/sección que ya la use queda actualizado automáticamente.
   async function comprimirCarpetaCompleta(nombreCarpeta){
-    const archivos = (_storageArchivosPorCarpeta[nombreCarpeta] || []).filter(a => a.size > 400*1024);
+    const archivos = (_storageArchivosPorCarpeta[nombreCarpeta] || []).filter(a => a.size > 200*1024);
     if(!archivos.length){ showNotif('No hay imágenes pesadas en esta carpeta'); return; }
 
     const confirmar = confirm(`Se van a comprimir ${archivos.length} imágenes de "${nombreCarpeta}". Esto puede tardar unos minutos. ¿Continuar?`);
