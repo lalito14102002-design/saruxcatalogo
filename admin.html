@@ -1180,7 +1180,8 @@ Casi listo...
 
         <!-- Desglose por bucket/carpeta -->
         <div style="background:var(--card2);border:1px solid var(--border);padding:1.2rem;margin-bottom:1rem">
-          <div class="admin-card-title" style="margin-bottom:.8rem">📁 DESGLOSE POR CARPETA</div>
+          <div class="admin-card-title" style="margin-bottom:.4rem">📁 DESGLOSE POR CARPETA</div>
+          <div style="font-family:var(--font-mono);font-size:.5rem;color:var(--gray);margin-bottom:.8rem">Toca una carpeta para ver sus archivos individuales</div>
           <div id="storage-desglose">
             <div style="font-family:var(--font-mono);font-size:.6rem;color:var(--gray)">Cargando...</div>
           </div>
@@ -2851,12 +2852,16 @@ Casi listo...
   // ═══════════════════════════════════════════════
   // ALMACENAMIENTO SUPABASE
   // ═══════════════════════════════════════════════
+  let _storageArchivosPorCarpeta = {}; // cache: { nombreCarpeta: [{nombre, size}] }
+  let _storageVistaActual = null; // null = vista general, o nombre de carpeta abierta
+
   async function cargarStorage(){
     const loading = document.getElementById('storage-loading');
     const main    = document.getElementById('storage-main');
     const desglose= document.getElementById('storage-desglose');
     if(!loading) return;
 
+    _storageVistaActual = null;
     loading.style.display = 'block';
     if(main) main.style.display = 'none';
     if(desglose) desglose.innerHTML = '<div style="font-family:var(--font-mono);font-size:.6rem;color:var(--gray)">Calculando...</div>';
@@ -2866,14 +2871,14 @@ Casi listo...
       const BUCKET = 'images';
       const LIMIT_BYTES = 1 * 1024 * 1024 * 1024; // 1 GB plan gratis
 
-      // Función para listar recursivamente una carpeta
+      // Función para listar recursivamente una carpeta, devolviendo cada archivo individual
       async function listarCarpeta(prefijo){
         const { data, error } = await sb.storage.from(BUCKET).list(prefijo, { limit: 1000 });
         if(error || !data) return [];
         let archivos = [];
         for(const item of data){
           if(item.id){ // es archivo
-            archivos.push({ nombre: (prefijo ? prefijo+'/' : '') + item.name, size: item.metadata?.size || 0 });
+            archivos.push({ nombre: (prefijo ? prefijo+'/' : '') + item.name, size: item.metadata?.size || 0, path: (prefijo ? prefijo+'/' : '') + item.name });
           } else { // es carpeta
             const sub = await listarCarpeta((prefijo ? prefijo+'/' : '') + item.name);
             archivos = archivos.concat(sub);
@@ -2887,6 +2892,7 @@ Casi listo...
       if(raizErr) throw raizErr;
 
       const carpetas = {};
+      _storageArchivosPorCarpeta = {};
       let totalBytes = 0;
 
       for(const item of (raiz||[])){
@@ -2894,6 +2900,8 @@ Casi listo...
           // archivo en raíz
           const sz = item.metadata?.size || 0;
           carpetas['(raíz)'] = (carpetas['(raíz)'] || 0) + sz;
+          _storageArchivosPorCarpeta['(raíz)'] = _storageArchivosPorCarpeta['(raíz)'] || [];
+          _storageArchivosPorCarpeta['(raíz)'].push({ nombre: item.name, size: sz, path: item.name });
           totalBytes += sz;
         } else {
           // carpeta — listar sus archivos
@@ -2901,9 +2909,13 @@ Casi listo...
           let folderBytes = 0;
           archivos.forEach(a => { folderBytes += a.size; });
           carpetas[item.name] = folderBytes;
+          _storageArchivosPorCarpeta[item.name] = archivos;
           totalBytes += folderBytes;
         }
       }
+
+      window._storageTotalBytes = totalBytes;
+      window._storageCarpetas = carpetas;
 
       // Mostrar totales
       const usadoMB = (totalBytes / (1024*1024)).toFixed(2);
@@ -2911,7 +2923,6 @@ Casi listo...
       const libreGB = (libreMB / 1024).toFixed(2);
       const pct     = Math.min(100, ((totalBytes / LIMIT_BYTES) * 100)).toFixed(1);
 
-      // Elegir unidad para "usado"
       const usadoLabel = totalBytes < 1024*1024
         ? (totalBytes/1024).toFixed(0) + ' KB'
         : usadoMB + ' MB';
@@ -2925,45 +2936,86 @@ Casi listo...
       document.getElementById('storage-libre-label').textContent = libreLabel + ' libres';
       document.getElementById('storage-pct').textContent = pct + '%';
 
-      // Color de barra según uso
       const barraEl = document.getElementById('storage-barra');
       barraEl.style.width = '0%';
       barraEl.style.background = pct > 80 ? 'red' : pct > 60 ? 'orange' : 'var(--neon)';
       setTimeout(() => { barraEl.style.width = pct + '%'; }, 100);
 
-      // Desglose por carpeta
-      const carpetasArr = Object.entries(carpetas).sort((a,b) => b[1]-a[1]);
-      if(!carpetasArr.length){
-        desglose.innerHTML = '<div style="font-family:var(--font-mono);font-size:.6rem;color:var(--gray)">Sin imágenes aún</div>';
-      } else {
-        desglose.innerHTML = carpetasArr.map(([nombre, bytes]) => {
-          const mb = (bytes / (1024*1024)).toFixed(2);
-          const kb = (bytes / 1024).toFixed(0);
-          const label = bytes < 1024*1024 ? kb + ' KB' : mb + ' MB';
-          const carpPct = totalBytes > 0 ? Math.round((bytes/totalBytes)*100) : 0;
-          const iconos = {
-            'productos':'📦','mayoreo-cats':'🎊','mayoreo':'📦','logo':'🖼️','creaciones':'✨',
-            'nosotros':'ℹ️','reseñas':'⭐','resenas':'⭐','fotos-clientes':'📷','(raíz)':'📁'
-          };
-          const icon = iconos[nombre] || '📁';
-          return `<div style="display:flex;align-items:center;gap:.6rem;padding:.5rem 0;border-bottom:1px solid rgba(255,255,255,.04)">
-            <span style="font-size:.9rem">${icon}</span>
-            <div style="flex:1;min-width:0">
-              <div style="font-family:var(--font-mono);font-size:.58rem;color:var(--white);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${nombre}</div>
-              <div style="background:rgba(255,255,255,.06);height:4px;margin-top:.25rem;width:100%">
-                <div style="background:var(--neon);height:100%;width:${carpPct}%"></div>
-              </div>
-            </div>
-            <div style="font-family:var(--font-mono);font-size:.6rem;color:var(--neon);white-space:nowrap">${label}</div>
-          </div>`;
-        }).join('');
-      }
+      renderStorageDesgloseGeneral();
 
     } catch(e){
       if(loading) loading.textContent = '❌ Error: ' + e.message;
     }
   }
+
+  function renderStorageDesgloseGeneral(){
+    _storageVistaActual = null;
+    const desglose = document.getElementById('storage-desglose');
+    const totalBytes = window._storageTotalBytes || 0;
+    const carpetas = window._storageCarpetas || {};
+    const carpetasArr = Object.entries(carpetas).sort((a,b) => b[1]-a[1]);
+
+    if(!carpetasArr.length){
+      desglose.innerHTML = '<div style="font-family:var(--font-mono);font-size:.6rem;color:var(--gray)">Sin imágenes aún</div>';
+      return;
+    }
+
+    desglose.innerHTML = carpetasArr.map(([nombre, bytes]) => {
+      const mb = (bytes / (1024*1024)).toFixed(2);
+      const kb = (bytes / 1024).toFixed(0);
+      const label = bytes < 1024*1024 ? kb + ' KB' : mb + ' MB';
+      const carpPct = totalBytes > 0 ? Math.round((bytes/totalBytes)*100) : 0;
+      const cantidad = (_storageArchivosPorCarpeta[nombre]||[]).length;
+      const iconos = {
+        'productos':'📦','disenos':'🎨','mayoreo-cats':'🎊','mayoreo':'📦','logo':'🖼️','creaciones':'✨',
+        'nosotros':'ℹ️','reseñas':'⭐','resenas':'⭐','fotos-clientes':'📷','personalizacion':'✏️','general':'📁','lluvia':'🌧️','portadas':'🖼️','(raíz)':'📁'
+      };
+      const icon = iconos[nombre] || '📁';
+      return `<div onclick="renderStorageDesgloseCarpeta('${nombre.replace(/'/g,"\\'")}')" style="display:flex;align-items:center;gap:.6rem;padding:.6rem 0;border-bottom:1px solid rgba(255,255,255,.04);cursor:pointer" onmouseover="this.style.background='rgba(255,255,255,.03)'" onmouseout="this.style.background='transparent'">
+        <span style="font-size:.9rem">${icon}</span>
+        <div style="flex:1;min-width:0">
+          <div style="font-family:var(--font-mono);font-size:.6rem;color:var(--white);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${nombre} <span style="color:var(--gray)">(${cantidad} archivo${cantidad!==1?'s':''})</span></div>
+          <div style="background:rgba(255,255,255,.06);height:4px;margin-top:.25rem;width:100%">
+            <div style="background:var(--neon);height:100%;width:${carpPct}%"></div>
+          </div>
+        </div>
+        <div style="font-family:var(--font-mono);font-size:.6rem;color:var(--neon);white-space:nowrap">${label}</div>
+        <span style="color:var(--gray);font-size:.6rem">→</span>
+      </div>`;
+    }).join('');
+  }
+
+  function renderStorageDesgloseCarpeta(nombreCarpeta){
+    _storageVistaActual = nombreCarpeta;
+    const desglose = document.getElementById('storage-desglose');
+    const archivos = (_storageArchivosPorCarpeta[nombreCarpeta] || []).slice().sort((a,b) => b.size - a.size);
+
+    if(!archivos.length){
+      desglose.innerHTML = `<div style="font-family:var(--font-mono);font-size:.6rem;color:var(--gray)">Carpeta vacía</div>`;
+      return;
+    }
+
+    const totalCarpeta = archivos.reduce((s,a)=>s+a.size,0);
+    const header = `<div onclick="renderStorageDesgloseGeneral()" style="display:flex;align-items:center;gap:.5rem;padding:.5rem 0;margin-bottom:.5rem;border-bottom:1px solid var(--border);cursor:pointer;color:var(--neon);font-family:var(--font-mono);font-size:.6rem;letter-spacing:1px">
+      ← VOLVER &nbsp;|&nbsp; 📁 ${nombreCarpeta} (${archivos.length} archivos, ${(totalCarpeta/(1024*1024)).toFixed(2)} MB)
+    </div>`;
+
+    const filas = archivos.map(a => {
+      const mb = (a.size / (1024*1024));
+      const label = a.size < 1024*1024 ? (a.size/1024).toFixed(0) + ' KB' : mb.toFixed(2) + ' MB';
+      const pesado = mb > 1; // marcar en rojo si pesa más de 1MB — candidato a comprimir
+      const nombreCorto = a.nombre.split('/').pop();
+      return `<div style="display:flex;align-items:center;gap:.6rem;padding:.4rem 0;border-bottom:1px solid rgba(255,255,255,.04)">
+        <span style="font-size:.8rem">${pesado?'⚠️':'🖼️'}</span>
+        <div style="flex:1;min-width:0;font-family:var(--font-mono);font-size:.56rem;color:${pesado?'#ff9800':'var(--light)'};white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${a.nombre}">${nombreCorto}</div>
+        <div style="font-family:var(--font-mono);font-size:.58rem;color:${pesado?'#ff9800':'var(--gray)'};white-space:nowrap">${label}</div>
+      </div>`;
+    }).join('');
+
+    desglose.innerHTML = header + filas + `<div style="margin-top:.6rem;font-family:var(--font-mono);font-size:.5rem;color:var(--gray)">⚠️ = pesa más de 1 MB, candidato a comprimir</div>`;
+  }
   // ═══════════════════════════════════════════════
+
 
   async function guardarTodo() {
     APP_DATA.NEGOCIO = {
