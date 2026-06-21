@@ -2380,9 +2380,9 @@ function reproducirVideoResena(wrapper, url){
     } catch(e){}
     return {};
   }
-  const loaderCfg   = getLoaderCfg();
-  const LOADER_MIN_MS = Math.min(30, Math.max(1, loaderCfg.segundos || 3)) * 1000;
-  const LOADER_MSGS = loaderCfg.mensajes && loaderCfg.mensajes.length
+  let loaderCfg   = getLoaderCfg();
+  let LOADER_MIN_MS = Math.min(30, Math.max(1, loaderCfg.segundos || 3)) * 1000;
+  let LOADER_MSGS = loaderCfg.mensajes && loaderCfg.mensajes.length
     ? loaderCfg.mensajes
     : ['Cargando productos...','Preparando catálogo...','Cargando imágenes...','Casi listo...','¡Ya mero!'];
 
@@ -2391,19 +2391,21 @@ function reproducirVideoResena(wrapper, url){
   const barra  = loader ? loader.querySelector('.loader-barra') : null;
   const texto  = loader ? loader.querySelector('.loader-texto') : null;
 
-  // Animar barra y mensajes durante el tiempo configurado
+  // Animar barra y mensajes durante el tiempo configurado.
+  // LOADER_MIN_MS puede actualizarse en caliente (ver PASO 0 más abajo) si llega
+  // un valor más reciente desde Supabase antes de que la barra haya terminado.
   function animarBarra(){
     if(!barra) return;
     const startTime = Date.now();
     const TICK = 50; // actualizar cada 50ms
     let paso = 0;
-    const intervaloMsg = LOADER_MIN_MS / LOADER_MSGS.length;
     if(texto) texto.textContent = LOADER_MSGS[0];
     barra.style.transition = 'none';
     barra.style.width = '0%';
 
     const tick = setInterval(function(){
       const elapsed = Date.now() - startTime;
+      const intervaloMsg = LOADER_MIN_MS / LOADER_MSGS.length;
       const pct = Math.min(100, (elapsed / LOADER_MIN_MS) * 100);
       barra.style.width = pct + '%';
 
@@ -2414,7 +2416,7 @@ function reproducirVideoResena(wrapper, url){
         if(texto) texto.textContent = LOADER_MSGS[paso];
       }
 
-      if(pct >= 100) clearInterval(tick);
+      if(elapsed >= LOADER_MIN_MS) clearInterval(tick);
     }, TICK);
   }
   animarBarra();
@@ -2422,6 +2424,21 @@ function reproducirVideoResena(wrapper, url){
   const ocultarLoader = function(){
     if(loader) loader.classList.add('oculto');
   };
+
+  // PASO 0: pedir la config más reciente de Supabase de inmediato (solo el tiempo del loader),
+  // por si la caché local del navegador tiene un valor viejo. Esto corrige el caso en que
+  // el dueño cambió los segundos en el admin pero el visitante todavía tiene caché vieja.
+  sb.from('site_config').select('config_data').eq('id',1).single().then(function(res){
+    const cfgFresca = res && res.data && res.data.config_data && res.data.config_data.LOADER_CONFIG;
+    if(cfgFresca && typeof cfgFresca.segundos === 'number'){
+      const nuevoMs = Math.min(30, Math.max(1, cfgFresca.segundos)) * 1000;
+      // Solo aplicar si de verdad cambia algo y la barra no ha terminado ya
+      if(nuevoMs !== LOADER_MIN_MS){
+        LOADER_MIN_MS = nuevoMs;
+        if(cfgFresca.mensajes && cfgFresca.mensajes.length) LOADER_MSGS = cfgFresca.mensajes;
+      }
+    }
+  }).catch(function(){});
 
   // PASO 1: preparar página en background con DEFAULTS
   detectarRefEnURL();
@@ -2455,13 +2472,17 @@ function reproducirVideoResena(wrapper, url){
     });
   } catch(e){}
 
-  // PASO 3: esperar el tiempo configurado, luego quitar loader
-  const transcurrido = Date.now() - tiempoInicio;
-  const espera = Math.max(0, LOADER_MIN_MS - transcurrido);
-  setTimeout(function(){
-    ocultarLoader();
-    try { iniciarLluviaImagen(); } catch(e){}
-  }, espera);
+  // PASO 3: esperar el tiempo configurado, luego quitar loader.
+  // Se revisa cada 100ms en vez de un solo setTimeout fijo, así si LOADER_MIN_MS
+  // se actualizó (PASO 0, valor fresco de Supabase) el cierre respeta el tiempo correcto.
+  const checkCierre = setInterval(function(){
+    const transcurrido = Date.now() - tiempoInicio;
+    if(transcurrido >= LOADER_MIN_MS){
+      clearInterval(checkCierre);
+      ocultarLoader();
+      try { iniciarLluviaImagen(); } catch(e){}
+    }
+  }, 100);
 })();
 
 // ─── FOTOS REALES (Supabase) ──────────────────────────────────────────────────
