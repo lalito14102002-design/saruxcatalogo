@@ -448,7 +448,8 @@
   }
 
   async function uploadToStorage(file, folder = '') {
-    const fileComprimido = await comprimirImagen(file);
+    // El logo nunca se comprime — es lo más visible de la marca y debe verse perfecto siempre
+    const fileComprimido = (folder === 'logo') ? file : await comprimirImagen(file);
     const fileExt = fileComprimido.name.split('.').pop();
     const fileName = `${Date.now()}_${Math.random().toString(36).substr(2, 9)}.${fileExt}`;
     const filePath = folder ? `${folder}/${fileName}` : fileName;
@@ -3040,11 +3041,12 @@ Casi listo...
   async function comprimirTodoElStorage(){
     const todasPesadas = [];
     Object.entries(_storageArchivosPorCarpeta).forEach(([carpeta, archivos]) => {
+      if(carpeta === 'logo') return; // el logo nunca se comprime
       archivos.filter(a => a.size > 200*1024).forEach(a => todasPesadas.push({ ...a, carpeta }));
     });
     if(!todasPesadas.length){ showNotif('No hay imágenes pesadas'); return; }
 
-    const confirmar = confirm(`Se van a comprimir ${todasPesadas.length} imágenes en total de todas las carpetas. Esto puede tardar varios minutos sin cerrar esta pantalla. ¿Continuar?`);
+    const confirmar = confirm(`Se van a comprimir ${todasPesadas.length} imágenes en total de todas las carpetas (el logo nunca se toca). Esto puede tardar varios minutos sin cerrar esta pantalla. ¿Continuar?`);
     if(!confirmar) return;
 
     const progreso = document.getElementById('storage-compresion-progreso');
@@ -3088,17 +3090,21 @@ Casi listo...
     }
 
     const totalCarpeta = archivos.reduce((s,a)=>s+a.size,0);
-    const pesadasCount = archivos.filter(a => a.size > 200*1024).length;
+    const esLogo = nombreCarpeta === 'logo';
+    const pesadasCount = esLogo ? 0 : archivos.filter(a => a.size > 200*1024).length;
     const optimizadasCount = archivos.length - pesadasCount;
     const promedioKB = archivos.length ? Math.round((totalCarpeta/archivos.length)/1024) : 0;
     const header = `<div style="margin-bottom:.5rem">
       <div onclick="renderStorageDesgloseGeneral()" style="display:flex;align-items:center;gap:.5rem;padding:.5rem 0;border-bottom:1px solid var(--border);cursor:pointer;color:var(--neon);font-family:var(--font-mono);font-size:.6rem;letter-spacing:1px">
         ← VOLVER &nbsp;|&nbsp; 📁 ${nombreCarpeta} (${archivos.length} archivos, ${(totalCarpeta/(1024*1024)).toFixed(2)} MB)
       </div>
-      <div style="font-family:var(--font-mono);font-size:.55rem;color:var(--gray);margin-top:.4rem">
-        ✅ ${optimizadasCount} ya optimizadas (≤200KB) &nbsp;·&nbsp; ${pesadasCount>0?'⚠️':'✅'} ${pesadasCount} pesadas (&gt;200KB) &nbsp;·&nbsp; promedio: ${promedioKB} KB/imagen
-      </div>
-      ${pesadasCount > 0 ? `<button class="admin-btn-sm" style="margin-top:.5rem;width:100%" onclick="comprimirCarpetaCompleta('${nombreCarpeta.replace(/'/g,"\\'")}')">🗜️ Comprimir ${pesadasCount} imagen${pesadasCount!==1?'es':''} pesada${pesadasCount!==1?'s':''} de esta carpeta</button>` : `<div style="margin-top:.5rem;font-family:var(--font-mono);font-size:.55rem;color:#4caf50">✅ Todas las imágenes de esta carpeta ya están optimizadas</div>`}
+      ${esLogo
+        ? `<div style="margin-top:.5rem;font-family:var(--font-mono);font-size:.55rem;color:#ff9800">🔒 El logo nunca se comprime — siempre se guarda en máxima calidad</div>`
+        : `<div style="font-family:var(--font-mono);font-size:.55rem;color:var(--gray);margin-top:.4rem">
+            ✅ ${optimizadasCount} ya optimizadas (≤200KB) &nbsp;·&nbsp; ${pesadasCount>0?'⚠️':'✅'} ${pesadasCount} pesadas (&gt;200KB) &nbsp;·&nbsp; promedio: ${promedioKB} KB/imagen
+          </div>
+          ${pesadasCount > 0 ? `<button class="admin-btn-sm" style="margin-top:.5rem;width:100%" onclick="comprimirCarpetaCompleta('${nombreCarpeta.replace(/'/g,"\\'")}')">🗜️ Comprimir ${pesadasCount} imagen${pesadasCount!==1?'es':''} pesada${pesadasCount!==1?'s':''} de esta carpeta</button>` : `<div style="margin-top:.5rem;font-family:var(--font-mono);font-size:.55rem;color:#4caf50">✅ Todas las imágenes de esta carpeta ya están optimizadas</div>`}`
+      }
       <div id="storage-compresion-progreso" style="margin-top:.4rem"></div>
     </div>`;
 
@@ -3130,6 +3136,7 @@ Casi listo...
   // descarga cada una, la comprime en el navegador y la resube al MISMO path,
   // así cualquier producto/sección que ya la use queda actualizado automáticamente.
   async function comprimirCarpetaCompleta(nombreCarpeta){
+    if(nombreCarpeta === 'logo'){ showNotif('🔒 El logo nunca se comprime'); return; }
     const archivos = (_storageArchivosPorCarpeta[nombreCarpeta] || []).filter(a => a.size > 200*1024);
     if(!archivos.length){ showNotif('No hay imágenes pesadas en esta carpeta'); return; }
 
