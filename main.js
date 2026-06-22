@@ -2558,7 +2558,7 @@ async function enviarSuscripcion(){
 
     if(error){
       msg.style.color = 'var(--neon)';
-      msg.textContent = '❌ Error al guardar. Intenta de nuevo.';
+      msg.textContent = '❌ ' + (error.code||'?') + ': ' + (error.message||'sin mensaje');
       return;
     }
 
