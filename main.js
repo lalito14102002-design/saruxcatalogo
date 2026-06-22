@@ -2892,3 +2892,274 @@ async function subirFotoCliente(){
       : iniciar();
   }
 })();
+
+// ═══════════════════════════════════════════════════════════════
+// SISTEMA DE PERFIL DE USUARIO — SARUX
+// Login sin contraseña: correo → código de 6 dígitos
+// ═══════════════════════════════════════════════════════════════
+
+const PERFIL_KEY    = 'sarux_perfil_token';  // token en localStorage
+const PERFIL_CORREO = 'sarux_perfil_correo'; // correo en localStorage
+let   _perfilActual = null;                  // objeto del usuario en memoria
+
+// ── Abrir / cerrar modal ─────────────────────────────────────
+function abrirPerfilModal(){
+  const overlay = document.getElementById('perfilOverlay');
+  overlay.style.display = 'flex';
+  // Si hay sesión guardada, intentar cargar directo el perfil
+  const token  = localStorage.getItem(PERFIL_KEY);
+  const correo = localStorage.getItem(PERFIL_CORREO);
+  if(token && correo){
+    cargarPerfilConToken(correo, token);
+  } else {
+    mostrarPaso1Perfil();
+  }
+}
+function cerrarPerfilModal(){
+  document.getElementById('perfilOverlay').style.display = 'none';
+}
+
+// ── Navegación entre pasos ───────────────────────────────────
+function mostrarPaso1Perfil(){
+  document.getElementById('perfil-paso1').style.display = 'block';
+  document.getElementById('perfil-paso2').style.display = 'none';
+  document.getElementById('perfil-paso3').style.display = 'none';
+  document.getElementById('perfil-msg1').textContent = '';
+}
+
+// ── PASO 1: Solicitar código ─────────────────────────────────
+async function solicitarCodigoPerfil(){
+  const correo = (document.getElementById('perfil-correo-input').value||'').trim().toLowerCase();
+  const msg    = document.getElementById('perfil-msg1');
+  if(!correo || !correo.includes('@')){
+    msg.textContent = '⚠️ Escribe un correo válido';
+    return;
+  }
+  msg.textContent = 'Enviando código...';
+
+  // Generar código de 6 dígitos y guardarlo en Supabase
+  const codigo   = String(Math.floor(100000 + Math.random() * 900000));
+  const expira   = new Date(Date.now() + 15 * 60 * 1000).toISOString(); // 15 min
+
+  // Upsert del suscriptor (crea si no existe)
+  const { error: errUpsert } = await sb.from('suscriptores')
+    .upsert([{ correo, activo: true, token_sesion: codigo, token_expira: expira }],
+            { onConflict: 'correo' });
+
+  if(errUpsert){
+    msg.textContent = '❌ Error. Intenta de nuevo.';
+    return;
+  }
+
+  // Mandar el código por correo usando EmailJS (gratis hasta 200/mes)
+  const enviado = await enviarCodigoPorCorreo(correo, codigo);
+  if(!enviado){
+    msg.textContent = '❌ No se pudo enviar el correo. Intenta de nuevo.';
+    return;
+  }
+
+  // Pasar al paso 2
+  document.getElementById('perfil-correo-hint').textContent =
+    `Te mandamos un código a ${correo}. Revisa tu bandeja (y spam).`;
+  document.getElementById('perfil-paso1').style.display = 'none';
+  document.getElementById('perfil-paso2').style.display = 'block';
+  document.getElementById('perfil-msg2').textContent    = '';
+  document.getElementById('perfil-codigo-input').value  = '';
+  // Guardar correo temporalmente
+  localStorage.setItem(PERFIL_CORREO, correo);
+}
+
+// ── Enviar correo con EmailJS ────────────────────────────────
+async function enviarCodigoPorCorreo(correo, codigo){
+  try {
+    // Usa el servicio público de EmailJS — configura tus IDs en config.js
+    const serviceId  = window.EMAILJS_SERVICE  || '';
+    const templateId = window.EMAILJS_TEMPLATE || '';
+    const publicKey  = window.EMAILJS_KEY      || '';
+    if(!serviceId || !templateId || !publicKey) return false;
+
+    const res = await fetch('https://api.emailjs.com/api/v1.0/email/send', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        service_id:  serviceId,
+        template_id: templateId,
+        user_id:     publicKey,
+        template_params: {
+          to_email: correo,
+          codigo:   codigo,
+          expira:   '15 minutos'
+        }
+      })
+    });
+    return res.ok;
+  } catch(e){ return false; }
+}
+
+// ── PASO 2: Verificar código ─────────────────────────────────
+async function verificarCodigoPerfil(){
+  const correo = localStorage.getItem(PERFIL_CORREO)||'';
+  const codigo = (document.getElementById('perfil-codigo-input').value||'').trim();
+  const msg    = document.getElementById('perfil-msg2');
+  if(codigo.length !== 6){ msg.textContent = '⚠️ El código tiene 6 dígitos'; return; }
+  msg.textContent = 'Verificando...';
+
+  const { data, error } = await sb.from('suscriptores')
+    .select('*')
+    .eq('correo', correo)
+    .eq('token_sesion', codigo)
+    .gt('token_expira', new Date().toISOString())
+    .single();
+
+  if(error || !data){
+    msg.textContent = '❌ Código incorrecto o expirado.';
+    return;
+  }
+
+  // Generar token de sesión largo y guardarlo
+  const tokenSesion = crypto.randomUUID();
+  await sb.from('suscriptores')
+    .update({ token_sesion: tokenSesion, token_expira: null,
+              visitas: (data.visitas||0) + 1 })
+    .eq('id', data.id);
+
+  localStorage.setItem(PERFIL_KEY, tokenSesion);
+  _perfilActual = { ...data, token_sesion: tokenSesion };
+  mostrarPaso3Perfil(_perfilActual);
+}
+
+// ── Cargar perfil con token guardado ────────────────────────
+async function cargarPerfilConToken(correo, token){
+  const { data, error } = await sb.from('suscriptores')
+    .select('*')
+    .eq('correo', correo)
+    .eq('token_sesion', token)
+    .single();
+  if(error || !data){ mostrarPaso1Perfil(); return; }
+  _perfilActual = data;
+  mostrarPaso3Perfil(data);
+}
+
+// ── PASO 3: Mostrar perfil ───────────────────────────────────
+async function mostrarPaso3Perfil(datos){
+  document.getElementById('perfil-paso1').style.display = 'none';
+  document.getElementById('perfil-paso2').style.display = 'none';
+  document.getElementById('perfil-paso3').style.display = 'block';
+  document.getElementById('perfil-bienvenida').textContent =
+    'HOLA ' + (datos.nombre || datos.correo.split('@')[0]).toUpperCase() + ' 👋';
+  document.getElementById('perfil-nombre-edit').value = datos.nombre  || '';
+  document.getElementById('perfil-tel-edit').value    = datos.telefono || '';
+  document.getElementById('perfil-cumple-edit').value = datos.cumpleanos || '';
+
+  // Verificar cupón de cumpleaños
+  await verificarCuponCumpleanos(datos);
+  // Cargar cupones del usuario
+  await cargarCuponesUsuario(datos.correo);
+}
+
+// ── Guardar cambios del perfil ───────────────────────────────
+async function guardarPerfil(){
+  const msg     = document.getElementById('perfil-msg3');
+  const nombre  = (document.getElementById('perfil-nombre-edit').value||'').trim();
+  const tel     = (document.getElementById('perfil-tel-edit').value||'').trim();
+  const cumple  = document.getElementById('perfil-cumple-edit').value || null;
+  msg.textContent = 'Guardando...';
+
+  const { error } = await sb.from('suscriptores')
+    .update({ nombre: nombre||null, telefono: tel||null, cumpleanos: cumple })
+    .eq('correo', _perfilActual.correo);
+
+  if(error){ msg.textContent = '❌ Error al guardar.'; return; }
+  _perfilActual.nombre    = nombre;
+  _perfilActual.telefono  = tel;
+  _perfilActual.cumpleanos= cumple;
+  msg.style.color = 'var(--white)';
+  msg.textContent = '✅ ¡Guardado!';
+  setTimeout(()=>{ msg.textContent=''; msg.style.color='var(--neon)'; }, 2500);
+}
+
+// ── Cupón automático de cumpleaños ───────────────────────────
+async function verificarCuponCumpleanos(datos){
+  if(!datos.cumpleanos) return;
+  const hoy   = new Date();
+  const cumple = new Date(datos.cumpleanos);
+  const esCumple = (hoy.getMonth() === cumple.getMonth() &&
+                    hoy.getDate()  === cumple.getDate());
+  if(!esCumple) return;
+
+  // Verificar si ya tiene cupón de cumpleaños activo este año
+  const { data: existente } = await sb.from('cupones_usuario')
+    .select('id')
+    .eq('correo', datos.correo)
+    .eq('motivo', 'cumpleanos')
+    .eq('usado', false)
+    .gte('created_at', `${hoy.getFullYear()}-01-01`)
+    .single();
+
+  if(existente) return; // ya tiene uno
+
+  // Crear cupón de cumpleaños
+  const codigo = 'CUMPLE' + datos.correo.split('@')[0].toUpperCase().slice(0,6)
+                           + hoy.getFullYear();
+  const expira = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate(), 23, 59, 59).toISOString();
+
+  await sb.from('cupones_usuario').insert([{
+    suscriptor_id: datos.id,
+    correo:        datos.correo,
+    codigo,
+    porcentaje:    20,
+    motivo:        'cumpleanos',
+    fecha_expira:  expira
+  }]);
+}
+
+// ── Cargar cupones del usuario ────────────────────────────────
+async function cargarCuponesUsuario(correo){
+  const lista = document.getElementById('perfil-cupones-lista');
+  const { data, error } = await sb.from('cupones_usuario')
+    .select('*')
+    .eq('correo', correo)
+    .eq('usado', false)
+    .order('created_at', { ascending: false });
+
+  if(error || !data || data.length === 0){
+    lista.innerHTML = '<span style="color:var(--gray)">No tienes cupones activos por ahora.</span>';
+    return;
+  }
+
+  lista.innerHTML = data.map(c => {
+    const expira = c.fecha_expira
+      ? `<br><span style="color:rgba(255,255,255,.35);font-size:.6rem">Vence: ${new Date(c.fecha_expira).toLocaleDateString('es-MX')}</span>`
+      : '';
+    const icono = c.motivo === 'cumpleanos' ? '🎂' : '🎁';
+    return `<div style="background:var(--bg);border:1px solid rgba(232,25,44,.3);border-radius:3px;padding:.7rem;margin-bottom:.5rem">
+      <span style="color:var(--neon);font-size:.8rem">${icono} ${c.codigo}</span>
+      <span style="color:var(--white);margin-left:.5rem">${c.porcentaje}% OFF</span>
+      ${c.motivo === 'cumpleanos' ? '<br><span style="color:var(--gray);font-size:.65rem">¡Feliz cumpleaños! Solo válido hoy 🎉</span>' : ''}
+      ${expira}
+    </div>`;
+  }).join('');
+}
+
+// ── Cerrar sesión ─────────────────────────────────────────────
+function cerrarSesionPerfil(){
+  localStorage.removeItem(PERFIL_KEY);
+  localStorage.removeItem(PERFIL_CORREO);
+  _perfilActual = null;
+  mostrarPaso1Perfil();
+}
+
+// ── Sumar visita al cargar la página ─────────────────────────
+(async function registrarVisita(){
+  const token  = localStorage.getItem(PERFIL_KEY);
+  const correo = localStorage.getItem(PERFIL_CORREO);
+  if(!token || !correo) return;
+  await sb.from('suscriptores')
+    .rpc || await sb.from('suscriptores')
+    .select('visitas,id').eq('correo', correo).eq('token_sesion', token).single()
+    .then(async ({ data }) => {
+      if(data) await sb.from('suscriptores')
+        .update({ visitas: (data.visitas||0) + 1 }).eq('id', data.id);
+    });
+})();
+
