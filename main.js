@@ -2558,7 +2558,7 @@ async function enviarSuscripcion(){
 
     if(error){
       msg.style.color = 'var(--neon)';
-      msg.textContent = '❌ ' + (error.code||'?') + ': ' + (error.message||'sin mensaje');
+      msg.textContent = '❌ Error al guardar. Intenta de nuevo.';
       return;
     }
 
@@ -2577,8 +2577,7 @@ function mostrarExitoSuscripcion(){
   const exito = document.getElementById('sus-exito');
   if(form)  form.style.display  = 'none';
   if(exito) exito.style.display = 'block';
-  // Cerrar automáticamente después de 4 segundos
-  setTimeout(cerrarSusPopup, 4000);
+  // El usuario cierra manualmente con el botón ✕ o 'VER CATÁLOGO'
 }
 
 // ─── FOTOS REALES (Supabase) ──────────────────────────────────────────────────
