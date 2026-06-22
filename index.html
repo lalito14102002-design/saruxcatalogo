@@ -169,6 +169,38 @@
 <!-- POPUP BIENVENIDA -->
 <div id="popup"></div>
 
+<!-- POPUP SUSCRIPCIÓN -->
+<div id="susPopupOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:99990;align-items:center;justify-content:center;padding:1rem" onclick="if(event.target===this)cerrarSusPopup()">
+  <div style="background:var(--card);border:1px solid rgba(232,25,44,.4);max-width:400px;width:100%;position:relative;animation:slideUp .3s ease">
+    <button onclick="cerrarSusPopup()" style="position:absolute;top:.8rem;right:.8rem;background:none;border:none;color:var(--gray);font-size:1.2rem;cursor:pointer;z-index:2">✕</button>
+    <!-- Banda decorativa superior -->
+    <div style="background:var(--neon);height:4px;width:100%"></div>
+    <div style="padding:1.8rem 1.5rem 1.5rem">
+      <div style="font-family:var(--font-mono);font-size:.5rem;letter-spacing:4px;color:var(--neon);margin-bottom:.4rem">OFERTA EXCLUSIVA</div>
+      <div style="font-family:var(--font-display);font-size:1.5rem;letter-spacing:3px;color:var(--white);line-height:1.2;margin-bottom:.5rem">SUSCRÍBETE Y<br>OBTÉN DESCUENTO</div>
+      <p style="font-size:.8rem;color:var(--gray);line-height:1.6;margin:0 0 1.2rem">Recibe un <strong style="color:var(--white)">cupón de descuento exclusivo</strong> en tu primera compra y entérate primero de nuevos diseños y promociones.</p>
+
+      <div id="sus-form">
+        <input id="sus-nombre" placeholder="Tu nombre" style="width:100%;background:rgba(255,255,255,.05);border:1px solid var(--border);color:var(--white);padding:.8rem 1rem;font-family:var(--font-mono);font-size:.7rem;box-sizing:border-box;outline:none;margin-bottom:.6rem;transition:border-color .2s" onfocus="this.style.borderColor='var(--neon)'" onblur="this.style.borderColor='var(--border)'" onkeydown="if(event.key==='Enter')document.getElementById('sus-correo').focus()">
+        <input id="sus-correo" type="email" placeholder="Tu correo electrónico *" style="width:100%;background:rgba(255,255,255,.05);border:1px solid var(--border);color:var(--white);padding:.8rem 1rem;font-family:var(--font-mono);font-size:.7rem;box-sizing:border-box;outline:none;margin-bottom:.6rem;transition:border-color .2s" onfocus="this.style.borderColor='var(--neon)'" onblur="this.style.borderColor='var(--border)'" onkeydown="if(event.key==='Enter')enviarSuscripcion()">
+        <div id="sus-msg" style="font-family:var(--font-mono);font-size:.58rem;margin-bottom:.6rem;min-height:1rem"></div>
+        <button onclick="enviarSuscripcion()" style="width:100%;background:var(--neon);color:#000;border:none;padding:1rem;font-family:var(--font-display);font-size:.85rem;letter-spacing:3px;cursor:pointer;transition:opacity .2s" onmouseover="this.style.opacity='.9'" onmouseout="this.style.opacity='1'">🎁 QUIERO MI DESCUENTO</button>
+      </div>
+
+      <div id="sus-exito" style="display:none;text-align:center;padding:1rem 0">
+        <div style="font-size:2.5rem;margin-bottom:.6rem">🎉</div>
+        <div style="font-family:var(--font-display);font-size:1.1rem;letter-spacing:2px;color:var(--white);margin-bottom:.4rem">¡GRACIAS!</div>
+        <p style="font-size:.8rem;color:var(--gray);line-height:1.6;margin:0 0 1rem">Ya estás suscrito. Pronto recibirás tu cupón de descuento y las últimas novedades de SARUX.</p>
+        <button onclick="cerrarSusPopup()" style="background:none;border:1px solid var(--neon);color:var(--neon);padding:.7rem 1.5rem;font-family:var(--font-mono);font-size:.6rem;letter-spacing:2px;cursor:pointer">VER CATÁLOGO →</button>
+      </div>
+
+      <div style="text-align:center;margin-top:.8rem">
+        <button onclick="cerrarSusPopup()" style="background:none;border:none;color:rgba(255,255,255,.3);font-size:.65rem;cursor:pointer;font-family:var(--font-mono)">No gracias, seguir sin descuento</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- CHAT -->
 <div class="chat-widget" id="chatWidget">
   <div class="chat-header"><span class="chat-title">🤖 Asistente Sarux</span><button class="chat-close" onclick="toggleChat()">✕</button></div>

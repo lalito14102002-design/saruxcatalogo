@@ -1542,6 +1542,27 @@ function calcularTotalCarrito(){
   return Math.max(0, calcularSubtotalCarrito() - calcularDescuentoCupon());
 }
 
+// Clave localStorage donde guardamos los cupones ya usados en este dispositivo
+const CUPONES_USADOS_KEY = 'sarux_cupones_usados';
+
+function getCuponesUsadosLocal(){
+  try { return JSON.parse(localStorage.getItem(CUPONES_USADOS_KEY) || '[]'); } catch(e){ return []; }
+}
+
+function marcarCuponUsadoLocal(codigo){
+  try {
+    const usados = getCuponesUsadosLocal();
+    if(!usados.includes(codigo)){
+      usados.push(codigo);
+      localStorage.setItem(CUPONES_USADOS_KEY, JSON.stringify(usados));
+    }
+  } catch(e){}
+}
+
+function cuponYaUsadoEnEsteDispositivo(codigo){
+  return getCuponesUsadosLocal().includes(codigo);
+}
+
 async function aplicarCuponCarrito(){
   const input = document.getElementById('carritoCuponInput');
   const msgEl = document.getElementById('carritoCuponMsg');
@@ -1557,6 +1578,13 @@ async function aplicarCuponCarrito(){
   msgEl.className = 'carrito-cupon-msg';
   msgEl.textContent = 'Verificando código...';
 
+  // Verificar si ya fue usado en este dispositivo
+  if(cuponYaUsadoEnEsteDispositivo(codigo)){
+    msgEl.className = 'carrito-cupon-msg error';
+    msgEl.textContent = '❌ Ya usaste este código en este dispositivo';
+    return;
+  }
+
   try {
     const { data, error } = await sb.from('cupones').select('*').eq('codigo', codigo).single();
 
@@ -1566,7 +1594,6 @@ async function aplicarCuponCarrito(){
       return;
     }
 
-    // Validar estado
     if(!data.activo){
       msgEl.className = 'carrito-cupon-msg error';
       msgEl.textContent = '❌ Este código ya no está disponible';
@@ -1583,17 +1610,15 @@ async function aplicarCuponCarrito(){
       return;
     }
 
-    // Validar que aplique a algo del carrito si es por categorías
     if(data.aplica_a === 'categorias'){
       const aplica = carrito.some(i => (data.categorias||[]).includes(i.cat));
       if(!aplica){
         msgEl.className = 'carrito-cupon-msg error';
-        msgEl.textContent = `❌ Este código solo aplica a: ${(data.categorias||[]).join(', ')}`;
+        msgEl.textContent = '❌ Este código solo aplica a: ' + (data.categorias||[]).join(', ');
         return;
       }
     }
 
-    // Cupón válido
     cuponAplicado = {
       id: data.id, codigo: data.codigo, porcentaje: data.porcentaje,
       aplica_a: data.aplica_a, categorias: data.categorias||[]
@@ -1601,7 +1626,7 @@ async function aplicarCuponCarrito(){
     msgEl.textContent = '';
     input.value = '';
     renderCarrito();
-    showToast(`🎟️ Cupón ${data.codigo} aplicado — ${data.porcentaje}% de descuento`);
+    showToast('🎟️ Cupón ' + data.codigo + ' aplicado — ' + data.porcentaje + '% de descuento');
 
   } catch(e){
     msgEl.className = 'carrito-cupon-msg error';
@@ -1615,7 +1640,7 @@ function quitarCuponCarrito(){
   showToast('Cupón removido');
 }
 
-// Incrementa el contador de usos del cupón en Supabase (se llama al confirmar pedido)
+// Incrementa el contador de usos en Supabase y marca como usado en este dispositivo
 async function registrarUsoCupon(){
   if(!cuponAplicado) return;
   try {
@@ -1623,6 +1648,8 @@ async function registrarUsoCupon(){
     if(data){
       await sb.from('cupones').update({ usos_actuales: (data.usos_actuales||0) + 1 }).eq('id', cuponAplicado.id);
     }
+    // Marcar en este dispositivo para que no pueda reusarse
+    marcarCuponUsadoLocal(cuponAplicado.codigo);
   } catch(e){}
 }
 
@@ -2481,9 +2508,78 @@ function reproducirVideoResena(wrapper, url){
       clearInterval(checkCierre);
       ocultarLoader();
       try { iniciarLluviaImagen(); } catch(e){}
+      try { iniciarSusPopup(); } catch(e){}
     }
   }, 100);
 })();
+
+// ─── SUSCRIPCIÓN DE CORREO ────────────────────────────────────────────────────
+const SUS_KEY = 'sarux_suscrito'; // localStorage key
+
+function iniciarSusPopup(){
+  // No mostrar si ya se suscribió o ya cerró el popup antes
+  if(localStorage.getItem(SUS_KEY)) return;
+  // Mostrar después de 12 segundos navegando en la página
+  setTimeout(()=>{
+    const overlay = document.getElementById('susPopupOverlay');
+    if(overlay) overlay.style.display = 'flex';
+  }, 12000);
+}
+
+function cerrarSusPopup(){
+  const overlay = document.getElementById('susPopupOverlay');
+  if(overlay) overlay.style.display = 'none';
+  // Guardar que ya se cerró para no volver a mostrar en esta sesión
+  sessionStorage.setItem('sarux_sus_cerrado', '1');
+}
+
+async function enviarSuscripcion(){
+  const nombre = (document.getElementById('sus-nombre').value||'').trim();
+  const correo = (document.getElementById('sus-correo').value||'').trim().toLowerCase();
+  const msg    = document.getElementById('sus-msg');
+
+  if(!correo || !correo.includes('@')){
+    msg.style.color = 'var(--neon)';
+    msg.textContent = '⚠️ Escribe un correo válido';
+    return;
+  }
+
+  msg.style.color = 'var(--gray)';
+  msg.textContent = 'Guardando...';
+
+  try {
+    // upsert: si el correo ya existe lo actualiza (nombre, activo=true),
+    // si no existe lo crea. Así funciona en cualquier dispositivo.
+    const { error } = await sb.from('suscriptores')
+      .upsert(
+        [{ correo, nombre: nombre||null, activo: true }],
+        { onConflict: 'correo' }
+      );
+
+    if(error){
+      msg.style.color = 'var(--neon)';
+      msg.textContent = '❌ Error al guardar. Intenta de nuevo.';
+      return;
+    }
+
+    // Guardar en este dispositivo para no volver a mostrar el popup
+    localStorage.setItem(SUS_KEY, '1');
+    mostrarExitoSuscripcion();
+
+  } catch(e){
+    msg.style.color = 'var(--neon)';
+    msg.textContent = '❌ Error de conexión. Intenta de nuevo.';
+  }
+}
+
+function mostrarExitoSuscripcion(){
+  const form  = document.getElementById('sus-form');
+  const exito = document.getElementById('sus-exito');
+  if(form)  form.style.display  = 'none';
+  if(exito) exito.style.display = 'block';
+  // Cerrar automáticamente después de 4 segundos
+  setTimeout(cerrarSusPopup, 4000);
+}
 
 // ─── FOTOS REALES (Supabase) ──────────────────────────────────────────────────
 
