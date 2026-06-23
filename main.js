@@ -2522,8 +2522,10 @@ function reproducirVideoResena(wrapper, url){
 const SUS_KEY = 'sarux_suscrito'; // localStorage key
 
 function iniciarSusPopup(){
-  // No mostrar si ya se suscribió o ya cerró el popup antes
+  // No mostrar si ya se suscribió, ya inició sesión, o ya cerró el popup antes en esta sesión
   if(localStorage.getItem(SUS_KEY)) return;
+  if(localStorage.getItem(PERFIL_KEY) && localStorage.getItem(PERFIL_CORREO)) return;
+  if(sessionStorage.getItem('sarux_sus_cerrado')) return;
   // Mostrar después de 12 segundos navegando en la página
   setTimeout(()=>{
     const overlay = document.getElementById('susPopupOverlay');
@@ -3033,6 +3035,7 @@ async function verificarCodigoPerfil(){
     .eq('id', data.id);
 
   localStorage.setItem(PERFIL_KEY, tokenSesion);
+  try{ localStorage.setItem(SUS_KEY, '1'); }catch(e){}
   _perfilActual = { ...data, token_sesion: tokenSesion };
   mostrarPaso3Perfil(_perfilActual);
 }

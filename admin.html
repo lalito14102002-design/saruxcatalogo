@@ -121,7 +121,8 @@
   }
 </style>
 <!-- SDK de Supabase -->
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
   let _beneficioCount = 0;
 
   function agregarBeneficioForm(textoInit='', imagenInit=''){
@@ -1242,19 +1243,45 @@ Casi listo...
         </div>
       </div>
 
-      
+      <div id="sec-fidelidad" class="admin-section">
+        <div class="admin-section-title">🏅 PROGRAMA DE FIDELIDAD</div>
+        <div class="admin-section-sub">Crea niveles según el número de compras de cada cliente (ej: Bronce, Plata, Oro) con sus propios beneficios.</div>
 
-        <div style="background:rgba(255,152,0,.06);border:1px solid rgba(255,152,0,.25);padding:1rem;margin-bottom:1rem">
-          <div style="font-family:var(--font-mono);font-size:.55rem;letter-spacing:2px;color:#ff9800;margin-bottom:.5rem">ℹ️ CÓMO FUNCIONA</div>
-          <p style="font-size:.72rem;color:var(--gray);line-height:1.7;margin:0">
-            1. Cada visitante de tu web obtiene un link único automáticamente (no necesita registrarse).<br>
-            2. Cuando comparte ese link y alguien entra y compra, el descuento se aplica solo, sin que el amigo tenga que escribir ningún código.<br>
-            3. Aquí abajo ves cuántas compras generó cada link, y decides manualmente qué premio le das a quien refirió — por WhatsApp, como tú prefieras.
-          </p>
+        <!-- Formulario nivel -->
+        <div style="background:var(--card2);border:1px solid var(--border);padding:1.2rem;margin-bottom:1.5rem">
+          <input type="hidden" id="nivel-edit-id">
+          <div class="admin-card-title" id="admin-nivel-form-titulo" style="margin-bottom:.8rem">➕ AGREGAR NUEVO NIVEL</div>
+
+          <div class="admin-field-label">NOMBRE DEL NIVEL *</div>
+          <input id="nivel-nombre" class="admin-input" placeholder="Ej: Oro" style="margin-bottom:.8rem">
+
+          <div class="admin-field-label">EMOJI *</div>
+          <input id="nivel-emoji" class="admin-input" placeholder="Ej: 🥇" style="margin-bottom:.8rem">
+
+          <div class="admin-field-label">COMPRAS MÍNIMAS PARA ALCANZARLO</div>
+          <input id="nivel-min" type="number" min="0" class="admin-input" placeholder="Ej: 5" style="margin-bottom:.8rem">
+
+          <div class="admin-field-label">COLOR</div>
+          <div class="color-preview-wrap" style="margin-bottom:.8rem">
+            <input type="color" id="nivel-color-picker" class="admin-color" oninput="document.getElementById('nivel-color').value=this.value">
+            <input id="nivel-color" class="admin-input" placeholder="#ffd700" oninput="document.getElementById('nivel-color-picker').value=this.value||'#ffffff'">
+          </div>
+
+          <div class="admin-field-label">BENEFICIOS DE ESTE NIVEL</div>
+          <div id="nivel-beneficios-lista" style="display:flex;flex-direction:column;gap:.6rem;margin-bottom:.8rem"></div>
+          <button class="admin-btn-sm" onclick="agregarBeneficioForm()" style="margin-bottom:1rem">+ Agregar beneficio</button>
+
+          <div id="admin-nivel-msg" style="font-family:var(--font-mono);font-size:.6rem;color:var(--neon);min-height:.9rem;margin-bottom:.6rem"></div>
+
+          <div style="display:flex;gap:.6rem">
+            <button class="admin-btn" onclick="guardarNivelAdmin()" style="flex:1;justify-content:center">💾 Guardar nivel</button>
+            <button class="admin-btn-sm" onclick="limpiarFormNivel()">✕ Cancelar</button>
+          </div>
         </div>
 
-        <div class="admin-card-title" style="margin-bottom:.8rem">📊 RANKING DE REFERIDORES</div>
-        <div id="admin-referidos-list">
+        <!-- Lista de niveles existentes -->
+        <div class="admin-card-title" style="margin-bottom:.8rem">📋 NIVELES ACTUALES</div>
+        <div id="admin-niveles-lista">
           <div style="font-family:var(--font-mono);font-size:.6rem;color:var(--gray)">Cargando...</div>
         </div>
       </div>
