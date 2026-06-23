@@ -3,6 +3,6 @@ window.SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXB
 // ── EmailJS (para enviar códigos de verificación) ──────────
 // Regístrate gratis en https://www.emailjs.com
 // Luego reemplaza estos valores con los tuyos
-window.EMAILJS_SERVICE  = '';   // ej: 'service_abc123'
-window.EMAILJS_TEMPLATE = '';   // ej: 'template_xyz789'
-window.EMAILJS_KEY      = '';   // ej: 'tu_public_key'
+window.EMAILJS_SERVICE  = 'service_6itj6r7';
+window.EMAILJS_TEMPLATE = 'template_2b8xp53';
+window.EMAILJS_KEY      = '0oAnQTajipmrZwokZ';

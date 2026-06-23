@@ -2986,9 +2986,9 @@ async function enviarCodigoPorCorreo(correo, codigo){
         template_id: templateId,
         user_id:     publicKey,
         template_params: {
-          to_email: correo,
-          codigo:   codigo,
-          expira:   '15 minutos'
+          email:    correo,
+          passcode: codigo,
+          time:     '15 minutos'
         }
       })
     });
