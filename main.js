@@ -1526,12 +1526,16 @@ function calcularSubtotalCarrito(){
 function calcularDescuentoCupon(){
   if(!cuponAplicado) return 0;
   let base = 0;
-  if(cuponAplicado.aplica_a === 'todo'){
+  if(cuponAplicado.aplica_a === 'todo' || cuponAplicado.esPersonalizado){
     base = calcularSubtotalCarrito();
-  } else {
-    // Solo aplica a items cuya categoría esté en la lista del cupón
+  } else if(cuponAplicado.aplica_a === 'categorias'){
     base = carrito.reduce((s,i)=>{
       if((cuponAplicado.categorias||[]).includes(i.cat)) return s + (i.precio*i.qty);
+      return s;
+    }, 0);
+  } else if(cuponAplicado.aplica_a === 'tipos'){
+    base = carrito.reduce((s,i)=>{
+      if((cuponAplicado.tipos_producto||[]).includes(i.tipo)) return s + (i.precio*i.qty);
       return s;
     }, 0);
   }
@@ -1572,6 +1576,14 @@ async function aplicarCuponCarrito(){
   if(!carrito.length){
     msgEl.className = 'carrito-cupon-msg error';
     msgEl.textContent = 'Agrega productos antes de usar un cupón';
+    return;
+  }
+
+  // Verificar si el usuario tiene sesión iniciada
+  if(!_perfilActual){
+    msgEl.className = 'carrito-cupon-msg error';
+    msgEl.textContent = '⚠️ Inicia sesión para aplicar cupones';
+    setTimeout(()=>{ cerrarCarrito(); abrirPerfilModal(); }, 1200);
     return;
   }
 
@@ -1645,10 +1657,19 @@ async function aplicarCuponCarrito(){
         return;
       }
     }
+    if(data.aplica_a === 'tipos'){
+      const aplica = carrito.some(i => (data.tipos_producto||[]).includes(i.tipo));
+      if(!aplica){
+        msgEl.className = 'carrito-cupon-msg error';
+        msgEl.textContent = '❌ Este código solo aplica a: ' + (data.tipos_producto||[]).join(', ');
+        return;
+      }
+    }
 
     cuponAplicado = {
       id: data.id, codigo: data.codigo, porcentaje: data.porcentaje,
-      aplica_a: data.aplica_a, categorias: data.categorias||[]
+      aplica_a: data.aplica_a, categorias: data.categorias||[],
+      tipos_producto: data.tipos_producto||[]
     };
     msgEl.textContent = '';
     input.value = '';
@@ -1852,6 +1873,14 @@ function toggleCarrito(){
   overlay.classList.toggle('open', open);
   if(open){ renderCarrito(); document.body.style.overflow='hidden'; }
   else { document.body.style.overflow=''; }
+}
+
+function cerrarCarrito(){
+  const panel = document.getElementById('carritoPanel');
+  const overlay = document.getElementById('carritoOverlay');
+  panel.classList.remove('open');
+  overlay.classList.remove('open');
+  document.body.style.overflow='';
 }
 
 function renderCarrito(){
@@ -3089,17 +3118,20 @@ async function mostrarPaso3Perfil(datos){
   document.getElementById('perfil-tel-edit').value    = datos.telefono || '';
   const cumpleInput = document.getElementById('perfil-cumple-edit');
   const cumpleAviso = document.getElementById('perfil-cumple-aviso');
+  const cumpleAvisoLibre = document.getElementById('perfil-cumple-aviso-libre');
   cumpleInput.value = datos.cumpleanos || '';
   if(datos.cumpleanos){
     cumpleInput.disabled = true;
     cumpleInput.style.opacity = '0.5';
     cumpleInput.style.cursor = 'not-allowed';
     if(cumpleAviso) cumpleAviso.style.display = 'block';
+    if(cumpleAvisoLibre) cumpleAvisoLibre.style.display = 'none';
   } else {
     cumpleInput.disabled = false;
     cumpleInput.style.opacity = '1';
     cumpleInput.style.cursor = '';
     if(cumpleAviso) cumpleAviso.style.display = 'none';
+    if(cumpleAvisoLibre) cumpleAvisoLibre.style.display = 'block';
   }
 
   // Verificar cupón de cumpleaños

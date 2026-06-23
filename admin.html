@@ -1221,12 +1221,18 @@ Casi listo...
           <div class="admin-field-label">¿DÓNDE APLICA?</div>
           <select id="cup-aplica-a" class="admin-input" style="margin-bottom:.8rem" onchange="toggleCupAplicaA()">
             <option value="todo">Todo el catálogo</option>
-            <option value="categorias">Solo ciertas categorías</option>
+            <option value="categorias">Solo ciertas categorías (ej: Tazas, Playeras)</option>
+            <option value="tipos">Solo ciertos tipos de producto (ej: Taza 11oz, Manga Larga)</option>
           </select>
 
           <div id="cup-categorias-wrap" style="display:none;margin-bottom:.8rem">
             <div class="admin-field-label">SELECCIONA LAS CATEGORÍAS</div>
             <div id="cup-categorias-checks" style="display:flex;flex-wrap:wrap;gap:.5rem;background:rgba(255,255,255,.03);padding:.7rem;border:1px solid var(--border)"></div>
+          </div>
+
+          <div id="cup-tipos-wrap" style="display:none;margin-bottom:.8rem">
+            <div class="admin-field-label">SELECCIONA LOS TIPOS DE PRODUCTO</div>
+            <div id="cup-tipos-checks" style="display:flex;flex-wrap:wrap;gap:.5rem;background:rgba(255,255,255,.03);padding:.7rem;border:1px solid var(--border)"></div>
           </div>
 
           <div class="admin-field-label">LÍMITE DE USOS <span style="color:var(--gray);font-size:.5rem">(déjalo vacío para ilimitado)</span></div>
@@ -2422,13 +2428,33 @@ Casi listo...
 
   function toggleCupAplicaA(){
     const val = document.getElementById('cup-aplica-a').value;
-    const wrap = document.getElementById('cup-categorias-wrap');
-    if(val === 'categorias'){
-      wrap.style.display = 'block';
-      renderCupCategoriasChecks();
-    } else {
-      wrap.style.display = 'none';
+    const wrapCat = document.getElementById('cup-categorias-wrap');
+    const wrapTip = document.getElementById('cup-tipos-wrap');
+    wrapCat.style.display = val === 'categorias' ? 'block' : 'none';
+    wrapTip.style.display = val === 'tipos' ? 'block' : 'none';
+    if(val === 'categorias') renderCupCategoriasChecks();
+    if(val === 'tipos') renderCupTiposChecks();
+  }
+
+  function renderCupTiposChecks(selected){
+    const cont = document.getElementById('cup-tipos-checks');
+    if(!cont) return;
+    const tipos = (window.FILTROS_GLOBALES_D && window.FILTROS_GLOBALES_D.tipos) || [];
+    if(!tipos.length){
+      cont.innerHTML = '<span style="font-family:var(--font-mono);font-size:.55rem;color:var(--gray)">No hay tipos de producto registrados. Agrégalos en la sección Filtros.</span>';
+      return;
     }
+    cont.innerHTML = tipos.map(nombre => {
+      const checked = (selected||[]).includes(nombre) ? 'checked' : '';
+      return `<label style="display:flex;align-items:center;gap:.3rem;font-size:.7rem;color:var(--light);cursor:pointer;background:rgba(255,255,255,.04);padding:.3rem .6rem;border:1px solid var(--border)">
+        <input type="checkbox" value="${nombre}" class="cup-tipo-check" ${checked}> ${nombre}
+      </label>`;
+    }).join('');
+  }
+
+  function getCupTiposSeleccionados(){
+    const boxes = document.querySelectorAll('.cup-tipo-check');
+    return Array.from(boxes).filter(b=>b.checked).map(b=>b.value);
   }
 
   function renderCupCategoriasChecks(selected){
@@ -2458,6 +2484,7 @@ Casi listo...
     document.getElementById('cup-porcentaje').value = '10';
     document.getElementById('cup-aplica-a').value = 'todo';
     document.getElementById('cup-categorias-wrap').style.display = 'none';
+    document.getElementById('cup-tipos-wrap').style.display = 'none';
     document.getElementById('cup-limite').value = '';
     document.getElementById('cup-expira').value = '';
     document.getElementById('cup-activo').checked = true;
@@ -2481,12 +2508,14 @@ Casi listo...
 
     const categorias = aplicaA === 'categorias' ? getCupCategoriasSeleccionadas() : [];
     if(aplicaA === 'categorias' && !categorias.length){ msg.style.color='var(--neon)'; msg.textContent='⚠️ Selecciona al menos una categoría'; return; }
+    const tipos = aplicaA === 'tipos' ? getCupTiposSeleccionados() : [];
+    if(aplicaA === 'tipos' && !tipos.length){ msg.style.color='var(--neon)'; msg.textContent='⚠️ Selecciona al menos un tipo de producto'; return; }
 
     msg.style.color='var(--gray)'; msg.textContent='Guardando...';
 
     try {
       const payload = {
-        codigo, porcentaje, aplica_a: aplicaA, categorias,
+        codigo, porcentaje, aplica_a: aplicaA, categorias, tipos_producto: tipos,
         limite_usos: limite, fecha_expira: expira, activo
       };
 
@@ -2576,9 +2605,15 @@ Casi listo...
     document.getElementById('cup-activo').checked = data.activo !== false;
     if(data.aplica_a === 'categorias'){
       document.getElementById('cup-categorias-wrap').style.display = 'block';
+      document.getElementById('cup-tipos-wrap').style.display = 'none';
       renderCupCategoriasChecks(data.categorias||[]);
+    } else if(data.aplica_a === 'tipos'){
+      document.getElementById('cup-categorias-wrap').style.display = 'none';
+      document.getElementById('cup-tipos-wrap').style.display = 'block';
+      renderCupTiposChecks(data.tipos_producto||[]);
     } else {
       document.getElementById('cup-categorias-wrap').style.display = 'none';
+      document.getElementById('cup-tipos-wrap').style.display = 'none';
     }
     document.getElementById('cup-msg').textContent = '';
     document.getElementById('sec-cupones').scrollIntoView({behavior:'smooth'});
@@ -2617,63 +2652,92 @@ Casi listo...
     ctx.lineWidth = 3;
     ctx.strokeRect(40,40,1000,1000);
 
-    // Texto: "OFERTA ESPECIAL"
-    ctx.textAlign = 'center';
-    ctx.fillStyle = '#e8192c';
-    ctx.font = '700 32px monospace';
-    ctx.fillText('★ OFERTA ESPECIAL ★', 540, 220);
+    // Función para dibujar el resto luego de cargar el logo
+    const dibujarContenido = () => {
+      // Texto: "OFERTA ESPECIAL"
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#e8192c';
+      ctx.font = '700 32px monospace';
+      ctx.fillText('★ OFERTA ESPECIAL ★', 540, 320);
 
-    // Logo / nombre marca
-    ctx.fillStyle = '#ffffff';
-    ctx.font = '900 64px Arial';
-    ctx.fillText('SARUX', 540, 310);
+      // Porcentaje gigante
+      ctx.fillStyle = '#ffffff';
+      ctx.font = '900 220px Arial';
+      ctx.fillText(c.porcentaje + '%', 540, 580);
 
-    // Porcentaje gigante
-    ctx.fillStyle = '#ffffff';
-    ctx.font = '900 220px Arial';
-    ctx.fillText(c.porcentaje + '%', 540, 560);
+      ctx.fillStyle = '#e8192c';
+      ctx.font = '700 48px Arial';
+      ctx.fillText('DE DESCUENTO', 540, 650);
 
-    ctx.fillStyle = '#e8192c';
-    ctx.font = '700 48px Arial';
-    ctx.fillText('DE DESCUENTO', 540, 630);
+      // Código del cupón en caja
+      ctx.fillStyle = '#e8192c';
+      ctx.fillRect(240, 720, 600, 110);
+      ctx.fillStyle = '#000000';
+      ctx.font = '900 56px monospace';
+      ctx.fillText(c.codigo, 540, 795);
 
-    // Código del cupón en caja
-    ctx.fillStyle = '#e8192c';
-    ctx.fillRect(240, 700, 600, 110);
-    ctx.fillStyle = '#000000';
-    ctx.font = '900 56px monospace';
-    ctx.fillText(c.codigo, 540, 775);
+      // Texto inferior
+      ctx.fillStyle = 'rgba(255,255,255,.6)';
+      ctx.font = '400 26px Arial';
+      let infoLine = 'Usa este código en tu compra';
+      if(c.limite_usos){
+        infoLine = `¡Solo ${c.limite_usos} cupones disponibles!`;
+      }
+      ctx.fillText(infoLine, 540, 880);
 
-    // Texto inferior
-    ctx.fillStyle = 'rgba(255,255,255,.6)';
-    ctx.font = '400 26px Arial';
-    let infoLine = 'Usa este código en tu compra';
-    if(c.limite_usos){
-      infoLine = `¡Solo ${c.limite_usos} cupones disponibles!`;
+      if(c.fecha_expira){
+        const fecha = new Date(c.fecha_expira).toLocaleDateString('es-MX',{day:'numeric',month:'long',year:'numeric'});
+        ctx.fillStyle = 'rgba(255,255,255,.4)';
+        ctx.font = '400 22px Arial';
+        ctx.fillText('Válido hasta el ' + fecha, 540, 920);
+      }
+
+      ctx.fillStyle = 'rgba(255,255,255,.3)';
+      ctx.font = '400 20px monospace';
+      ctx.fillText('WhatsApp · Instagram · Facebook · TikTok', 540, 990);
+
+      // Descargar
+      canvas.toBlob(blob => {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `cupon-${c.codigo}.png`;
+        a.click();
+        URL.revokeObjectURL(url);
+        showNotif('✅ Imagen descargada — listo para subir a redes');
+      }, 'image/png');
+    };
+
+    // Intentar cargar el logo
+    const logoUrl = getLogoSrc();
+    if(logoUrl && logoUrl.length > 10){
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = () => {
+        // Dibujar logo centrado arriba, máx 300px ancho, 160px alto
+        const maxW = 300, maxH = 160;
+        let w = img.width, h = img.height;
+        const ratio = Math.min(maxW/w, maxH/h);
+        w = w*ratio; h = h*ratio;
+        ctx.drawImage(img, 540 - w/2, 100, w, h);
+        dibujarContenido();
+      };
+      img.onerror = () => {
+        // Sin logo: poner solo texto SARUX
+        ctx.textAlign = 'center';
+        ctx.fillStyle = '#ffffff';
+        ctx.font = '900 64px Arial';
+        ctx.fillText('SARUX', 540, 200);
+        dibujarContenido();
+      };
+      img.src = logoUrl;
+    } else {
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#ffffff';
+      ctx.font = '900 64px Arial';
+      ctx.fillText('SARUX', 540, 200);
+      dibujarContenido();
     }
-    ctx.fillText(infoLine, 540, 870);
-
-    if(c.fecha_expira){
-      const fecha = new Date(c.fecha_expira).toLocaleDateString('es-MX',{day:'numeric',month:'long',year:'numeric'});
-      ctx.fillStyle = 'rgba(255,255,255,.4)';
-      ctx.font = '400 22px Arial';
-      ctx.fillText('Válido hasta el ' + fecha, 540, 910);
-    }
-
-    ctx.fillStyle = 'rgba(255,255,255,.3)';
-    ctx.font = '400 20px monospace';
-    ctx.fillText('WhatsApp · Instagram · Facebook · TikTok', 540, 990);
-
-    // Descargar
-    canvas.toBlob(blob => {
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `cupon-${c.codigo}.png`;
-      a.click();
-      URL.revokeObjectURL(url);
-      showNotif('✅ Imagen descargada — listo para subir a redes');
-    }, 'image/png');
   }
 
   // ═══════════════════════════════════════════════
