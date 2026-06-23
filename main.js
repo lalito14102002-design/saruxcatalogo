@@ -1424,97 +1424,6 @@ function guardarCarrito(){
   localStorage.setItem('sarux_carrito', JSON.stringify(carrito));
 }
 
-// ── PROGRAMA DE REFERIDOS ─────────────────────────────────────────────────────
-const REF_STORAGE_KEY = 'sarux_ref_codigo';
-let REFERIDOS_CFG = { activo: true, porcentaje_descuento: 10 };
-
-function generarCodigoReferido(){
-  return 'REF-' + Math.random().toString(36).slice(2,7).toUpperCase();
-}
-
-// Obtiene (o crea) el código propio del visitante actual, para que pueda compartir su link
-async function obtenerMiCodigoReferido(){
-  let codigo = localStorage.getItem(REF_STORAGE_KEY);
-  if(codigo) return codigo;
-
-  codigo = generarCodigoReferido();
-  try {
-    const { error } = await sb.from('referidos').insert([{ codigo, total_referidos: 0 }]);
-    if(error){
-      // Si por alguna rara colisión ya existe, generar otro
-      codigo = generarCodigoReferido();
-      await sb.from('referidos').insert([{ codigo, total_referidos: 0 }]);
-    }
-    localStorage.setItem(REF_STORAGE_KEY, codigo);
-  } catch(e){}
-  return codigo;
-}
-
-function getMiLinkReferido(){
-  const codigo = localStorage.getItem(REF_STORAGE_KEY);
-  if(!codigo) return SHARE_BASE;
-  return SHARE_BASE + '/?ref=' + codigo;
-}
-
-async function compartirMiLinkReferido(){
-  await obtenerMiCodigoReferido();
-  const link = getMiLinkReferido();
-  const texto = `¡Échale un ojo a SARUX! 🔥 Diseños originales en playeras, tazas, sudaderas y más. Usa mi link y obtén descuento en tu primera compra:`;
-  if(navigator.share){
-    navigator.share({ title: 'SARUX', text: texto, url: link }).catch(()=>{});
-  } else {
-    navigator.clipboard.writeText(link).then(()=>showToast('🔗 Tu link de referido fue copiado')).catch(()=>showToast('🔗 '+link));
-  }
-}
-
-// Detecta ?ref=CODIGO en la URL al cargar la página y lo guarda como "referido pendiente"
-function detectarRefEnURL(){
-  const params = new URLSearchParams(window.location.search);
-  const ref = params.get('ref');
-  if(ref){
-    // No nos referimos a nosotros mismos con nuestro propio código
-    const miCodigo = localStorage.getItem(REF_STORAGE_KEY);
-    if(ref !== miCodigo){
-      localStorage.setItem('sarux_referido_por', ref);
-    }
-  }
-}
-
-async function cargarConfigReferidos(){
-  try {
-    const { data } = await sb.from('referidos_config').select('*').eq('id',1).single();
-    if(data) REFERIDOS_CFG = data;
-  } catch(e){}
-}
-
-// Si el visitante llegó por un link de referido y aún no ha aplicado su cupón de bienvenida,
-// se lo aplica automáticamente en el carrito (silencioso, no se le pide código)
-async function aplicarDescuentoReferidoSiAplica(){
-  if(!REFERIDOS_CFG.activo) return;
-  const refPor = localStorage.getItem('sarux_referido_por');
-  const yaUsado = localStorage.getItem('sarux_referido_usado');
-  if(!refPor || yaUsado) return;
-  if(cuponAplicado) return; // si ya hay un cupón manual aplicado, no pisarlo
-
-  cuponAplicado = {
-    id: null, codigo: refPor, porcentaje: REFERIDOS_CFG.porcentaje_descuento,
-    aplica_a: 'todo', categorias: [], esReferido: true
-  };
-  renderCarrito();
-}
-
-// Se llama cuando el referido completa su pedido — suma 1 al contador del referidor
-async function registrarUsoReferido(){
-  const refPor = localStorage.getItem('sarux_referido_por');
-  if(!refPor) return;
-  try {
-    const { data } = await sb.from('referidos').select('total_referidos').eq('codigo', refPor).single();
-    if(data){
-      await sb.from('referidos').update({ total_referidos: (data.total_referidos||0) + 1 }).eq('codigo', refPor);
-      localStorage.setItem('sarux_referido_usado', '1');
-    }
-  } catch(e){}
-}
 
 // ── CUPONES DE DESCUENTO ──────────────────────────────────────────────────────
 let cuponAplicado = null; // { codigo, porcentaje, aplica_a, categorias, id }
@@ -3248,3 +3157,203 @@ function cerrarSesionPerfil(){
     });
 })();
 
+
+// ═══════════════════════════════════════════════════════════════
+// SISTEMA DE NOTIFICACIONES DEL NAVEGADOR — SARUX
+// ═══════════════════════════════════════════════════════════════
+
+async function pedirPermisoNotificaciones(){
+  if(!('Notification' in window)) return false;
+  if(Notification.permission === 'granted') return true;
+  if(Notification.permission === 'denied') return false;
+  const result = await Notification.requestPermission();
+  return result === 'granted';
+}
+
+function mostrarNotificacionNavegador(titulo, mensaje, icono){
+  if(!('Notification' in window)) return;
+  if(Notification.permission !== 'granted') return;
+  const n = new Notification(titulo, {
+    body:  mensaje,
+    icon:  icono || 'https://res.cloudinary.com/dpoxv0hbi/image/upload/v1/sarux_preset/logo',
+    badge: icono || 'https://res.cloudinary.com/dpoxv0hbi/image/upload/v1/sarux_preset/logo',
+    vibrate: [200, 100, 200]
+  });
+  n.onclick = () => { window.focus(); n.close(); };
+  setTimeout(() => n.close(), 8000);
+}
+
+// Pedir permiso cuando el usuario ya está logueado en su perfil
+// (no molestar a los que no tienen cuenta)
+async function pedirPermisoSiLogueado(){
+  const token  = localStorage.getItem('sarux_perfil_token');
+  const correo = localStorage.getItem('sarux_perfil_correo');
+  if(!token || !correo) return;
+  if(Notification.permission === 'default'){
+    // Esperar 5 segundos antes de pedir para no abrumar
+    setTimeout(async () => {
+      const granted = await pedirPermisoNotificaciones();
+      if(granted){
+        mostrarNotificacionNavegador(
+          '🔔 SARUX — Notificaciones activadas',
+          'Te avisaremos cuando tengas cupones o novedades.',
+        );
+      }
+    }, 5000);
+  }
+}
+
+// Revisar si hay cupones nuevos para el usuario logueado
+async function revisarCuponesNuevos(){
+  const token  = localStorage.getItem('sarux_perfil_token');
+  const correo = localStorage.getItem('sarux_perfil_correo');
+  if(!token || !correo) return;
+  if(Notification.permission !== 'granted') return;
+
+  const visto_key = 'sarux_cupones_vistos';
+  const vistos = JSON.parse(localStorage.getItem(visto_key) || '[]');
+
+  const { data } = await sb.from('cupones_usuario')
+    .select('id, codigo, porcentaje, motivo')
+    .eq('correo', correo)
+    .eq('usado', false)
+    .order('created_at', { ascending: false });
+
+  if(!data || !data.length) return;
+
+  // Notificar solo los cupones que no hemos visto antes
+  for(const c of data){
+    if(vistos.includes(c.id)) continue;
+    vistos.push(c.id);
+    const icono = c.motivo === 'cumpleanos' ? '🎂' : '🎁';
+    mostrarNotificacionNavegador(
+      `${icono} ¡Tienes un cupón de SARUX!`,
+      `Tu código: ${c.codigo} — ${c.porcentaje}% de descuento`
+    );
+    break; // Solo una notificación a la vez
+  }
+
+  localStorage.setItem(visto_key, JSON.stringify(vistos));
+}
+
+// Inicializar al cargar la página
+window.addEventListener('load', () => {
+  pedirPermisoSiLogueado();
+  setTimeout(revisarCuponesNuevos, 3000);
+});
+
+
+// ═══════════════════════════════════════════════════════════════
+// COMPRESIÓN DE IMÁGENES ANTES DE SUBIR — SARUX
+// ═══════════════════════════════════════════════════════════════
+function comprimirImagen(file, maxWidth=800, quality=0.75){
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = e => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let w = img.width, h = img.height;
+        if(w > maxWidth){ h = Math.round(h * maxWidth / w); w = maxWidth; }
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        canvas.toBlob(blob => resolve(new File([blob], file.name, { type: 'image/jpeg' })),
+          'image/jpeg', quality);
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════
+// SISTEMA DE FIDELIDAD — SARUX
+// ═══════════════════════════════════════════════════════════════
+
+let _nivelesCache = [];
+
+async function cargarNivelesFidelidad(){
+  const { data } = await sb.from('fidelidad_niveles')
+    .select('*').order('orden', { ascending: true });
+  _nivelesCache = data || [];
+  return _nivelesCache;
+}
+
+async function mostrarCartaFidelidad(datos){
+  const niveles = _nivelesCache.length ? _nivelesCache : await cargarNivelesFidelidad();
+  if(!niveles.length) return;
+
+  const compras = datos.compras || 0;
+
+  // Encontrar nivel actual y siguiente
+  let nivelActual = null;
+  let nivelSiguiente = null;
+  for(let i = 0; i < niveles.length; i++){
+    if(compras >= niveles[i].min_compras){
+      nivelActual = niveles[i];
+      nivelSiguiente = niveles[i+1] || null;
+    }
+  }
+
+  if(!nivelActual){
+    // Aún no tiene ningún nivel — mostrar cuánto falta para el primero
+    const primero = niveles[0];
+    const card = document.getElementById('perfil-fidelidad-card');
+    card.style.display = 'block';
+    document.getElementById('perfil-fidelidad-bg').style.background = 'linear-gradient(135deg, #2a2a2a, #1a1a1a)';
+    document.getElementById('perfil-nivel-nombre').textContent = 'SIN NIVEL';
+    document.getElementById('perfil-nivel-emoji').textContent = '🎯';
+    document.getElementById('perfil-nivel-titular').textContent = datos.nombre || datos.correo.split('@')[0];
+    document.getElementById('perfil-nivel-compras').textContent = compras;
+    document.getElementById('perfil-nivel-siguiente').textContent = `${primero.min_compras - compras} compras para ${primero.emoji} ${primero.nombre}`;
+    document.getElementById('perfil-nivel-barra').style.width = (compras / primero.min_compras * 100) + '%';
+    document.getElementById('perfil-nivel-beneficios').innerHTML = `<span style="color:var(--gray)">Realiza tu primera compra y desbloquea beneficios exclusivos 🚀</span>`;
+    return;
+  }
+
+  // Calcular progreso al siguiente nivel
+  let progreso = 100;
+  let siguienteTexto = '¡Nivel máximo alcanzado! 🏆';
+  if(nivelSiguiente){
+    const base = nivelActual.min_compras;
+    const meta = nivelSiguiente.min_compras;
+    progreso = Math.min(((compras - base) / (meta - base)) * 100, 100);
+    const faltan = meta - compras;
+    siguienteTexto = `${faltan} compra${faltan!==1?'s':''} para ${nivelSiguiente.emoji} ${nivelSiguiente.nombre}`;
+  }
+
+  // Colores por nivel
+  const gradientes = {
+    '#cd7f32': 'linear-gradient(135deg, #8B4513, #cd7f32)',
+    '#a8a9ad': 'linear-gradient(135deg, #666, #a8a9ad)',
+    '#ffd700': 'linear-gradient(135deg, #b8860b, #ffd700)',
+    '#b9f2ff': 'linear-gradient(135deg, #006994, #00bcd4)'
+  };
+
+  const card = document.getElementById('perfil-fidelidad-card');
+  card.style.display = 'block';
+  document.getElementById('perfil-fidelidad-bg').style.background =
+    gradientes[nivelActual.color] || `linear-gradient(135deg, ${nivelActual.color}88, ${nivelActual.color})`;
+  document.getElementById('perfil-nivel-nombre').textContent = nivelActual.nombre.toUpperCase();
+  document.getElementById('perfil-nivel-emoji').textContent = nivelActual.emoji;
+  document.getElementById('perfil-nivel-titular').textContent = datos.nombre || datos.correo.split('@')[0];
+  document.getElementById('perfil-nivel-compras').textContent = compras;
+  document.getElementById('perfil-nivel-siguiente').textContent = siguienteTexto;
+  document.getElementById('perfil-nivel-barra').style.width = progreso + '%';
+
+  // Beneficios
+  const beneficios = Array.isArray(nivelActual.beneficios) ? nivelActual.beneficios : JSON.parse(nivelActual.beneficios || '[]');
+  document.getElementById('perfil-nivel-beneficios').innerHTML =
+    beneficios.map(b => {
+      const texto = typeof b === 'string' ? b : b.texto;
+      const img   = typeof b === 'object' && b.imagen ? `<img src="${b.imagen}" style="width:100%;max-height:120px;object-fit:cover;border-radius:3px;margin:.3rem 0">` : '';
+      return `<div style="padding:.3rem 0;border-bottom:1px solid rgba(255,255,255,.06)">✅ ${texto}${img}</div>`;
+    }).join('');
+}
+
+// Hook: llamar mostrarCartaFidelidad cuando se muestra el paso 3
+const _origMostrarPaso3 = mostrarPaso3Perfil;
+async function mostrarPaso3Perfil(datos){
+  await _origMostrarPaso3(datos);
+  await mostrarCartaFidelidad(datos);
+}

@@ -512,9 +512,7 @@
     <div id="carritoCuponMsg" class="carrito-cupon-msg"></div>
     <div id="carritoCuponAplicado" style="display:none"></div>
   </div>
-  <div class="carrito-ref-wrap" id="carritoRefWrap" onclick="compartirMiLinkReferido()">
-    🎁 <span>Comparte tu link y gana recompensas</span>
-  </div>
+
   <div class="carrito-footer">
     <div class="carrito-total">
       <span class="carrito-total-label">TOTAL</span>
@@ -569,6 +567,40 @@
     <div id="perfil-paso3" style="display:none">
       <div style="font-size:.6rem;letter-spacing:3px;color:var(--neon);font-family:var(--font-mono);margin-bottom:.5rem">MI PERFIL</div>
       <div style="font-family:var(--font-display);font-size:1.2rem;letter-spacing:2px;color:var(--white);margin-bottom:1rem" id="perfil-bienvenida">HOLA 👋</div>
+
+      <!-- CARTA DE FIDELIDAD -->
+      <div id="perfil-fidelidad-card" style="margin-bottom:1rem;display:none">
+        <div style="border-radius:4px 4px 0 0;padding:1rem;position:relative;overflow:hidden" id="perfil-fidelidad-bg">
+          <div style="position:absolute;inset:0;opacity:.08;background:repeating-linear-gradient(45deg,#fff 0,#fff 1px,transparent 0,transparent 50%);background-size:8px 8px"></div>
+          <div style="position:relative;z-index:1">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:.6rem">
+              <div>
+                <div style="font-size:.45rem;letter-spacing:3px;font-family:var(--font-mono);opacity:.7;color:#fff">TARJETA DE FIDELIDAD · SARUX</div>
+                <div style="font-family:var(--font-display);font-size:1.8rem;letter-spacing:3px;color:#fff" id="perfil-nivel-nombre">—</div>
+              </div>
+              <div style="font-size:2.5rem" id="perfil-nivel-emoji">—</div>
+            </div>
+            <div style="font-family:var(--font-mono);font-size:.7rem;color:#fff;opacity:.9;margin-bottom:.6rem;text-transform:uppercase" id="perfil-nivel-titular">—</div>
+            <div style="display:flex;justify-content:space-between;align-items:flex-end">
+              <div>
+                <div style="font-size:.45rem;letter-spacing:2px;font-family:var(--font-mono);opacity:.6;color:#fff">COMPRAS REALIZADAS</div>
+                <div style="font-family:var(--font-display);font-size:1.4rem;color:#fff" id="perfil-nivel-compras">0</div>
+              </div>
+              <div style="text-align:right">
+                <div style="font-size:.45rem;letter-spacing:2px;font-family:var(--font-mono);opacity:.6;color:#fff">SIGUIENTE NIVEL</div>
+                <div style="font-family:var(--font-mono);font-size:.6rem;color:#fff" id="perfil-nivel-siguiente">—</div>
+              </div>
+            </div>
+            <div style="margin-top:.6rem;background:rgba(0,0,0,.3);border-radius:10px;height:5px;overflow:hidden">
+              <div id="perfil-nivel-barra" style="background:rgba(255,255,255,.85);height:100%;width:0%;transition:width .8s;border-radius:10px"></div>
+            </div>
+          </div>
+        </div>
+        <div style="background:var(--bg);border:1px solid rgba(255,255,255,.08);border-top:none;border-radius:0 0 4px 4px;padding:.8rem">
+          <div style="font-size:.5rem;letter-spacing:2px;color:var(--gray);font-family:var(--font-mono);margin-bottom:.5rem">✨ TUS BENEFICIOS</div>
+          <div id="perfil-nivel-beneficios" style="font-size:.7rem;color:var(--white);font-family:var(--font-mono);line-height:1.8"></div>
+        </div>
+      </div>
 
       <div style="display:flex;flex-direction:column;gap:.7rem;margin-bottom:1rem">
         <div>

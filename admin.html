@@ -121,7 +121,55 @@
   }
 </style>
 <!-- SDK de Supabase -->
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2">
+  let _beneficioCount = 0;
+
+  function agregarBeneficioForm(textoInit='', imagenInit=''){
+    _beneficioCount++;
+    const id = _beneficioCount;
+    const lista = document.getElementById('nivel-beneficios-lista');
+    const div = document.createElement('div');
+    div.className = 'beneficio-row';
+    div.dataset.imagenUrl = imagenInit;
+    div.style.cssText = 'background:var(--card);border:1px solid var(--border);padding:.6rem;border-radius:3px;position:relative';
+    div.innerHTML = `
+      <div style="display:flex;gap:.4rem;margin-bottom:.4rem;align-items:center">
+        <input type="text" class="ben-texto admin-input" placeholder="Descripción del beneficio" value="${textoInit.replace(/"/g,'&quot;')}" style="flex:1;margin:0">
+        <button onclick="this.closest('.beneficio-row').remove()" style="background:none;border:none;color:var(--gray);font-size:1rem;cursor:pointer;flex-shrink:0">✕</button>
+      </div>
+      ${imagenInit ? `<img src="${imagenInit}" style="width:100%;max-height:100px;object-fit:cover;border-radius:3px;margin-bottom:.3rem" id="ben-img-prev-${id}">` : `<div id="ben-img-prev-${id}"></div>`}
+      <div style="display:flex;gap:.4rem;align-items:center">
+        <label style="font-family:var(--font-mono);font-size:.5rem;color:var(--gray);cursor:pointer;display:flex;align-items:center;gap:.3rem">
+          🖼️ <span>${imagenInit ? 'Cambiar imagen' : 'Agregar imagen (opcional)'}</span>
+          <input type="file" accept="image/*" style="display:none" onchange="subirImagenBeneficio(this, ${id}, this.closest('.beneficio-row'))">
+        </label>
+        ${imagenInit ? `<button onclick="quitarImagenBeneficio(${id}, this.closest('.beneficio-row'))" style="background:none;border:none;color:var(--gray);font-size:.55rem;cursor:pointer;font-family:var(--font-mono)">✕ Quitar imagen</button>` : ''}
+      </div>
+    `;
+    lista.appendChild(div);
+  }
+
+  async function subirImagenBeneficio(input, id, row){
+    let file = input.files[0];
+    if(!file) return;
+    // Comprimir antes de subir
+    file = await comprimirImagen(file, 800, 0.75);
+    const ext  = 'jpg';
+    const path = `beneficios-fidelidad/${Date.now()}_${id}.${ext}`;
+    const { error } = await sb.storage.from('productos').upload(path, file, { upsert: true });
+    if(error){ alert('Error subiendo imagen: ' + error.message); return; }
+    const { data } = sb.storage.from('productos').getPublicUrl(path);
+    row.dataset.imagenUrl = data.publicUrl;
+    const prev = document.getElementById(`ben-img-prev-${id}`);
+    prev.outerHTML = `<img src="${data.publicUrl}" style="width:100%;max-height:100px;object-fit:cover;border-radius:3px;margin-bottom:.3rem" id="ben-img-prev-${id}">`;
+  }
+
+  function quitarImagenBeneficio(id, row){
+    row.dataset.imagenUrl = '';
+    const prev = document.getElementById(`ben-img-prev-${id}`);
+    if(prev) prev.outerHTML = `<div id="ben-img-prev-${id}"></div>`;
+  }
+</script>
 </head>
 <body>
 
@@ -284,7 +332,7 @@
         <button class="admin-nav-btn" onclick="showSec('pasos',this)">👣 Cómo pedir</button>
         <button class="admin-nav-btn" onclick="showSec('ticker',this)">📢 Ticker</button>
         <button class="admin-nav-btn" onclick="showSec('suscriptores',this);cargarSuscriptoresAdmin()">📧 Suscriptores</button>
-        <button class="admin-nav-btn" onclick="showSec('referidos',this);cargarReferidosAdmin()">🎁 Referidos</button>
+        <button class="admin-nav-btn" onclick="showSec('fidelidad',this);cargarNivelesAdmin()">🏅 Fidelidad</button>
         <button class="admin-nav-btn" onclick="showSec('cupones',this);cargarCuponesAdmin()">🎟️ Cupones</button>
         <button class="admin-nav-btn" onclick="showSec('storage',this);cargarStorage()">💾 Almacenamiento</button>
         <button class="admin-nav-btn" onclick="showSec('nube',this)">☁️ Subir a internet</button>
@@ -1194,29 +1242,7 @@ Casi listo...
         </div>
       </div>
 
-      <div id="sec-referidos" class="admin-section">
-        <div class="admin-section-title">🎁 PROGRAMA DE REFERIDOS</div>
-        <div class="admin-section-sub">Cada visitante tiene un link único. Cuando comparten su link y un amigo compra, el amigo recibe descuento automáticamente. Tú decides el premio que le das a quien refirió.</div>
-
-        <div style="background:var(--card2);border:1px solid var(--border);padding:1.2rem;margin-bottom:1rem">
-          <div class="admin-field">
-            <label class="admin-toggle"><input type="checkbox" id="ref-activo"><div class="toggle-track"></div><span>Activar programa de referidos</span></label>
-          </div>
-          <div class="admin-field-label">DESCUENTO PARA EL AMIGO REFERIDO</div>
-          <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.8rem">
-            <input id="ref-porcentaje" type="number" min="1" max="100" value="10" class="admin-input" style="width:100px">
-            <span style="font-family:var(--font-mono);font-size:.7rem;color:var(--gray)">% de descuento automático en su primera compra</span>
-          </div>
-          <div class="admin-field-label">DESCUENTO CUPÓN DE CUMPLEAÑOS 🎂</div>
-          <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.8rem">
-            <input id="ref-cumple-pct" type="number" min="1" max="100" value="20" class="admin-input" style="width:100px">
-            <span style="font-family:var(--font-mono);font-size:.7rem;color:var(--gray)">% de descuento que se regala el día de su cumpleaños</span>
-          </div>
-          <div class="admin-field-label">NOTA PARA TI <span style="color:var(--gray);font-size:.5rem">(solo informativo, no se muestra al público)</span></div>
-          <textarea id="ref-premio-texto" class="admin-textarea" rows="2" placeholder="Ej: Le doy 50 pesos de descuento en su siguiente compra" style="margin-bottom:.8rem"></textarea>
-          <button class="admin-btn" onclick="guardarConfigReferidos()">💾 GUARDAR CONFIGURACIÓN</button>
-          <div id="ref-config-msg" style="font-family:var(--font-mono);font-size:.6rem;margin-top:.5rem"></div>
-        </div>
+      
 
         <div style="background:rgba(255,152,0,.06);border:1px solid rgba(255,152,0,.25);padding:1rem;margin-bottom:1rem">
           <div style="font-family:var(--font-mono);font-size:.55rem;letter-spacing:2px;color:#ff9800;margin-bottom:.5rem">ℹ️ CÓMO FUNCIONA</div>
@@ -2306,6 +2332,8 @@ Casi listo...
       motivo:        motivo || 'regalo',
       fecha_expira:  expira ? new Date(expira).toISOString() : null
     }]);
+    // El sistema de notificaciones en la página del usuario
+    // detectará automáticamente el cupón nuevo la próxima vez que entre
     if(error){
       if(error.code === '23505') msg.textContent = '❌ Ese código ya existe, cambia el código';
       else msg.textContent = '❌ ' + error.message;
@@ -2340,16 +2368,29 @@ Casi listo...
   // ── Imagen para correo masivo ─────────────────────────────
   let _imagenCorreoBase64 = null;
 
-  function previsualizarImagenCorreo(input){
+  async function previsualizarImagenCorreo(input){
     const file = input.files[0];
     if(!file) return;
+    // Mostrar preview local primero
     const reader = new FileReader();
     reader.onload = e => {
-      _imagenCorreoBase64 = e.target.result; // base64 completo
-      document.getElementById('sus-email-preview-img').src = _imagenCorreoBase64;
+      document.getElementById('sus-email-preview-img').src = e.target.result;
       document.getElementById('sus-email-preview').style.display = 'block';
     };
     reader.readAsDataURL(file);
+
+    // Subir a Supabase Storage y guardar la URL pública
+    const ext  = file.name.split('.').pop();
+    const path = `correos-masivos/${Date.now()}.${ext}`;
+    const { error } = await sb.storage.from('productos').upload(path, file, { upsert: true });
+    if(error){ 
+      showNotif('No se pudo subir la imagen: ' + error.message);
+      _imagenCorreoBase64 = null;
+      return;
+    }
+    const { data } = sb.storage.from('productos').getPublicUrl(path);
+    _imagenCorreoBase64 = data.publicUrl;
+    document.getElementById('sus-email-preview').querySelector('div').textContent = '✅ Imagen subida — se incluirá en el correo';
   }
 
   function quitarImagenCorreo(){
@@ -2397,12 +2438,17 @@ Casi listo...
           template_id: templateId,
           user_id:     publicKey,
           template_params: {
-            to_email:    s.correo,
-            to_name:     s.nombre || 'Cliente SARUX',
-            asunto:      asunto,
-            mensaje:     mensaje,
-            imagen_url:  _imagenCorreoBase64 || '',
-            link_catalogo: 'https://saruxcatalogo.pages.dev'
+            to_email:      s.correo,
+            to_name:       s.nombre || 'Cliente SARUX',
+            asunto:        asunto,
+            mensaje:       mensaje,
+            imagen_url:    _imagenCorreoBase64 || 'https://saruxcatalogo.pages.dev',
+            link_catalogo: 'https://saruxcatalogo.pages.dev',
+            // EmailJS usa "email" como destino en algunas plantillas
+            email:   s.correo,
+            name:    s.nombre || 'Cliente SARUX',
+            title:   asunto,
+            message: mensaje
           }
         };
         const res = await fetch('https://api.emailjs.com/api/v1.0/email/send', {
@@ -2476,67 +2522,7 @@ Casi listo...
   // ═══════════════════════════════════════════════
 
   // ═══════════════════════════════════════════════
-  // PROGRAMA DE REFERIDOS
-  // ═══════════════════════════════════════════════
 
-  async function cargarConfigReferidosAdmin(){
-    try {
-      const { data } = await sb.from('referidos_config').select('*').eq('id',1).single();
-      if(data){
-        document.getElementById('ref-activo').checked = data.activo !== false;
-        document.getElementById('ref-porcentaje').value = data.porcentaje_descuento || 10;
-        document.getElementById('ref-premio-texto').value = data.premio_referidor_texto || '';
-        const cumplePctEl = document.getElementById('ref-cumple-pct');
-        if(cumplePctEl) cumplePctEl.value = data.porcentaje_cupon_cumpleanos || 20;
-      }
-    } catch(e){}
-  }
-
-  async function guardarConfigReferidos(){
-    const msg = document.getElementById('ref-config-msg');
-    const payload = {
-      activo: document.getElementById('ref-activo').checked,
-      porcentaje_descuento: parseFloat(document.getElementById('ref-porcentaje').value) || 10,
-      premio_referidor_texto: document.getElementById('ref-premio-texto').value.trim(),
-      porcentaje_cupon_cumpleanos: parseFloat(document.getElementById('ref-cumple-pct')?.value) || 20
-    };
-    msg.style.color = 'var(--gray)'; msg.textContent = 'Guardando...';
-    try {
-      const { error } = await sb.from('referidos_config').update(payload).eq('id',1);
-      if(error){ msg.style.color='red'; msg.textContent='❌ Error: '+error.message; return; }
-      msg.style.color='#4caf50'; msg.textContent='✅ Configuración guardada';
-      setTimeout(()=>{ msg.textContent=''; }, 3000);
-    } catch(e){ msg.style.color='red'; msg.textContent='❌ Error: '+e.message; }
-  }
-
-  async function cargarReferidosAdmin(){
-    cargarConfigReferidosAdmin();
-    const cont = document.getElementById('admin-referidos-list');
-    if(!cont) return;
-    cont.innerHTML = '<div style="font-family:var(--font-mono);font-size:.6rem;color:var(--gray)">Cargando...</div>';
-    try {
-      const { data, error } = await sb.from('referidos').select('*').gt('total_referidos',0).order('total_referidos',{ascending:false}).limit(50);
-      if(error) throw error;
-      if(!data || !data.length){
-        cont.innerHTML = '<div style="font-family:var(--font-mono);font-size:.6rem;color:var(--gray);padding:.8rem 0">Aún nadie ha generado compras con su link. Cuando suceda, aparecerá aquí.</div>';
-        return;
-      }
-      cont.innerHTML = data.map((r,i) => {
-        const medalla = i===0?'🥇':i===1?'🥈':i===2?'🥉':'🎟️';
-        return `<div style="display:flex;align-items:center;gap:.8rem;padding:.7rem;border-bottom:1px solid var(--border);background:var(--card2)">
-          <span style="font-size:1.2rem">${medalla}</span>
-          <div style="flex:1;min-width:0">
-            <div style="font-family:var(--font-mono);font-size:.7rem;color:var(--white)">${r.codigo}</div>
-            <div style="font-size:.6rem;color:var(--gray)">Creado: ${new Date(r.created_at).toLocaleDateString('es-MX')}</div>
-          </div>
-          <div style="font-family:var(--font-display);font-size:1.1rem;color:var(--neon)">${r.total_referidos}</div>
-          <div style="font-family:var(--font-mono);font-size:.5rem;color:var(--gray)">COMPRA${r.total_referidos!==1?'S':''}</div>
-        </div>`;
-      }).join('');
-    } catch(e){ cont.innerHTML = `<div style="color:var(--neon);font-size:.6rem">${e.message}</div>`; }
-  }
-
-  // ═══════════════════════════════════════════════
   // CUPONES DE DESCUENTO
   // ═══════════════════════════════════════════════
 
@@ -3976,8 +3962,135 @@ function actualizarStockHint(val){
       <div id="det-cupon-msg" style="font-size:.65rem;font-family:var(--font-mono);color:var(--neon);min-height:1rem;margin-bottom:.6rem"></div>
       <button onclick="regalarCuponPersonalizado()" class="admin-btn" style="width:100%;justify-content:center">🎁 REGALAR CUPÓN</button>
     </div>
+
+    <!-- Registrar compra -->
+    <div style="background:rgba(76,175,80,.06);border:1px solid rgba(76,175,80,.25);padding:1rem;border-radius:3px;margin-top:.8rem">
+      <div style="font-size:.55rem;letter-spacing:2px;color:#4caf50;font-family:var(--font-mono);margin-bottom:.5rem">🛒 REGISTRAR COMPRA</div>
+      <div style="font-family:var(--font-mono);font-size:.6rem;color:var(--gray);margin-bottom:.8rem">Cada compra registrada sube al cliente de nivel en el sistema de fidelidad.</div>
+      <div style="display:flex;gap:.5rem;align-items:center">
+        <input id="det-compra-monto" type="number" class="admin-input" placeholder="Monto $ (opcional)" style="flex:1">
+        <button onclick="registrarCompraUsuario()" class="admin-btn" style="background:#4caf50;border-color:#4caf50;white-space:nowrap">✅ +1 COMPRA</button>
+      </div>
+      <div id="det-compra-msg" style="font-family:var(--font-mono);font-size:.6rem;color:#4caf50;min-height:.8rem;margin-top:.4rem"></div>
+    </div>
   </div>
 </div>
 
 </body>
-</html>
+</html><script>
+// ── Fidelidad Admin ──────────────────────────────────────
+async function cargarNivelesAdmin(){
+  const lista = document.getElementById('admin-niveles-lista');
+  lista.innerHTML = '<div style="font-family:var(--font-mono);font-size:.6rem;color:var(--gray)">Cargando...</div>';
+  const { data } = await sb.from('fidelidad_niveles').select('*').order('orden',{ascending:true});
+  if(!data || !data.length){ lista.innerHTML = '<div style="font-family:var(--font-mono);font-size:.6rem;color:var(--gray)">No hay niveles aún.</div>'; return; }
+  lista.innerHTML = data.map((n,i) => {
+    const beneficios = Array.isArray(n.beneficios) ? n.beneficios : JSON.parse(n.beneficios||'[]');
+    const benefHtml = beneficios.map(b => {
+      const texto = typeof b === 'string' ? b : b.texto;
+      const img   = typeof b === 'object' && b.imagen ? `<img src="${b.imagen}" style="width:100%;max-height:80px;object-fit:cover;border-radius:3px;margin-top:.3rem">` : '';
+      return `<div style="border-bottom:1px solid rgba(255,255,255,.05);padding:.3rem 0">✅ ${texto}${img}</div>`;
+    }).join('');
+    return `<div style="background:var(--card2);border:1px solid var(--border);border-left:3px solid ${n.color};padding:.8rem;margin-bottom:.6rem;border-radius:3px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.4rem">
+        <div style="font-family:var(--font-display);font-size:1rem;letter-spacing:2px;color:${n.color}">${n.emoji} ${n.nombre}</div>
+        <div style="display:flex;gap:.4rem">
+          <button onclick="editarNivelAdmin('${n.id}')" class="admin-btn-sm">✏️</button>
+          <button onclick="eliminarNivelAdmin('${n.id}')" class="admin-btn-sm" style="border-color:rgba(232,25,44,.4)">🗑️</button>
+        </div>
+      </div>
+      <div style="font-family:var(--font-mono);font-size:.55rem;color:var(--gray);margin-bottom:.4rem">Desde ${n.min_compras} compra${n.min_compras!==1?'s':''}</div>
+      <div style="font-family:var(--font-mono);font-size:.6rem;color:var(--white)">${benefHtml}</div>
+    </div>`;
+  }).join('');
+}
+
+async function guardarNivelAdmin(){
+  const msg  = document.getElementById('admin-nivel-msg');
+  const id   = document.getElementById('nivel-edit-id').value;
+  const nombre = document.getElementById('nivel-nombre').value.trim();
+  const emoji  = document.getElementById('nivel-emoji').value.trim();
+  const min    = parseInt(document.getElementById('nivel-min').value) || 0;
+  const color  = document.getElementById('nivel-color').value.trim() || '#ffffff';
+  if(!nombre||!emoji){ msg.textContent='⚠️ Nombre y emoji son obligatorios'; return; }
+  // Recoger beneficios del form dinámico
+  const filas = document.querySelectorAll('#nivel-beneficios-lista .beneficio-row');
+  const beneficios = Array.from(filas).map(row => {
+    const texto = row.querySelector('.ben-texto').value.trim();
+    const imagen = row.dataset.imagenUrl || '';
+    return imagen ? { texto, imagen } : texto;
+  }).filter(b => (typeof b === 'string' ? b : b.texto));
+  msg.textContent = 'Guardando...';
+
+  // Calcular orden basado en min_compras
+  const orden = min;
+  let error;
+  if(id){
+    ({ error } = await sb.from('fidelidad_niveles').update({nombre,emoji,min_compras:min,color,beneficios,orden}).eq('id',id));
+  } else {
+    ({ error } = await sb.from('fidelidad_niveles').insert([{nombre,emoji,min_compras:min,color,beneficios,orden}]));
+  }
+  if(error){ msg.textContent='❌ '+error.message; return; }
+  msg.style.color='#4caf50';
+  msg.textContent='✅ Nivel guardado';
+  limpiarFormNivel();
+  cargarNivelesAdmin();
+}
+
+async function editarNivelAdmin(id){
+  const { data } = await sb.from('fidelidad_niveles').select('*').eq('id',id).single();
+  if(!data) return;
+  document.getElementById('nivel-edit-id').value = id;
+  document.getElementById('nivel-nombre').value  = data.nombre;
+  document.getElementById('nivel-emoji').value   = data.emoji;
+  document.getElementById('nivel-min').value     = data.min_compras;
+  document.getElementById('nivel-color').value   = data.color;
+  document.getElementById('nivel-color-picker').value = data.color;
+  const b = Array.isArray(data.beneficios) ? data.beneficios : JSON.parse(data.beneficios||'[]');
+  // Cargar beneficios en el form dinámico
+  document.getElementById('nivel-beneficios-lista').innerHTML = '';
+  b.forEach(ben => {
+    const texto = typeof ben === 'string' ? ben : ben.texto;
+    const img   = typeof ben === 'object' ? ben.imagen || '' : '';
+    agregarBeneficioForm(texto, img);
+  });
+  document.getElementById('admin-nivel-form-titulo').textContent = '✏️ EDITANDO NIVEL: ' + data.nombre.toUpperCase();
+  document.getElementById('admin-nivel-msg').textContent = '';
+  document.getElementById('admin-nivel-msg').style.color = 'var(--neon)';
+}
+
+async function eliminarNivelAdmin(id){
+  if(!confirm('¿Eliminar este nivel?')) return;
+  await sb.from('fidelidad_niveles').delete().eq('id',id);
+  cargarNivelesAdmin();
+}
+
+function limpiarFormNivel(){
+  document.getElementById('nivel-edit-id').value = '';
+  document.getElementById('nivel-nombre').value  = '';
+  document.getElementById('nivel-emoji').value   = '';
+  document.getElementById('nivel-min').value     = '';
+  document.getElementById('nivel-color').value   = '#ffd700';
+  document.getElementById('nivel-beneficios-lista').innerHTML = '';
+  document.getElementById('admin-nivel-form-titulo').textContent = '➕ AGREGAR NUEVO NIVEL';
+  document.getElementById('admin-nivel-msg').textContent = '';
+}
+
+// ── Registrar compra desde modal de usuario ───────────────
+async function registrarCompraUsuario(){
+  const s   = _usuarioDetalleActual;
+  const msg = document.getElementById('det-compra-msg');
+  msg.textContent = 'Registrando...';
+  const nuevasCompras = (s.compras || 0) + 1;
+  const { error } = await sb.from('suscriptores')
+    .update({ compras: nuevasCompras })
+    .eq('id', s.id);
+  if(error){ msg.textContent = '❌ Error: ' + error.message; return; }
+  _usuarioDetalleActual.compras = nuevasCompras;
+  // Actualizar en cache
+  const idx = _suscriptoresCache.findIndex(x => x.id === s.id);
+  if(idx >= 0) _suscriptoresCache[idx].compras = nuevasCompras;
+  msg.textContent = `✅ ¡Compra registrada! Total: ${nuevasCompras} compra${nuevasCompras!==1?'s':''}`;
+  document.getElementById('det-compras').textContent = nuevasCompras;
+}
+</script>
