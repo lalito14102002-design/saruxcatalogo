@@ -2155,36 +2155,117 @@ Casi listo...
       if(error) throw error;
       _suscriptoresCache = data || [];
 
-      // Stats
       const total = _suscriptoresCache.length;
       const activos = _suscriptoresCache.filter(s => s.activo !== false).length;
       const inicioMes = new Date(); inicioMes.setDate(1); inicioMes.setHours(0,0,0,0);
       const nuevos = _suscriptoresCache.filter(s => new Date(s.created_at) >= inicioMes).length;
-      document.getElementById('sus-stat-total').textContent  = total;
+      document.getElementById('sus-stat-total').textContent   = total;
       document.getElementById('sus-stat-activos').textContent = activos;
       document.getElementById('sus-stat-nuevos').textContent  = nuevos;
 
       if(!total){
-        lista.innerHTML = '<div style="font-family:var(--font-mono);font-size:.6rem;color:var(--gray);padding:.8rem 0">Aún no hay suscriptores. Cuando alguien llene el formulario en tu web, aparecerá aquí.</div>';
+        lista.innerHTML = '<div style="font-family:var(--font-mono);font-size:.6rem;color:var(--gray);padding:.8rem 0">Aún no hay suscriptores.</div>';
         return;
       }
 
       lista.innerHTML = _suscriptoresCache.map(s => {
         const fecha = new Date(s.created_at).toLocaleDateString('es-MX',{day:'numeric',month:'short',year:'numeric'});
-        return `<div style="display:flex;align-items:center;gap:.6rem;padding:.55rem 0;border-bottom:1px solid rgba(255,255,255,.04)">
-          <span style="font-size:.9rem">${s.activo!==false?'✅':'❌'}</span>
-          <div style="flex:1;min-width:0">
-            <div style="font-size:.75rem;color:var(--white);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${s.nombre||'—'}</div>
-            <div style="font-family:var(--font-mono);font-size:.6rem;color:var(--gray)">${s.correo}</div>
+        const cumple = s.cumpleanos ? new Date(s.cumpleanos + 'T12:00:00').toLocaleDateString('es-MX',{day:'numeric',month:'short'}) : '—';
+        const hoy = new Date();
+        const esCumple = s.cumpleanos && (() => { const c = new Date(s.cumpleanos + 'T12:00:00'); return c.getMonth()===hoy.getMonth() && c.getDate()===hoy.getDate(); })();
+        return `<div onclick="abrirDetalleUsuario('${s.id}')"
+          style="display:flex;align-items:center;gap:.6rem;padding:.7rem .5rem;border-bottom:1px solid rgba(255,255,255,.05);cursor:pointer;border-radius:3px;transition:background .15s"
+          onmouseover="this.style.background='rgba(255,255,255,.04)'" onmouseout="this.style.background='none'">
+          <div style="width:36px;height:36px;background:rgba(232,25,44,.15);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1rem;flex-shrink:0">
+            ${esCumple ? '🎂' : '👤'}
           </div>
-          <div style="font-family:var(--font-mono);font-size:.5rem;color:rgba(255,255,255,.3);white-space:nowrap">${fecha}</div>
-          <button class="admin-btn-sm" style="border-color:rgba(232,25,44,.4)" onclick="eliminarSuscriptor('${s.id}','${s.correo.replace(/'/g,"\\'")}')">🗑️</button>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:.75rem;color:var(--white);font-weight:600">${s.nombre||'Sin nombre'} ${esCumple?'<span style="color:#ff9800;font-size:.6rem">¡HOY ES SU CUMPLE!</span>':''}</div>
+            <div style="font-family:var(--font-mono);font-size:.58rem;color:var(--gray)">${s.correo}</div>
+            <div style="font-family:var(--font-mono);font-size:.52rem;color:rgba(255,255,255,.3);margin-top:.1rem">
+              📅 ${fecha} &nbsp;|&nbsp; 🎂 ${cumple} &nbsp;|&nbsp; 👁️ ${s.visitas||0} visitas &nbsp;|&nbsp; 🛒 ${s.compras||0} compras
+            </div>
+          </div>
+          <span style="font-size:.7rem;color:rgba(255,255,255,.3)">›</span>
         </div>`;
       }).join('');
     } catch(e){
       lista.innerHTML = `<div style="color:var(--neon);font-size:.6rem">${e.message}</div>`;
     }
   }
+
+  // ── Modal detalle de usuario ─────────────────────────────
+  async function abrirDetalleUsuario(id){
+    const s = _suscriptoresCache.find(x => x.id === id);
+    if(!s) return;
+    _usuarioDetalleActual = s;
+
+    document.getElementById('det-nombre').textContent   = s.nombre || 'Sin nombre';
+    document.getElementById('det-correo').textContent   = s.correo;
+    document.getElementById('det-tel').textContent      = s.telefono || '—';
+    document.getElementById('det-cumple').textContent   = s.cumpleanos ? new Date(s.cumpleanos+'T12:00:00').toLocaleDateString('es-MX',{day:'numeric',month:'long',year:'numeric'}) : '—';
+    document.getElementById('det-visitas').textContent  = s.visitas  || 0;
+    document.getElementById('det-compras').textContent  = s.compras  || 0;
+    document.getElementById('det-registro').textContent = new Date(s.created_at).toLocaleDateString('es-MX',{day:'numeric',month:'long',year:'numeric'});
+    document.getElementById('det-cupon-msg').textContent = '';
+    document.getElementById('det-cupon-codigo').value   = 'REGALO' + (s.nombre||'USER').toUpperCase().replace(/\s/g,'').slice(0,5) + Math.floor(10+Math.random()*90);
+    document.getElementById('det-cupon-pct').value      = '15';
+    document.getElementById('det-cupon-motivo').value   = '';
+
+    // Cargar cupones activos del usuario
+    const { data: cupones } = await sb.from('cupones_usuario').select('*').eq('correo', s.correo).order('created_at',{ascending:false});
+    const listaC = document.getElementById('det-cupones-lista');
+    if(!cupones || !cupones.length){
+      listaC.innerHTML = '<div style="font-size:.65rem;color:var(--gray)">Sin cupones aún.</div>';
+    } else {
+      listaC.innerHTML = cupones.map(c => {
+        const usado = c.usado ? '<span style="color:var(--gray)">USADO</span>' : '<span style="color:#4caf50">ACTIVO</span>';
+        return `<div style="display:flex;justify-content:space-between;align-items:center;padding:.4rem 0;border-bottom:1px solid rgba(255,255,255,.05);font-family:var(--font-mono);font-size:.6rem">
+          <span style="color:var(--neon)">${c.codigo}</span>
+          <span style="color:var(--white)">${c.porcentaje}% OFF</span>
+          <span>${usado}</span>
+          ${!c.usado ? `<button onclick="marcarCuponUsado('${c.id}')" style="background:none;border:1px solid rgba(255,255,255,.2);color:var(--gray);font-size:.5rem;padding:.2rem .4rem;cursor:pointer">✓ Marcar usado</button>` : ''}
+        </div>`;
+      }).join('');
+    }
+
+    document.getElementById('detalleUsuarioOverlay').style.display = 'flex';
+  }
+
+  async function regalarCuponPersonalizado(){
+    const s    = _usuarioDetalleActual;
+    const msg  = document.getElementById('det-cupon-msg');
+    const codigo = document.getElementById('det-cupon-codigo').value.trim().toUpperCase();
+    const pct    = parseFloat(document.getElementById('det-cupon-pct').value) || 0;
+    const motivo = document.getElementById('det-cupon-motivo').value.trim();
+    if(!codigo){ msg.textContent = '⚠️ Escribe un código'; return; }
+    if(!pct || pct<1||pct>100){ msg.textContent = '⚠️ Porcentaje inválido'; return; }
+    msg.textContent = 'Guardando...';
+    const expira = document.getElementById('det-cupon-expira').value;
+    const { error } = await sb.from('cupones_usuario').insert([{
+      suscriptor_id: s.id,
+      correo:        s.correo,
+      codigo,
+      porcentaje:    pct,
+      motivo:        motivo || 'regalo',
+      fecha_expira:  expira ? new Date(expira).toISOString() : null
+    }]);
+    if(error){
+      if(error.code === '23505') msg.textContent = '❌ Ese código ya existe, cambia el código';
+      else msg.textContent = '❌ ' + error.message;
+      return;
+    }
+    msg.style.color = '#4caf50';
+    msg.textContent = '✅ ¡Cupón regalado! Ya aparece en el perfil del usuario.';
+    abrirDetalleUsuario(s.id);
+  }
+
+  async function marcarCuponUsado(cuponId){
+    await sb.from('cupones_usuario').update({usado:true}).eq('id', cuponId);
+    abrirDetalleUsuario(_usuarioDetalleActual.id);
+  }
+
+  let _usuarioDetalleActual = null;
 
   function exportarSuscriptores(){
     if(!_suscriptoresCache.length){ showNotif('No hay suscriptores aún'); return; }
@@ -3592,5 +3673,75 @@ function actualizarStockHint(val){
 
 
 </script>
+
+<!-- MODAL DETALLE USUARIO ADMIN -->
+<div id="detalleUsuarioOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:99999;align-items:flex-start;justify-content:center;padding:1rem;overflow-y:auto">
+  <div style="background:var(--card2);border:1px solid rgba(232,25,44,.3);border-radius:4px;width:100%;max-width:500px;position:relative;padding:1.5rem;margin:auto">
+    <button onclick="document.getElementById('detalleUsuarioOverlay').style.display='none'" style="position:absolute;top:.8rem;right:.8rem;background:none;border:none;color:var(--gray);font-size:1.2rem;cursor:pointer">✕</button>
+
+    <div style="font-size:.55rem;letter-spacing:3px;color:var(--neon);font-family:var(--font-mono);margin-bottom:.3rem">DETALLE DE USUARIO</div>
+    <div id="det-nombre" style="font-family:var(--font-display);font-size:1.4rem;letter-spacing:2px;color:var(--white);margin-bottom:1rem"></div>
+
+    <!-- Info del usuario -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:.6rem;margin-bottom:1rem">
+      <div style="background:var(--card);border:1px solid var(--border);padding:.8rem;border-radius:3px">
+        <div style="font-size:.5rem;letter-spacing:2px;color:var(--gray);font-family:var(--font-mono);margin-bottom:.3rem">CORREO</div>
+        <div id="det-correo" style="font-size:.7rem;color:var(--white);word-break:break-all"></div>
+      </div>
+      <div style="background:var(--card);border:1px solid var(--border);padding:.8rem;border-radius:3px">
+        <div style="font-size:.5rem;letter-spacing:2px;color:var(--gray);font-family:var(--font-mono);margin-bottom:.3rem">TELÉFONO</div>
+        <div id="det-tel" style="font-size:.7rem;color:var(--white)"></div>
+      </div>
+      <div style="background:var(--card);border:1px solid var(--border);padding:.8rem;border-radius:3px">
+        <div style="font-size:.5rem;letter-spacing:2px;color:var(--gray);font-family:var(--font-mono);margin-bottom:.3rem">CUMPLEAÑOS</div>
+        <div id="det-cumple" style="font-size:.7rem;color:var(--white)"></div>
+      </div>
+      <div style="background:var(--card);border:1px solid var(--border);padding:.8rem;border-radius:3px">
+        <div style="font-size:.5rem;letter-spacing:2px;color:var(--gray);font-family:var(--font-mono);margin-bottom:.3rem">REGISTRO</div>
+        <div id="det-registro" style="font-size:.7rem;color:var(--white)"></div>
+      </div>
+      <div style="background:var(--card);border:1px solid var(--border);padding:.8rem;border-radius:3px;text-align:center">
+        <div id="det-visitas" style="font-family:var(--font-display);font-size:1.5rem;color:var(--white)">0</div>
+        <div style="font-size:.5rem;letter-spacing:2px;color:var(--gray);font-family:var(--font-mono)">VISITAS</div>
+      </div>
+      <div style="background:var(--card);border:1px solid var(--border);padding:.8rem;border-radius:3px;text-align:center">
+        <div id="det-compras" style="font-family:var(--font-display);font-size:1.5rem;color:#4caf50">0</div>
+        <div style="font-size:.5rem;letter-spacing:2px;color:var(--gray);font-family:var(--font-mono)">COMPRAS</div>
+      </div>
+    </div>
+
+    <!-- Cupones activos -->
+    <div style="background:var(--card);border:1px solid var(--border);padding:1rem;border-radius:3px;margin-bottom:1rem">
+      <div style="font-size:.55rem;letter-spacing:2px;color:var(--neon);font-family:var(--font-mono);margin-bottom:.6rem">🎁 CUPONES DEL USUARIO</div>
+      <div id="det-cupones-lista"></div>
+    </div>
+
+    <!-- Regalar cupón personalizado -->
+    <div style="background:rgba(232,25,44,.06);border:1px solid rgba(232,25,44,.25);padding:1rem;border-radius:3px">
+      <div style="font-size:.55rem;letter-spacing:2px;color:var(--neon);font-family:var(--font-mono);margin-bottom:.8rem">🎁 REGALAR CUPÓN PERSONALIZADO</div>
+      <div style="display:grid;grid-template-columns:1fr 80px;gap:.5rem;margin-bottom:.5rem">
+        <div>
+          <div style="font-size:.5rem;letter-spacing:1px;color:var(--gray);font-family:var(--font-mono);margin-bottom:.2rem">CÓDIGO</div>
+          <input id="det-cupon-codigo" type="text" class="admin-input" placeholder="Ej: REGALO2024" style="text-transform:uppercase">
+        </div>
+        <div>
+          <div style="font-size:.5rem;letter-spacing:1px;color:var(--gray);font-family:var(--font-mono);margin-bottom:.2rem">% DESC.</div>
+          <input id="det-cupon-pct" type="number" min="1" max="100" class="admin-input">
+        </div>
+      </div>
+      <div style="margin-bottom:.5rem">
+        <div style="font-size:.5rem;letter-spacing:1px;color:var(--gray);font-family:var(--font-mono);margin-bottom:.2rem">MOTIVO (opcional)</div>
+        <input id="det-cupon-motivo" type="text" class="admin-input" placeholder="Ej: Por tu fidelidad, feliz cumple...">
+      </div>
+      <div style="margin-bottom:.8rem">
+        <div style="font-size:.5rem;letter-spacing:1px;color:var(--gray);font-family:var(--font-mono);margin-bottom:.2rem">VENCE (dejar vacío = no vence)</div>
+        <input id="det-cupon-expira" type="date" class="admin-input">
+      </div>
+      <div id="det-cupon-msg" style="font-size:.65rem;font-family:var(--font-mono);color:var(--neon);min-height:1rem;margin-bottom:.6rem"></div>
+      <button onclick="regalarCuponPersonalizado()" class="admin-btn" style="width:100%;justify-content:center">🎁 REGALAR CUPÓN</button>
+    </div>
+  </div>
+</div>
+
 </body>
 </html>
