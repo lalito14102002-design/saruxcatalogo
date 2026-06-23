@@ -3079,11 +3079,15 @@ async function mostrarPaso3Perfil(datos){
   }
 
   // Verificar cupón de cumpleaños
-  await verificarCuponCumpleanos(datos);
+  try { await verificarCuponCumpleanos(datos); } catch(e){}
   // Cargar cupones del usuario
-  await cargarCuponesUsuario(datos.correo);
+  try { await cargarCuponesUsuario(datos.correo); } catch(e){}
   // Mostrar carta de fidelidad
-  await mostrarCartaFidelidad(datos);
+  try { await mostrarCartaFidelidad(datos); } catch(e){
+    // Si falla, mostrar tarjeta básica sin nivel
+    const card = document.getElementById('perfil-fidelidad-card');
+    if(card){ card.style.display='block'; }
+  }
 }
 
 // ── Guardar cambios del perfil ───────────────────────────────
@@ -3185,13 +3189,12 @@ function cerrarSesionPerfil(){
   const token  = localStorage.getItem(PERFIL_KEY);
   const correo = localStorage.getItem(PERFIL_CORREO);
   if(!token || !correo) return;
-  await sb.from('suscriptores')
-    .rpc || await sb.from('suscriptores')
-    .select('visitas,id').eq('correo', correo).eq('token_sesion', token).single()
-    .then(async ({ data }) => {
-      if(data) await sb.from('suscriptores')
-        .update({ visitas: (data.visitas||0) + 1 }).eq('id', data.id);
-    });
+  try {
+    const { data } = await sb.from('suscriptores')
+      .select('visitas,id').eq('correo', correo).eq('token_sesion', token).single();
+    if(data) await sb.from('suscriptores')
+      .update({ visitas: (data.visitas||0) + 1 }).eq('id', data.id);
+  } catch(e){}
 })();
 
 
@@ -3317,8 +3320,32 @@ async function cargarNivelesFidelidad(){
 }
 
 async function mostrarCartaFidelidad(datos){
-  const niveles = _nivelesCache.length ? _nivelesCache : await cargarNivelesFidelidad();
-  if(!niveles.length) return;
+  let niveles = [];
+  try {
+    niveles = _nivelesCache.length ? _nivelesCache : await cargarNivelesFidelidad();
+  } catch(e){ niveles = []; }
+  const cardFidelidad = document.getElementById('perfil-fidelidad-card');
+  if(!niveles.length){
+    // Tabla vacía o error — mostrar igualmente la tarjeta básica
+    if(cardFidelidad) cardFidelidad.style.display = 'block';
+    const bg = document.getElementById('perfil-fidelidad-bg');
+    if(bg) bg.style.background = 'linear-gradient(135deg, #2a2a2a, #1a1a1a)';
+    const elNombre = document.getElementById('perfil-nivel-nombre');
+    if(elNombre) elNombre.textContent = 'MIEMBRO';
+    const elEmoji = document.getElementById('perfil-nivel-emoji');
+    if(elEmoji) elEmoji.textContent = '⭐';
+    const elTitular = document.getElementById('perfil-nivel-titular');
+    if(elTitular) elTitular.textContent = datos.nombre || datos.correo.split('@')[0];
+    const elCompras = document.getElementById('perfil-nivel-compras');
+    if(elCompras) elCompras.textContent = datos.compras || 0;
+    const elSiguiente = document.getElementById('perfil-nivel-siguiente');
+    if(elSiguiente) elSiguiente.textContent = 'Sigue comprando para subir de nivel 🚀';
+    const elBarra = document.getElementById('perfil-nivel-barra');
+    if(elBarra) elBarra.style.width = '0%';
+    const elBeneficios = document.getElementById('perfil-nivel-beneficios');
+    if(elBeneficios) elBeneficios.innerHTML = '<span style="color:var(--gray)">¡Gracias por ser parte de SARUX!</span>';
+    return;
+  }
 
   const compras = datos.compras || 0;
 
@@ -3335,8 +3362,8 @@ async function mostrarCartaFidelidad(datos){
   if(!nivelActual){
     // Aún no tiene ningún nivel — mostrar cuánto falta para el primero
     const primero = niveles[0];
-    const card = document.getElementById('perfil-fidelidad-card');
-    card.style.display = 'block';
+    const cardEl = document.getElementById('perfil-fidelidad-card');
+    if(cardEl) cardEl.style.display = 'block';
     document.getElementById('perfil-fidelidad-bg').style.background = 'linear-gradient(135deg, #2a2a2a, #1a1a1a)';
     document.getElementById('perfil-nivel-nombre').textContent = 'SIN NIVEL';
     document.getElementById('perfil-nivel-emoji').textContent = '🎯';
@@ -3368,7 +3395,7 @@ async function mostrarCartaFidelidad(datos){
   };
 
   const card = document.getElementById('perfil-fidelidad-card');
-  card.style.display = 'block';
+  if(card) card.style.display = 'block';
   document.getElementById('perfil-fidelidad-bg').style.background =
     gradientes[nivelActual.color] || `linear-gradient(135deg, ${nivelActual.color}88, ${nivelActual.color})`;
   document.getElementById('perfil-nivel-nombre').textContent = nivelActual.nombre.toUpperCase();
