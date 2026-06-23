@@ -1222,7 +1222,50 @@ function toggleFaq(i){document.getElementById(`faq-${i}`).classList.toggle('open
 // CHAT
 function chatReply(tipo){const m=document.getElementById('chatMessages');m.innerHTML+=`<div class="chat-msg bot">${CHAT_RESP_D[tipo]||'Escríbenos por WhatsApp 😊'}</div>`;m.scrollTop=m.scrollHeight;}
 function toggleChat(){document.getElementById('chatWidget').classList.toggle('open');}
-function enviarChat(){const inp=document.getElementById('chatInput');const msg=inp.value.trim();if(!msg)return;const m=document.getElementById('chatMessages');m.innerHTML+=`<div class="chat-msg user">${msg}</div>`;inp.value='';setTimeout(()=>{m.innerHTML+=`<div class="chat-msg bot">Para más info escríbenos por <a href="https://wa.me/${NEGOCIO.whatsapp}" target="_blank" style="color:var(--neon)">WhatsApp</a> 😊</div>`;m.scrollTop=m.scrollHeight;},800);m.scrollTop=m.scrollHeight;}
+
+// Historial de la conversación (para que la IA tenga contexto)
+window.SARUX_CHAT_HISTORIAL = window.SARUX_CHAT_HISTORIAL || [];
+
+function escHtmlChat(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+async function enviarChat(){
+  const inp=document.getElementById('chatInput');
+  const msg=inp.value.trim();
+  if(!msg)return;
+  const m=document.getElementById('chatMessages');
+  m.innerHTML+=`<div class="chat-msg user">${escHtmlChat(msg)}</div>`;
+  inp.value='';
+  m.scrollTop=m.scrollHeight;
+
+  // Indicador de "escribiendo..."
+  const typingId='typing-'+Date.now();
+  m.innerHTML+=`<div class="chat-msg bot" id="${typingId}">Escribiendo...</div>`;
+  m.scrollTop=m.scrollHeight;
+
+  try{
+    const resp = await fetch(window.SARUX_CHAT_WORKER_URL, {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        message: msg,
+        historial: window.SARUX_CHAT_HISTORIAL
+      })
+    });
+    const data = await resp.json();
+    const reply = data.reply || 'Para más info escríbenos por WhatsApp 😊';
+
+    window.SARUX_CHAT_HISTORIAL.push({role:'user',content:msg});
+    window.SARUX_CHAT_HISTORIAL.push({role:'assistant',content:reply});
+
+    const el = document.getElementById(typingId);
+    if(el) el.innerHTML = escHtmlChat(reply).replace(/\n/g,'<br>');
+  }catch(e){
+    const el = document.getElementById(typingId);
+    if(el) el.innerHTML = `Para más info escríbenos por <a href="https://wa.me/${NEGOCIO.whatsapp}" target="_blank" style="color:var(--neon)">WhatsApp</a> 😊`;
+  }
+  m.scrollTop=m.scrollHeight;
+}
+
 function chatEnter(e){if(e.key==='Enter')enviarChat();}
 
 //  LLUVIA DE IMÁGENES 
