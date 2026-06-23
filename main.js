@@ -3047,6 +3047,8 @@ async function mostrarPaso3Perfil(datos){
   await verificarCuponCumpleanos(datos);
   // Cargar cupones del usuario
   await cargarCuponesUsuario(datos.correo);
+  // Mostrar carta de fidelidad
+  await mostrarCartaFidelidad(datos);
 }
 
 // ── Guardar cambios del perfil ───────────────────────────────
@@ -3351,9 +3353,4 @@ async function mostrarCartaFidelidad(datos){
     }).join('');
 }
 
-// Hook: llamar mostrarCartaFidelidad cuando se muestra el paso 3
-const _origMostrarPaso3 = mostrarPaso3Perfil;
-async function mostrarPaso3Perfil(datos){
-  await _origMostrarPaso3(datos);
-  await mostrarCartaFidelidad(datos);
-}
+
