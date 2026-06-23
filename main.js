@@ -3,6 +3,29 @@ const SUPABASE_URL = window.SUPABASE_URL || 'https://ngavbeiochxdvgzcywuh.supaba
 const SUPABASE_ANON_KEY = window.SUPABASE_ANON_KEY || '';
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
+// ── STUBS: funciones del sistema de referidos (pendientes de implementar) ──
+// Estas funciones se definen aquí para evitar errores si se llaman antes de estar listas.
+function detectarRefEnURL(){
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const ref = params.get('ref');
+    if(ref) { try{ localStorage.setItem('sarux_ref', ref); }catch(e){} }
+  } catch(e){}
+}
+var REFERIDOS_CFG = null;
+function cargarConfigReferidos(){
+  return sb.from('referidos_config').select('*').limit(1).single()
+    .then(function(res){ if(res && res.data) REFERIDOS_CFG = res.data; })
+    .catch(function(){ REFERIDOS_CFG = null; });
+}
+function aplicarDescuentoReferidoSiAplica(){
+  // Lógica de descuento por referido — implementar según necesidad
+}
+function registrarUsoReferido(){
+  // Registra que se usó un cupón de referido — implementar según necesidad
+}
+// ── FIN STUBS ──
+
 //  DATOS POR DEFECTO
 const DEFAULTS = {
   NEGOCIO:{nombre:"SARUX",descripcion:"Diseños 100% originales en playeras, tazas, termos y más.",whatsapp:"522229250603",instagram:"https://instagram.com/sarux.oficial",facebook:"https://facebook.com/sarux",tiktok:"https://tiktok.com/@sarux.oficial",tiktok_user:"@sarux.oficial",hero_frase1:"DISEÑO",hero_frase2:"QUE",hero_frase3:"HABLA"},
@@ -1890,7 +1913,7 @@ function pedirPorWhatsApp(){
   window.open(`https://wa.me/${NEGOCIO.whatsapp}?text=${msg}`, '_blank');
 
   if(cuponAplicado){
-    if(cuponAplicado.esReferido) registrarUsoReferido();
+    if(cuponAplicado.esReferido){ try{ if(typeof registrarUsoReferido==='function') registrarUsoReferido(); }catch(e){} }
     else registrarUsoCupon();
   }
 
@@ -2440,14 +2463,19 @@ function reproducirVideoResena(wrapper, url){
   }).catch(function(){});
 
   // PASO 1: preparar página en background con DEFAULTS
-  detectarRefEnURL();
+  try { detectarRefEnURL(); } catch(e){} // FIX: protegido por si la función no existe
   APP_DATA = JSON.parse(JSON.stringify(DEFAULTS));
-  syncGlobalsFromAppData();
+  try { syncGlobalsFromAppData(); } catch(e){}
   try { applyStyles(); } catch(e){}
   try { renderPage(); } catch(e){}
 
   // Cargar config de referidos y aplicar descuento de bienvenida si aplica (no bloqueante)
-  cargarConfigReferidos().then(()=>{ try{ aplicarDescuentoReferidoSiAplica(); }catch(e){} });
+  // FIX: protegido por si cargarConfigReferidos no está definida
+  try {
+    if(typeof cargarConfigReferidos === 'function'){
+      cargarConfigReferidos().then(()=>{ try{ if(typeof aplicarDescuentoReferidoSiAplica==='function') aplicarDescuentoReferidoSiAplica(); }catch(e){} }).catch(()=>{});
+    }
+  } catch(e){}
 
   // PASO 2: cargar caché local y Supabase en paralelo, en segundo plano
   try {
@@ -2470,6 +2498,11 @@ function reproducirVideoResena(wrapper, url){
       }
     });
   } catch(e){}
+
+  // FALLBACK ABSOLUTO: sin importar qué pase, el loader se oculta a los 12 segundos máximo.
+  setTimeout(function(){
+    try { if(loader) loader.classList.add('oculto'); } catch(e){}
+  }, 12000);
 
   // PASO 3: esperar el tiempo configurado, luego quitar loader.
   // Se revisa cada 100ms en vez de un solo setTimeout fijo, así si LOADER_MIN_MS
