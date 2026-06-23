@@ -1136,13 +1136,45 @@ Casi listo...
 
         <!-- Enviar correo masivo -->
         <div style="background:var(--card2);border:1px solid var(--border);padding:1.2rem;margin-bottom:1rem">
-          <div class="admin-card-title" style="margin-bottom:.8rem">✉️ ENVIAR CORREO A TODOS</div>
+          <div class="admin-card-title" style="margin-bottom:.4rem">✉️ ENVIAR CORREO A TODOS</div>
+          <div style="font-family:var(--font-mono);font-size:.52rem;color:var(--gray);margin-bottom:1rem">
+            ⚠️ Plan gratis EmailJS = 200 correos/mes. Úsalo con cuidado.
+          </div>
+
           <div class="admin-field-label">ASUNTO</div>
           <input id="sus-email-asunto" placeholder="Ej: Nueva colección disponible 🔥" class="admin-input" style="margin-bottom:.8rem">
+
           <div class="admin-field-label">MENSAJE</div>
-          <textarea id="sus-email-body" class="admin-textarea" rows="5" placeholder="Escribe aquí tu mensaje promocional...&#10;&#10;Recuerda incluir el link de tu catálogo: https://saruxcatalogo.pages.dev" style="margin-bottom:.8rem"></textarea>
-          <div style="font-family:var(--font-mono);font-size:.5rem;color:var(--gray);margin-bottom:.8rem">ℹ️ Esto abre tu app de correo con todos los destinatarios en CCO (ocultos entre sí). Necesitas enviarlo manualmente desde tu correo.</div>
-          <button class="admin-btn" onclick="prepararCorreoMasivo()">📨 PREPARAR CORREO MASIVO</button>
+          <textarea id="sus-email-body" class="admin-textarea" rows="5"
+            placeholder="Escribe tu mensaje aquí...&#10;&#10;Tip: incluye el link: https://saruxcatalogo.pages.dev"
+            style="margin-bottom:.8rem"></textarea>
+
+          <div class="admin-field-label">IMAGEN (opcional)</div>
+          <div style="margin-bottom:.8rem">
+            <input type="file" id="sus-email-imagen" accept="image/*"
+              onchange="previsualizarImagenCorreo(this)"
+              style="font-family:var(--font-mono);font-size:.6rem;color:var(--gray);width:100%">
+            <div id="sus-email-preview" style="margin-top:.5rem;display:none">
+              <img id="sus-email-preview-img" style="max-width:100%;max-height:180px;border-radius:3px;border:1px solid var(--border)">
+              <div style="font-family:var(--font-mono);font-size:.5rem;color:var(--gray);margin-top:.3rem">
+                ✅ Imagen lista — se incluirá en el correo como enlace
+              </div>
+              <button onclick="quitarImagenCorreo()" style="background:none;border:none;color:var(--neon);font-size:.55rem;cursor:pointer;font-family:var(--font-mono);margin-top:.2rem">✕ Quitar imagen</button>
+            </div>
+          </div>
+
+          <div id="sus-email-progreso" style="display:none;background:var(--card);border:1px solid var(--border);padding:.8rem;border-radius:3px;margin-bottom:.8rem">
+            <div style="font-family:var(--font-mono);font-size:.6rem;color:var(--white);margin-bottom:.4rem" id="sus-email-progreso-txt">Preparando...</div>
+            <div style="background:rgba(255,255,255,.1);border-radius:10px;height:6px;overflow:hidden">
+              <div id="sus-email-barra" style="background:var(--neon);height:100%;width:0%;transition:width .3s;border-radius:10px"></div>
+            </div>
+          </div>
+
+          <div id="sus-email-resultado" style="font-family:var(--font-mono);font-size:.6rem;min-height:.8rem;margin-bottom:.8rem"></div>
+
+          <button class="admin-btn" onclick="enviarCorreoMasivoEmailJS()" id="btn-envio-masivo" style="width:100%;justify-content:center">
+            📨 ENVIAR A TODOS LOS SUSCRIPTORES
+          </button>
         </div>
 
         <!-- Buscar por ID -->
@@ -2305,21 +2337,103 @@ Casi listo...
     showNotif(`✅ ${activos.length} correos exportados`);
   }
 
-  function prepararCorreoMasivo(){
-    if(!_suscriptoresCache.length){ showNotif('No hay suscriptores aún'); return; }
-    const asunto = document.getElementById('sus-email-asunto').value.trim();
-    const body   = document.getElementById('sus-email-body').value.trim();
-    if(!asunto){ showNotif('⚠️ Escribe el asunto del correo'); return; }
-    if(!body)  { showNotif('⚠️ Escribe el mensaje del correo'); return; }
+  // ── Imagen para correo masivo ─────────────────────────────
+  let _imagenCorreoBase64 = null;
 
-    const activos = _suscriptoresCache.filter(s => s.activo !== false).map(s => s.correo);
-    // Usar BCC (CCO) para que los destinatarios no se vean entre sí
-    const bcc = activos.join(',');
-    const mailtoLink = `mailto:?bcc=${encodeURIComponent(bcc)}&subject=${encodeURIComponent(asunto)}&body=${encodeURIComponent(body)}`;
-
-    window.location.href = mailtoLink;
-    showNotif(`📨 Abriendo correo con ${activos.length} destinatarios en CCO`);
+  function previsualizarImagenCorreo(input){
+    const file = input.files[0];
+    if(!file) return;
+    const reader = new FileReader();
+    reader.onload = e => {
+      _imagenCorreoBase64 = e.target.result; // base64 completo
+      document.getElementById('sus-email-preview-img').src = _imagenCorreoBase64;
+      document.getElementById('sus-email-preview').style.display = 'block';
+    };
+    reader.readAsDataURL(file);
   }
+
+  function quitarImagenCorreo(){
+    _imagenCorreoBase64 = null;
+    document.getElementById('sus-email-imagen').value = '';
+    document.getElementById('sus-email-preview').style.display = 'none';
+  }
+
+  async function enviarCorreoMasivoEmailJS(){
+    const asunto  = (document.getElementById('sus-email-asunto').value||'').trim();
+    const mensaje = (document.getElementById('sus-email-body').value||'').trim();
+    const resultado = document.getElementById('sus-email-resultado');
+    const progreso  = document.getElementById('sus-email-progreso');
+    const progresoTxt = document.getElementById('sus-email-progreso-txt');
+    const barra   = document.getElementById('sus-email-barra');
+    const btnEnvio = document.getElementById('btn-envio-masivo');
+
+    if(!asunto){ resultado.textContent = '⚠️ Escribe el asunto'; resultado.style.color='var(--neon)'; return; }
+    if(!mensaje){ resultado.textContent = '⚠️ Escribe el mensaje'; resultado.style.color='var(--neon)'; return; }
+
+    const activos = _suscriptoresCache.filter(s => s.activo !== false && s.correo);
+    if(!activos.length){ resultado.textContent = '⚠️ No hay suscriptores activos'; return; }
+
+    if(!confirm(`¿Enviar correo a ${activos.length} suscriptores?\n\nAsunto: ${asunto}\n\n⚠️ Tienes 200 correos/mes gratis en EmailJS.`)) return;
+
+    btnEnvio.disabled = true;
+    btnEnvio.textContent = 'Enviando...';
+    progreso.style.display = 'block';
+    resultado.textContent = '';
+
+    const serviceId  = window.EMAILJS_SERVICE  || '';
+    const templateId = window.EMAILJS_TEMPLATE_MASIVO || window.EMAILJS_TEMPLATE || '';
+    const publicKey  = window.EMAILJS_KEY || '';
+
+    let enviados = 0, fallidos = 0;
+
+    for(let i = 0; i < activos.length; i++){
+      const s = activos[i];
+      progresoTxt.textContent = `Enviando ${i+1} de ${activos.length}: ${s.correo}`;
+      barra.style.width = ((i+1)/activos.length*100) + '%';
+
+      try {
+        const params = {
+          service_id:  serviceId,
+          template_id: templateId,
+          user_id:     publicKey,
+          template_params: {
+            to_email:    s.correo,
+            to_name:     s.nombre || 'Cliente SARUX',
+            asunto:      asunto,
+            mensaje:     mensaje,
+            imagen_url:  _imagenCorreoBase64 || '',
+            link_catalogo: 'https://saruxcatalogo.pages.dev'
+          }
+        };
+        const res = await fetch('https://api.emailjs.com/api/v1.0/email/send', {
+          method: 'POST',
+          headers: {'Content-Type':'application/json'},
+          body: JSON.stringify(params)
+        });
+        if(res.ok) enviados++;
+        else { fallidos++; console.warn('Fallo', s.correo, await res.text()); }
+      } catch(e){
+        fallidos++;
+        console.error('Error', s.correo, e);
+      }
+
+      // Pausa 300ms entre correos para no saturar EmailJS
+      await new Promise(r => setTimeout(r, 300));
+    }
+
+    progreso.style.display = 'none';
+    btnEnvio.disabled = false;
+    btnEnvio.textContent = '📨 ENVIAR A TODOS LOS SUSCRIPTORES';
+    resultado.style.color = enviados > 0 ? '#4caf50' : 'var(--neon)';
+    resultado.textContent = `✅ Enviados: ${enviados} | ❌ Fallidos: ${fallidos}`;
+    if(enviados > 0) showNotif(`Correo enviado a ${enviados} suscriptores`);
+  }
+
+  // Mantener función antigua como fallback (ya no se usa en UI)
+  function prepararCorreoMasivo(){
+    enviarCorreoMasivoEmailJS();
+  }
+
 
   function eliminarUsuarioActual(){
     const s = _usuarioDetalleActual;
