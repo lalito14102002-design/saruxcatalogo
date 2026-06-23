@@ -2428,9 +2428,11 @@ function reproducirVideoResena(wrapper, url){
   sb.from('site_config').select('config_data').eq('id',1).single().then(function(res){
     const cfgFresca = res && res.data && res.data.config_data && res.data.config_data.LOADER_CONFIG;
     if(cfgFresca && typeof cfgFresca.segundos === 'number'){
-      const nuevoMs = Math.min(30, Math.max(1, cfgFresca.segundos)) * 1000;
-      // Solo aplicar si de verdad cambia algo y la barra no ha terminado ya
-      if(nuevoMs !== LOADER_MIN_MS){
+      const nuevoMs = Math.min(15, Math.max(1, cfgFresca.segundos)) * 1000;
+      // FIX: Solo aplicar si la respuesta llegó ANTES de que el tiempo original ya pasara.
+      // Así evitamos que una respuesta lenta de Supabase extienda el loader y deje la página colgada.
+      const transcurridoAhora = Date.now() - tiempoInicio;
+      if(nuevoMs !== LOADER_MIN_MS && transcurridoAhora < LOADER_MIN_MS){
         LOADER_MIN_MS = nuevoMs;
         if(cfgFresca.mensajes && cfgFresca.mensajes.length) LOADER_MSGS = cfgFresca.mensajes;
       }
