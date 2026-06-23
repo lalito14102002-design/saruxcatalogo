@@ -1586,6 +1586,33 @@ async function aplicarCuponCarrito(){
   }
 
   try {
+    // 1. Buscar primero en cupones_usuario (cupones personalizados y de cumpleaños)
+    const { data: dataU } = await sb.from('cupones_usuario').select('*').eq('codigo', codigo).single();
+
+    if(dataU){
+      // Validar cupón de usuario
+      if(dataU.usado){
+        msgEl.className = 'carrito-cupon-msg error';
+        msgEl.textContent = '❌ Este cupón ya fue utilizado';
+        return;
+      }
+      if(dataU.fecha_expira && new Date(dataU.fecha_expira) < new Date()){
+        msgEl.className = 'carrito-cupon-msg error';
+        msgEl.textContent = '❌ Este cupón ha expirado';
+        return;
+      }
+      cuponAplicado = {
+        id: dataU.id, codigo: dataU.codigo, porcentaje: dataU.porcentaje,
+        aplica_a: 'todo', categorias: [], esPersonalizado: true
+      };
+      msgEl.textContent = '';
+      input.value = '';
+      renderCarrito();
+      showToast('🎟️ Cupón ' + dataU.codigo + ' aplicado — ' + dataU.porcentaje + '% de descuento');
+      return;
+    }
+
+    // 2. Buscar en cupones generales
     const { data, error } = await sb.from('cupones').select('*').eq('codigo', codigo).single();
 
     if(error || !data){
@@ -1644,9 +1671,14 @@ function quitarCuponCarrito(){
 async function registrarUsoCupon(){
   if(!cuponAplicado) return;
   try {
-    const { data } = await sb.from('cupones').select('usos_actuales').eq('id', cuponAplicado.id).single();
-    if(data){
-      await sb.from('cupones').update({ usos_actuales: (data.usos_actuales||0) + 1 }).eq('id', cuponAplicado.id);
+    if(cuponAplicado.esPersonalizado){
+      // Cupón personalizado/cumpleaños: marcar como usado en cupones_usuario
+      await sb.from('cupones_usuario').update({ usado: true }).eq('id', cuponAplicado.id);
+    } else {
+      const { data } = await sb.from('cupones').select('usos_actuales').eq('id', cuponAplicado.id).single();
+      if(data){
+        await sb.from('cupones').update({ usos_actuales: (data.usos_actuales||0) + 1 }).eq('id', cuponAplicado.id);
+      }
     }
     // Marcar en este dispositivo para que no pueda reusarse
     marcarCuponUsadoLocal(cuponAplicado.codigo);
@@ -2941,10 +2973,14 @@ async function solicitarCodigoPerfil(){
   const codigo   = String(Math.floor(100000 + Math.random() * 900000));
   const expira   = new Date(Date.now() + 15 * 60 * 1000).toISOString(); // 15 min
 
+  // Generar UID personal único de 6 dígitos
+  const uidPersonal = 'S' + String(Math.floor(100000 + Math.random() * 900000));
+
   // Upsert del suscriptor (crea si no existe)
+  // uid_sarux solo se asigna en la inserción; el ON CONFLICT no lo sobreescribe
   const { error: errUpsert } = await sb.from('suscriptores')
-    .upsert([{ correo, activo: true, token_sesion: codigo, token_expira: expira }],
-            { onConflict: 'correo' });
+    .upsert([{ correo, activo: true, token_sesion: codigo, token_expira: expira, uid_sarux: uidPersonal }],
+            { onConflict: 'correo', ignoreDuplicates: false });
 
   if(errUpsert){
     msg.textContent = '❌ Error. Intenta de nuevo.';
@@ -3047,9 +3083,24 @@ async function mostrarPaso3Perfil(datos){
   document.getElementById('perfil-paso3').style.display = 'block';
   document.getElementById('perfil-bienvenida').textContent =
     'HOLA ' + (datos.nombre || datos.correo.split('@')[0]).toUpperCase() + ' 👋';
+  const uidEl = document.getElementById('perfil-uid-display');
+  if(uidEl) uidEl.textContent = datos.uid_sarux ? 'ID: ' + datos.uid_sarux : '';
   document.getElementById('perfil-nombre-edit').value = datos.nombre  || '';
   document.getElementById('perfil-tel-edit').value    = datos.telefono || '';
-  document.getElementById('perfil-cumple-edit').value = datos.cumpleanos || '';
+  const cumpleInput = document.getElementById('perfil-cumple-edit');
+  const cumpleAviso = document.getElementById('perfil-cumple-aviso');
+  cumpleInput.value = datos.cumpleanos || '';
+  if(datos.cumpleanos){
+    cumpleInput.disabled = true;
+    cumpleInput.style.opacity = '0.5';
+    cumpleInput.style.cursor = 'not-allowed';
+    if(cumpleAviso) cumpleAviso.style.display = 'block';
+  } else {
+    cumpleInput.disabled = false;
+    cumpleInput.style.opacity = '1';
+    cumpleInput.style.cursor = '';
+    if(cumpleAviso) cumpleAviso.style.display = 'none';
+  }
 
   // Verificar cupón de cumpleaños
   await verificarCuponCumpleanos(datos);
@@ -3062,7 +3113,8 @@ async function guardarPerfil(){
   const msg     = document.getElementById('perfil-msg3');
   const nombre  = (document.getElementById('perfil-nombre-edit').value||'').trim();
   const tel     = (document.getElementById('perfil-tel-edit').value||'').trim();
-  const cumple  = document.getElementById('perfil-cumple-edit').value || null;
+  // Si ya tenía cumpleaños guardado, no permitir cambiarlo
+  const cumple  = _perfilActual.cumpleanos || (document.getElementById('perfil-cumple-edit').value || null);
   msg.textContent = 'Guardando...';
 
   const { error } = await sb.from('suscriptores')
@@ -3103,11 +3155,12 @@ async function verificarCuponCumpleanos(datos){
                            + hoy.getFullYear();
   const expira = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate(), 23, 59, 59).toISOString();
 
+  const pctCumple = (REFERIDOS_CFG && REFERIDOS_CFG.porcentaje_cupon_cumpleanos) || 20;
   await sb.from('cupones_usuario').insert([{
     suscriptor_id: datos.id,
     correo:        datos.correo,
     codigo,
-    porcentaje:    20,
+    porcentaje:    pctCumple,
     motivo:        'cumpleanos',
     fecha_expira:  expira
   }]);

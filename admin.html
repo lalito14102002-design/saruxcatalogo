@@ -1145,6 +1145,17 @@ Casi listo...
           <button class="admin-btn" onclick="prepararCorreoMasivo()">📨 PREPARAR CORREO MASIVO</button>
         </div>
 
+        <!-- Buscar por ID -->
+        <div style="background:var(--card2);border:1px solid var(--border);padding:.9rem;margin-bottom:1rem">
+          <div class="admin-card-title" style="margin-bottom:.6rem">🔍 BUSCAR USUARIO POR ID</div>
+          <div style="display:flex;gap:.5rem">
+            <input id="sus-buscar-uid" class="admin-input" placeholder="Ej: S123456" style="flex:1;text-transform:uppercase"
+              onkeydown="if(event.key==='Enter') buscarUsuarioPorUID()">
+            <button class="admin-btn" onclick="buscarUsuarioPorUID()">Buscar</button>
+          </div>
+          <div id="sus-buscar-msg" style="font-family:var(--font-mono);font-size:.6rem;color:var(--neon);margin-top:.4rem;min-height:.9rem"></div>
+        </div>
+
         <!-- Lista de suscriptores -->
         <div id="admin-sus-lista">
           <div style="font-family:var(--font-mono);font-size:.6rem;color:var(--gray)">Cargando...</div>
@@ -1163,6 +1174,11 @@ Casi listo...
           <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.8rem">
             <input id="ref-porcentaje" type="number" min="1" max="100" value="10" class="admin-input" style="width:100px">
             <span style="font-family:var(--font-mono);font-size:.7rem;color:var(--gray)">% de descuento automático en su primera compra</span>
+          </div>
+          <div class="admin-field-label">DESCUENTO CUPÓN DE CUMPLEAÑOS 🎂</div>
+          <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.8rem">
+            <input id="ref-cumple-pct" type="number" min="1" max="100" value="20" class="admin-input" style="width:100px">
+            <span style="font-family:var(--font-mono);font-size:.7rem;color:var(--gray)">% de descuento que se regala el día de su cumpleaños</span>
           </div>
           <div class="admin-field-label">NOTA PARA TI <span style="color:var(--gray);font-size:.5rem">(solo informativo, no se muestra al público)</span></div>
           <textarea id="ref-premio-texto" class="admin-textarea" rows="2" placeholder="Ej: Le doy 50 pesos de descuento en su siguiente compra" style="margin-bottom:.8rem"></textarea>
@@ -2201,6 +2217,8 @@ Casi listo...
     _usuarioDetalleActual = s;
 
     document.getElementById('det-nombre').textContent   = s.nombre || 'Sin nombre';
+    const uidAdminEl = document.getElementById('det-uid');
+    if(uidAdminEl) uidAdminEl.textContent = s.uid_sarux ? 'ID: ' + s.uid_sarux : 'Sin ID asignado';
     document.getElementById('det-correo').textContent   = s.correo;
     document.getElementById('det-tel').textContent      = s.telefono || '—';
     document.getElementById('det-cumple').textContent   = s.cumpleanos ? new Date(s.cumpleanos+'T12:00:00').toLocaleDateString('es-MX',{day:'numeric',month:'long',year:'numeric'}) : '—';
@@ -2297,6 +2315,37 @@ Casi listo...
     showNotif(`📨 Abriendo correo con ${activos.length} destinatarios en CCO`);
   }
 
+  function eliminarUsuarioActual(){
+    const s = _usuarioDetalleActual;
+    if(!s) return;
+    confirmDelete('¿Eliminar a ' + (s.nombre || s.correo) + ' permanentemente?', async()=>{
+      const { error } = await sb.from('suscriptores').delete().eq('id', s.id);
+      if(!error){
+        document.getElementById('detalleUsuarioOverlay').style.display = 'none';
+        showNotif('✅ Usuario eliminado');
+        cargarSuscriptoresAdmin();
+      } else {
+        showNotif('❌ Error: ' + error.message);
+      }
+    });
+  }
+
+  async function buscarUsuarioPorUID(){
+    const uid = (document.getElementById('sus-buscar-uid').value||'').trim().toUpperCase();
+    const msgEl = document.getElementById('sus-buscar-msg');
+    if(!uid){ msgEl.textContent = '⚠️ Escribe un ID'; return; }
+    msgEl.textContent = 'Buscando...';
+    const { data, error } = await sb.from('suscriptores').select('*').ilike('uid_sarux', uid).maybeSingle();
+    if(error || !data){
+      msgEl.textContent = '❌ No se encontró ningún usuario con ese ID';
+      return;
+    }
+    msgEl.textContent = '';
+    _suscriptoresCache = _suscriptoresCache.filter(x => x.id !== data.id);
+    _suscriptoresCache.unshift(data);
+    abrirDetalleUsuario(data.id);
+  }
+
   function eliminarSuscriptor(id, correo){
     confirmDelete('¿Eliminar a ' + correo + ' de la lista de suscriptores?', async()=>{
       const { error } = await sb.from('suscriptores').delete().eq('id', id);
@@ -2317,6 +2366,8 @@ Casi listo...
         document.getElementById('ref-activo').checked = data.activo !== false;
         document.getElementById('ref-porcentaje').value = data.porcentaje_descuento || 10;
         document.getElementById('ref-premio-texto').value = data.premio_referidor_texto || '';
+        const cumplePctEl = document.getElementById('ref-cumple-pct');
+        if(cumplePctEl) cumplePctEl.value = data.porcentaje_cupon_cumpleanos || 20;
       }
     } catch(e){}
   }
@@ -2326,7 +2377,8 @@ Casi listo...
     const payload = {
       activo: document.getElementById('ref-activo').checked,
       porcentaje_descuento: parseFloat(document.getElementById('ref-porcentaje').value) || 10,
-      premio_referidor_texto: document.getElementById('ref-premio-texto').value.trim()
+      premio_referidor_texto: document.getElementById('ref-premio-texto').value.trim(),
+      porcentaje_cupon_cumpleanos: parseFloat(document.getElementById('ref-cumple-pct')?.value) || 20
     };
     msg.style.color = 'var(--gray)'; msg.textContent = 'Guardando...';
     try {
@@ -3680,7 +3732,13 @@ function actualizarStockHint(val){
     <button onclick="document.getElementById('detalleUsuarioOverlay').style.display='none'" style="position:absolute;top:.8rem;right:.8rem;background:none;border:none;color:var(--gray);font-size:1.2rem;cursor:pointer">✕</button>
 
     <div style="font-size:.55rem;letter-spacing:3px;color:var(--neon);font-family:var(--font-mono);margin-bottom:.3rem">DETALLE DE USUARIO</div>
-    <div id="det-nombre" style="font-family:var(--font-display);font-size:1.4rem;letter-spacing:2px;color:var(--white);margin-bottom:1rem"></div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem">
+      <div>
+        <div id="det-nombre" style="font-family:var(--font-display);font-size:1.4rem;letter-spacing:2px;color:var(--white)"></div>
+        <div id="det-uid" style="font-family:var(--font-mono);font-size:.5rem;color:rgba(255,255,255,.3);letter-spacing:1px;margin-top:.2rem"></div>
+      </div>
+      <button onclick="eliminarUsuarioActual()" style="background:rgba(232,25,44,.15);border:1px solid rgba(232,25,44,.4);color:var(--neon);font-family:var(--font-mono);font-size:.55rem;letter-spacing:1px;padding:.5rem .9rem;cursor:pointer;border-radius:2px">🗑️ ELIMINAR</button>
+    </div>
 
     <!-- Info del usuario -->
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:.6rem;margin-bottom:1rem">
