@@ -375,6 +375,7 @@ function abrirCatPanel(idx){
   renderCatPanel();
   document.getElementById('catPanel').classList.add('open');
   document.body.style.overflow='hidden';
+  history.pushState({ saruxCatPanel: true }, '', window.location.href);
 }
 
 function cerrarCatPanel(){
@@ -1985,6 +1986,7 @@ function mostrarConfirmacionPedido(items, total){
     </div>
   `;
   document.body.appendChild(overlay);
+  document.body.style.overflow = 'hidden';
 
   // Cerrar tocando fuera
   overlay.addEventListener('click', e=>{ if(e.target===overlay) cerrarConfirmacionPedido(); });
@@ -2352,6 +2354,7 @@ function abrirLightbox() {
   img.src = _lightboxSrc;
   document.getElementById('lightbox').classList.add('open');
   document.body.style.overflow = 'hidden';
+  history.pushState({ saruxLightbox: true }, '', window.location.href);
   setTimeout(_initLightboxZoom, 50);
 }
 function abrirLightboxMedia(src, tipo) {
@@ -2376,6 +2379,7 @@ function abrirLightboxMedia(src, tipo) {
   }
   lb.classList.add('open');
   document.body.style.overflow = 'hidden';
+  history.pushState({ saruxLightbox: true }, '', window.location.href);
 }
 function cerrarLightbox() {
   var lb = document.getElementById('lightbox');
@@ -2868,6 +2872,12 @@ async function subirFotoCliente(){
   // Botón atrás del celular — un solo listener
   window.addEventListener('popstate', function(e){
     if(scrollManual) return;
+    // 0. Lightbox abierto → cerrarlo primero
+    const lb = document.getElementById('lightbox');
+    if(lb && lb.classList.contains('open')){
+      cerrarLightbox();
+      return;
+    }
     // 1. Modal de producto abierto → cerrarlo
     const modalOverlay = document.getElementById('modalOverlay');
     if(modalOverlay && modalOverlay.classList.contains('open')){
@@ -2876,7 +2886,10 @@ async function subirFotoCliente(){
     }
     // 2. Panel de categoría → cerrarlo
     const panel = document.getElementById('catPanel');
-    if(panel && panel.classList.contains('open')){ cerrarCatPanel(); return; }
+    if(panel && panel.classList.contains('open')){
+      cerrarCatPanel();
+      return;
+    }
     // 3. Overlay confirmación pedido → cerrarlo
     const confirmOverlay = document.getElementById('pedidoConfirmOverlay');
     if(confirmOverlay){ cerrarConfirmacionPedido(); return; }
