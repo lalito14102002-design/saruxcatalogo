@@ -1057,6 +1057,7 @@ function abrirModal(p,catNombre,catEmoji){
 
   document.getElementById('modalOverlay').classList.add('open');
   document.body.style.overflow='hidden';
+  history.pushState({ saruxModal: true }, '', window.location.href);
   cargarResenasModal(p.nombre);
 }
 function cerrarModal(){
@@ -1927,7 +1928,7 @@ function mostrarConfirmacionPedido(items, total){
   const carritoPanel = document.getElementById('carritoPanel');
   const carritoOverlay = document.getElementById('carritoOverlay');
   if(carritoPanel) carritoPanel.classList.remove('open');
-  if(carritoOverlay) carritoOverlay.classList.remove('show');
+  if(carritoOverlay) carritoOverlay.classList.remove('open');
 
   // Crear overlay de confirmación
   const existing = document.getElementById('pedidoConfirmOverlay');
@@ -2865,11 +2866,21 @@ async function subirFotoCliente(){
   });
 
   // Botón atrás del celular — un solo listener
-  window.addEventListener('popstate', function(){
+  window.addEventListener('popstate', function(e){
     if(scrollManual) return;
-    // Si el panel de categoría está abierto, cerrarlo primero
-    const panel=document.getElementById('catPanel');
+    // 1. Modal de producto abierto → cerrarlo
+    const modalOverlay = document.getElementById('modalOverlay');
+    if(modalOverlay && modalOverlay.classList.contains('open')){
+      cerrarModal();
+      return;
+    }
+    // 2. Panel de categoría → cerrarlo
+    const panel = document.getElementById('catPanel');
     if(panel && panel.classList.contains('open')){ cerrarCatPanel(); return; }
+    // 3. Overlay confirmación pedido → cerrarlo
+    const confirmOverlay = document.getElementById('pedidoConfirmOverlay');
+    if(confirmOverlay){ cerrarConfirmacionPedido(); return; }
+    // 4. Navegar por hash
     const hash = window.location.hash.replace('#','');
     if(hash && secciones.includes(hash)){
       const el = document.getElementById(hash);
@@ -2886,9 +2897,7 @@ async function subirFotoCliente(){
         if(entry.isIntersecting){
           const id = entry.target.id;
           if(id && secciones.includes(id) && id !== ultimaSeccion){
-            ultimaSeccion !== ''
-              ? history.pushState({ seccion: id }, '', '#' + id)
-              : history.replaceState({ seccion: id }, '', '#' + id);
+            history.replaceState({ seccion: id }, '', '#' + id);
             ultimaSeccion = id;
           }
         }
@@ -3029,6 +3038,9 @@ async function verificarCodigoPerfil(){
     return;
   }
 
+  // Detectar si es primera vez (visitas === 0 o null = registro nuevo)
+  const esPrimeraVez = !data.visitas || data.visitas === 0;
+
   // Generar token de sesión largo y guardarlo
   const tokenSesion = crypto.randomUUID();
   await sb.from('suscriptores')
@@ -3039,6 +3051,12 @@ async function verificarCodigoPerfil(){
   localStorage.setItem(PERFIL_KEY, tokenSesion);
   try{ localStorage.setItem(SUS_KEY, '1'); }catch(e){}
   _perfilActual = { ...data, token_sesion: tokenSesion };
+
+  // Si es primera vez → dar cupón de bienvenida
+  if(esPrimeraVez){
+    try{ await otorgarCuponBienvenida(data); }catch(e){}
+  }
+
   mostrarPaso3Perfil(_perfilActual);
 }
 

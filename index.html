@@ -25,6 +25,10 @@
 <meta name="twitter:title" content="SARUX | Diseño y Sublimación en Puebla">
 <meta name="twitter:description" content="Diseños originales en playeras, tazas, termos y más. Personalización para eventos en Puebla.">
 <link rel="canonical" href="https://saruxcatalogo.pages.dev/">
+<!-- PWA -->
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#e8192c">
+<link rel="apple-touch-icon" href="/icon-192.png">
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32'%3E%3Crect width='32' height='32' fill='%23060606'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' fill='%23e8192c' font-family='Arial Black' font-size='14'%3ES%3C/text%3E%3C/svg%3E">
 <!-- PWA -->
 <link rel="manifest" href="/manifest.json">
@@ -740,6 +744,102 @@
         user_agent: navigator.userAgent.substring(0, 200)
       }]);
     } catch(e){ console.warn('PWA install log:', e); }
+  }
+})();
+</script>
+<!-- ── PWA: Banner de instalación ── -->
+<div id="pwaBanner" style="display:none;position:fixed;bottom:0;left:0;right:0;z-index:99999;background:#0a0000;border-top:2px solid var(--neon);padding:1rem 1.2rem;box-shadow:0 -4px 30px rgba(232,25,44,.25)">
+  <div style="display:flex;align-items:center;gap:.8rem;max-width:600px;margin:0 auto">
+    <img src="/icon-192.png" style="width:44px;height:44px;border-radius:8px;flex-shrink:0">
+    <div style="flex:1;min-width:0">
+      <div id="pwaBannerTitulo" style="font-family:var(--font-display);font-size:.9rem;letter-spacing:2px;color:var(--white);line-height:1.2">📲 DESCARGA LA APP</div>
+      <div id="pwaBannerMsg" style="font-family:var(--font-mono);font-size:.6rem;color:var(--gray);margin-top:.2rem;line-height:1.4">Instala SARUX y obtén 10% de descuento en tu primera compra 🎁</div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:.4rem;flex-shrink:0">
+      <button id="pwaBannerBtn" onclick="instalarPWA()" style="background:var(--neon);color:#000;border:none;font-family:var(--font-mono);font-size:.6rem;letter-spacing:2px;padding:.5rem .9rem;cursor:pointer;font-weight:700;white-space:nowrap">INSTALAR</button>
+      <button onclick="cerrarBannerPWA()" style="background:none;border:none;color:var(--gray);font-family:var(--font-mono);font-size:.55rem;letter-spacing:1px;cursor:pointer;padding:.2rem 0">No gracias</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  let _deferredPrompt = null;
+  const BANNER_KEY  = 'sarux_pwa_banner_cerrado';
+  const INSTALL_KEY = 'sarux_pwa_instalada';
+
+  if('serviceWorker' in navigator){
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('/sw.js')
+        .then(r => console.log('[SARUX SW] OK:', r.scope))
+        .catch(e => console.warn('[SARUX SW] Error:', e));
+    });
+  }
+
+  window.addEventListener('beforeinstallprompt', e => {
+    e.preventDefault();
+    _deferredPrompt = e;
+    if(localStorage.getItem(BANNER_KEY) || localStorage.getItem(INSTALL_KEY)) return;
+    setTimeout(() => mostrarBannerPWA(), 3000);
+  });
+
+  window.addEventListener('appinstalled', () => {
+    localStorage.setItem(INSTALL_KEY, '1');
+    document.getElementById('pwaBanner').style.display = 'none';
+    registrarInstalacionPWA();
+    // Dar cupón si hay sesión activa y es primera instalación
+    try{
+      if(typeof _perfilActual !== 'undefined' && _perfilActual && _perfilActual.correo){
+        if(typeof otorgarCuponPWA === 'function'){
+          otorgarCuponPWA(_perfilActual.correo, _perfilActual.id);
+        }
+      }
+    }catch(e){}
+  });
+
+  function mostrarBannerPWA(){
+    const cfg = (typeof APP_DATA !== 'undefined' && APP_DATA.PWA_BANNER) || {};
+    if(cfg.activo === false) return;
+    const titulo = cfg.titulo || '📲 DESCARGA LA APP';
+    const msg    = cfg.mensaje || 'Instala SARUX y obtén 10% de descuento en tu primera compra 🎁';
+    document.getElementById('pwaBannerTitulo').textContent = titulo;
+    document.getElementById('pwaBannerMsg').textContent    = msg;
+    document.getElementById('pwaBanner').style.display     = 'block';
+  }
+
+  window.instalarPWA = async function(){
+    if(!_deferredPrompt) return;
+    _deferredPrompt.prompt();
+    const { outcome } = await _deferredPrompt.userChoice;
+    if(outcome === 'accepted'){
+      localStorage.setItem(INSTALL_KEY, '1');
+      registrarInstalacionPWA();
+      try{
+        if(typeof _perfilActual !== 'undefined' && _perfilActual && _perfilActual.correo){
+          if(typeof otorgarCuponPWA === 'function'){
+            otorgarCuponPWA(_perfilActual.correo, _perfilActual.id);
+          }
+        }
+      }catch(e){}
+    }
+    _deferredPrompt = null;
+    document.getElementById('pwaBanner').style.display = 'none';
+  };
+
+  window.cerrarBannerPWA = function(){
+    document.getElementById('pwaBanner').style.display = 'none';
+    localStorage.setItem(BANNER_KEY, '1');
+  };
+
+  async function registrarInstalacionPWA(){
+    try{
+      if(typeof sb !== 'undefined'){
+        await sb.from('pwa_instalaciones').insert([{
+          fecha: new Date().toISOString(),
+          user_agent: navigator.userAgent.substring(0,200)
+        }]);
+      }
+    }catch(e){}
   }
 })();
 </script>
