@@ -1,0 +1,43 @@
+{
+  "name": "SARUX — Diseño y Sublimación",
+  "short_name": "SARUX",
+  "description": "Diseños originales en playeras, tazas, termos y más. Personalización para eventos en Puebla.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#060606",
+  "theme_color": "#e8192c",
+  "orientation": "portrait-primary",
+  "lang": "es-MX",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["shopping", "lifestyle"],
+  "shortcuts": [
+    {
+      "name": "Ver catálogo",
+      "short_name": "Catálogo",
+      "description": "Ir al catálogo de productos",
+      "url": "/#catalogo",
+      "icons": [{ "src": "icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Mayoreo",
+      "short_name": "Mayoreo",
+      "description": "Ver paquetes de mayoreo",
+      "url": "/#mayoreo",
+      "icons": [{ "src": "icon-192.png", "sizes": "192x192" }]
+    }
+  ]
+}
