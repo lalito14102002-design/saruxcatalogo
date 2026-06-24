@@ -52,7 +52,8 @@ const DEFAULTS = {
   IMAGENES_PERSONALIZACION:[], 
   IMAGEN_LLUVIA:"",
   LLUVIA_CONFIG:{activa:false,cantidad:20,velocidad:2,espera:0},
-  FOTOS_CLIENTES_CFG:{activo:true,titulo:"FOTOS REALES",subtitulo:"Clientes reales, resultados reales"}
+  FOTOS_CLIENTES_CFG:{activo:true,titulo:"FOTOS REALES",subtitulo:"Clientes reales, resultados reales"},
+  PWA_BANNER:{activo:false,titulo:"📲 DESCARGA LA APP",mensaje:"Instala SARUX y obtén 10% de descuento en tu primera compra 🎁"}
 };
 
 // Variables globales
@@ -95,6 +96,7 @@ function syncGlobalsFromAppData(){
   LLUVIA_CONFIG = APP_DATA.LLUVIA_CONFIG || {activa:true,cantidad:20,velocidad:2,espera:0};
   window.FILTROS_GLOBALES_D = APP_DATA.FILTROS_GLOBALES || {tipos:[],categorias:[],disenos:[]};
   window.FOTOS_CLIENTES_CFG = APP_DATA.FOTOS_CLIENTES_CFG || DEFAULTS.FOTOS_CLIENTES_CFG;
+  window.PWA_BANNER_CFG = APP_DATA.PWA_BANNER || DEFAULTS.PWA_BANNER;
 }
 
 async function cargarConfigDesdeSupabase(){

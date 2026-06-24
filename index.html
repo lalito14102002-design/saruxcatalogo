@@ -651,15 +651,97 @@
   </div>
 </div>
 
-<!-- ── PWA: registro del Service Worker ── -->
+<!-- ── PWA: Banner de instalación ── -->
+<div id="pwaBanner" style="display:none;position:fixed;bottom:0;left:0;right:0;z-index:99999;background:#0a0000;border-top:2px solid var(--neon);padding:1rem 1.2rem;box-shadow:0 -4px 30px rgba(232,25,44,.25)">
+  <div style="display:flex;align-items:center;gap:.8rem;max-width:600px;margin:0 auto">
+    <img src="/icon-192.png" style="width:44px;height:44px;border-radius:8px;flex-shrink:0">
+    <div style="flex:1;min-width:0">
+      <div id="pwaBannerTitulo" style="font-family:var(--font-display);font-size:.9rem;letter-spacing:2px;color:var(--white);line-height:1.2">📲 DESCARGA LA APP</div>
+      <div id="pwaBannerMsg" style="font-family:var(--font-mono);font-size:.6rem;color:var(--gray);margin-top:.2rem;line-height:1.4">Instala SARUX y obtén 10% de descuento en tu primera compra 🎁</div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:.4rem;flex-shrink:0">
+      <button id="pwaBannerBtn" onclick="instalarPWA()" style="background:var(--neon);color:#000;border:none;font-family:var(--font-mono);font-size:.6rem;letter-spacing:2px;padding:.5rem .9rem;cursor:pointer;font-weight:700;white-space:nowrap">INSTALAR</button>
+      <button onclick="cerrarBannerPWA()" style="background:none;border:none;color:var(--gray);font-family:var(--font-mono);font-size:.55rem;letter-spacing:1px;cursor:pointer;padding:.2rem 0">No gracias</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── PWA: Service Worker + lógica de instalación ── -->
 <script>
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js')
-      .then(reg => console.log('[SARUX SW] registrado:', reg.scope))
-      .catch(err => console.warn('[SARUX SW] error:', err));
+(function(){
+  let _deferredPrompt = null;
+  const BANNER_KEY = 'sarux_pwa_banner_cerrado';
+  const INSTALL_KEY = 'sarux_pwa_instalada';
+
+  // Registrar Service Worker
+  if('serviceWorker' in navigator){
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('/sw.js')
+        .then(r => console.log('[SARUX SW] OK:', r.scope))
+        .catch(e => console.warn('[SARUX SW] Error:', e));
+    });
+  }
+
+  // Capturar el evento de instalación del navegador
+  window.addEventListener('beforeinstallprompt', e => {
+    e.preventDefault();
+    _deferredPrompt = e;
+
+    // No mostrar si ya lo cerró o ya instaló
+    if(localStorage.getItem(BANNER_KEY) || localStorage.getItem(INSTALL_KEY)) return;
+
+    // Esperar a que cargue la config para usar el mensaje personalizado
+    setTimeout(() => mostrarBannerPWA(), 3000);
   });
-}
+
+  // Detectar cuando se instala exitosamente
+  window.addEventListener('appinstalled', () => {
+    localStorage.setItem(INSTALL_KEY, '1');
+    document.getElementById('pwaBanner').style.display = 'none';
+    registrarInstalacionPWA();
+  });
+
+  function mostrarBannerPWA(){
+    const cfg = (typeof APP_DATA !== 'undefined' && APP_DATA.PWA_BANNER) || {};
+    if(cfg.activo === false) return;
+
+    const titulo = cfg.titulo || '📲 DESCARGA LA APP';
+    const msg    = cfg.mensaje || 'Instala SARUX y obtén 10% de descuento en tu primera compra 🎁';
+
+    document.getElementById('pwaBannerTitulo').textContent = titulo;
+    document.getElementById('pwaBannerMsg').textContent    = msg;
+    document.getElementById('pwaBanner').style.display     = 'block';
+  }
+
+  window.instalarPWA = async function(){
+    if(!_deferredPrompt) return;
+    _deferredPrompt.prompt();
+    const { outcome } = await _deferredPrompt.userChoice;
+    if(outcome === 'accepted'){
+      localStorage.setItem(INSTALL_KEY, '1');
+      registrarInstalacionPWA();
+    }
+    _deferredPrompt = null;
+    document.getElementById('pwaBanner').style.display = 'none';
+  };
+
+  window.cerrarBannerPWA = function(){
+    document.getElementById('pwaBanner').style.display = 'none';
+    localStorage.setItem(BANNER_KEY, '1');
+  };
+
+  // Registrar instalación en Supabase
+  async function registrarInstalacionPWA(){
+    try{
+      const sb = window.supabase || (typeof createClient !== 'undefined' ? createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY) : null);
+      if(!sb) return;
+      await sb.from('pwa_instalaciones').insert([{
+        fecha: new Date().toISOString(),
+        user_agent: navigator.userAgent.substring(0, 200)
+      }]);
+    } catch(e){ console.warn('PWA install log:', e); }
+  }
+})();
 </script>
 </body>
 </html>

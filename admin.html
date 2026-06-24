@@ -327,6 +327,7 @@
         <button class="admin-nav-btn" onclick="showSec('mayoreo',this)">🎊 Mayoreo</button>
         <button class="admin-nav-btn" onclick="showSec('resenas',this)">💬 Reseñas</button>
         <button class="admin-nav-btn" onclick="showSec('lanzamientos',this)">🚀 Lanzamientos</button>
+        <button class="admin-nav-btn" onclick="showSec('pwa',this);cargarPwaAdmin()">📲 App PWA</button>
         <button class="admin-nav-btn" onclick="showSec('estadisticas',this);loadStats()">📊 Estadísticas</button>
         <button class="admin-nav-btn" onclick="showSec('faqs',this)">❓ Preguntas</button>
         <button class="admin-nav-btn" onclick="showSec('ig-posts',this)">📸 Instagram</button>
@@ -918,6 +919,45 @@ Casi listo...
       <div id="sec-vendidos-OLD" class="admin-section" style="display:none"><div class="admin-section-title">MÁS VENDIDOS</div><div id="admin-vendidos-list"></div><button class="admin-btn-add" onclick="addVendido()">+ Agregar producto destacado</button></div>
       <div id="sec-mayoreo" class="admin-section"><div class="admin-section-title">MAYOREO</div><div class="admin-card"><div class="admin-field"><label class="admin-toggle"><input type="checkbox" id="my-activo"><div class="toggle-track"></div><span>Mostrar sección mayoreo</span></label></div><div class="admin-field"><label>Subtítulo</label><input class="admin-input" id="my-subtitulo"></div><div class="admin-field"><label>Descripción</label><textarea class="admin-textarea" id="my-descripcion"></textarea></div><div class="admin-field"><label>Mínimo de piezas</label><input class="admin-input" id="my-minimo"></div><div class="admin-field"><label>Descuento</label><input class="admin-input" id="my-descuento"></div><div class="admin-field"><label>Tiempo de entrega</label><input class="admin-input" id="my-entrega"></div><div class="admin-field"><label>Mensaje WhatsApp mayoreo</label><input class="admin-input" id="my-msg"></div></div><div class="admin-card"><div class="admin-card-title">🎉 Tipos de eventos</div><div id="admin-eventos-list"></div><button class="admin-btn-add" onclick="addEvento()">+ Agregar evento</button></div><div class="admin-card"><div class="admin-card-title">📦 Paquetes de mayoreo</div><div id="admin-paquetes-list"></div><button class="admin-btn-add" onclick="addPaquete()">+ Agregar paquete</button></div></div>
       <div id="sec-resenas" class="admin-section"><div class="admin-section-title">RESEÑAS</div><div id="admin-resenas-list"></div><button class="admin-btn-add" onclick="addResena()">+ Agregar reseña</button></div>
+      <!-- ── Sección PWA ── -->
+      <div id="sec-pwa" class="admin-section">
+        <div class="admin-section-title">APP PWA</div>
+        <div class="admin-section-sub">Configura el banner que invita a los usuarios a instalar la app en su celular.</div>
+
+        <!-- Contador de instalaciones -->
+        <div class="admin-card" style="margin-bottom:1rem">
+          <div class="admin-card-title">📊 INSTALACIONES DE LA APP</div>
+          <div id="pwa-stats-wrap" style="margin-top:.8rem">
+            <div style="font-family:var(--font-mono);font-size:.6rem;color:var(--gray)">Cargando...</div>
+          </div>
+        </div>
+
+        <!-- Config del banner -->
+        <div class="admin-card">
+          <div class="admin-card-title">🎨 BANNER DE INSTALACIÓN</div>
+          <div class="admin-field" style="margin-top:.8rem">
+            <label class="admin-toggle">
+              <input type="checkbox" id="pwa-activo">
+              <div class="toggle-track"></div>
+              <span>Mostrar banner de instalación</span>
+            </label>
+          </div>
+          <div class="admin-field">
+            <label>Título del banner</label>
+            <input class="admin-input" id="pwa-titulo" placeholder="📲 DESCARGA LA APP">
+          </div>
+          <div class="admin-field">
+            <label>Mensaje / incentivo</label>
+            <textarea class="admin-textarea" id="pwa-mensaje" placeholder="Instala SARUX y obtén 10% de descuento en tu primera compra 🎁" rows="3"></textarea>
+          </div>
+          <div style="font-family:var(--font-mono);font-size:.55rem;color:var(--gray);margin-bottom:.8rem;line-height:1.6">
+            💡 Este banner aparece automáticamente en Android cuando el usuario puede instalar la app. En iPhone aparece solo si el usuario va a Compartir → Añadir a pantalla de inicio.
+          </div>
+          <div id="pwa-msg" style="font-family:var(--font-mono);font-size:.6rem;color:var(--neon);min-height:.9rem;margin-bottom:.6rem"></div>
+          <button class="admin-btn" onclick="guardarPwaBanner()">💾 Guardar banner PWA</button>
+        </div>
+      </div>
+
       <div id="sec-estadisticas" class="admin-section">
         <div class="admin-section-title">ESTADÍSTICAS</div>
         <div style="font-family:var(--font-mono);font-size:.55rem;color:var(--gray);margin-bottom:1.5rem;letter-spacing:1px">Datos recopilados del navegador de tus visitantes · Se actualizan en tiempo real</div>
@@ -3835,6 +3875,75 @@ Casi listo...
     btn.textContent = '✅ GUARDADO';
     setTimeout(() => { btn.textContent = '💾 GUARDAR TODO'; }, 2000);
   }
+
+  // ── PWA Admin ─────────────────────────────────────────────
+  async function cargarPwaAdmin(){
+    const wrap = document.getElementById('pwa-stats-wrap');
+    if(!wrap) return;
+    try {
+      const { data, error, count } = await sb
+        .from('pwa_instalaciones')
+        .select('*', { count: 'exact' })
+        .order('fecha', { ascending: false });
+
+      if(error || !data){ wrap.innerHTML = '<div style="font-family:var(--font-mono);font-size:.6rem;color:var(--gray)">No hay datos aún.</div>'; return; }
+
+      const total = count || data.length;
+      // Agrupar por día
+      const porDia = {};
+      data.forEach(r => {
+        const d = (r.fecha||'').substring(0,10);
+        porDia[d] = (porDia[d]||0) + 1;
+      });
+      const dias = Object.keys(porDia).sort().reverse().slice(0,7);
+
+      wrap.innerHTML = `
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:.8rem;margin-bottom:1rem">
+          <div style="background:var(--dark2,#0a0000);border:1px solid rgba(232,25,44,.2);padding:.8rem;text-align:center">
+            <div style="font-family:var(--font-display);font-size:2rem;color:var(--neon)">${total}</div>
+            <div style="font-family:var(--font-mono);font-size:.5rem;color:var(--gray);letter-spacing:2px">TOTAL INSTALACIONES</div>
+          </div>
+          <div style="background:var(--dark2,#0a0000);border:1px solid rgba(232,25,44,.2);padding:.8rem;text-align:center">
+            <div style="font-family:var(--font-display);font-size:2rem;color:var(--neon)">${porDia[dias[0]]||0}</div>
+            <div style="font-family:var(--font-mono);font-size:.5rem;color:var(--gray);letter-spacing:2px">HOY / AYER</div>
+          </div>
+        </div>
+        <div style="font-family:var(--font-mono);font-size:.55rem;color:var(--gray);margin-bottom:.4rem;letter-spacing:1px">ÚLTIMOS 7 DÍAS</div>
+        ${dias.map(d => `
+          <div style="display:flex;align-items:center;gap:.6rem;margin-bottom:.3rem">
+            <span style="font-family:var(--font-mono);font-size:.55rem;color:var(--gray);min-width:80px">${d}</span>
+            <div style="flex:1;background:rgba(232,25,44,.1);height:6px;border-radius:3px">
+              <div style="background:var(--neon);height:6px;border-radius:3px;width:${Math.min(100, (porDia[d]||0) / Math.max(...Object.values(porDia)) * 100)}%"></div>
+            </div>
+            <span style="font-family:var(--font-mono);font-size:.55rem;color:var(--white);min-width:20px;text-align:right">${porDia[d]}</span>
+          </div>`).join('')}
+      `;
+    } catch(e){
+      wrap.innerHTML = '<div style="font-family:var(--font-mono);font-size:.6rem;color:var(--gray)">Error al cargar datos.</div>';
+    }
+
+    // Cargar campos del banner
+    const cfg = APP_DATA.PWA_BANNER || {};
+    const el = document.getElementById('pwa-activo');
+    if(el) el.checked = cfg.activo !== false;
+    const t = document.getElementById('pwa-titulo');
+    if(t) t.value = cfg.titulo || '📲 DESCARGA LA APP';
+    const m = document.getElementById('pwa-mensaje');
+    if(m) m.value = cfg.mensaje || 'Instala SARUX y obtén 10% de descuento en tu primera compra 🎁';
+  }
+
+  async function guardarPwaBanner(){
+    const msg = document.getElementById('pwa-msg');
+    APP_DATA.PWA_BANNER = {
+      activo:  document.getElementById('pwa-activo').checked,
+      titulo:  document.getElementById('pwa-titulo').value.trim() || '📲 DESCARGA LA APP',
+      mensaje: document.getElementById('pwa-mensaje').value.trim() || 'Instala SARUX y obtén 10% de descuento en tu primera compra 🎁'
+    };
+    const { error } = await sb.from('site_config').upsert({ id: 1, config_data: APP_DATA, updated_at: new Date() });
+    if(error){ if(msg) msg.textContent = '❌ Error al guardar'; return; }
+    if(msg){ msg.textContent = '✅ Banner guardado'; setTimeout(()=>{ msg.textContent=''; }, 2000); }
+  }
+  // ──────────────────────────────────────────────────────────
 
   function loadIconoPreview(red){
     const key='icono_'+red; const url=NEGOCIO[key]; const prev=document.getElementById('prev-icono-'+red);
