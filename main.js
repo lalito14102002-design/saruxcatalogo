@@ -2863,7 +2863,7 @@ async function subirFotoCliente(){
       const target = this.getAttribute('href').replace('#','');
       if(secciones.includes(target)){
         e.preventDefault();
-        history.pushState(null, null, '#'+target);
+        history.replaceState(null, null, '#'+target);
         scrollToSection(target);
       }
     });
@@ -2871,36 +2871,20 @@ async function subirFotoCliente(){
 
   // Botón atrás del celular — un solo listener
   window.addEventListener('popstate', function(e){
-    if(scrollManual) return;
-    // 0. Lightbox abierto → cerrarlo primero
+    // NUNCA ignorar el botón atrás por scrollManual
+    // 0. Lightbox abierto → cerrarlo
     const lb = document.getElementById('lightbox');
-    if(lb && lb.classList.contains('open')){
-      cerrarLightbox();
-      return;
-    }
+    if(lb && lb.classList.contains('open')){ cerrarLightbox(); return; }
     // 1. Modal de producto abierto → cerrarlo
     const modalOverlay = document.getElementById('modalOverlay');
-    if(modalOverlay && modalOverlay.classList.contains('open')){
-      cerrarModal();
-      return;
-    }
+    if(modalOverlay && modalOverlay.classList.contains('open')){ cerrarModal(); return; }
     // 2. Panel de categoría → cerrarlo
     const panel = document.getElementById('catPanel');
-    if(panel && panel.classList.contains('open')){
-      cerrarCatPanel();
-      return;
-    }
+    if(panel && panel.classList.contains('open')){ cerrarCatPanel(); return; }
     // 3. Overlay confirmación pedido → cerrarlo
     const confirmOverlay = document.getElementById('pedidoConfirmOverlay');
     if(confirmOverlay){ cerrarConfirmacionPedido(); return; }
-    // 4. Navegar por hash
-    const hash = window.location.hash.replace('#','');
-    if(hash && secciones.includes(hash)){
-      const el = document.getElementById(hash);
-      if(el) el.scrollIntoView({behavior:'smooth', block:'start'});
-    } else {
-      window.scrollTo({top:0, behavior:'smooth'});
-    }
+    // 4. Nada abierto → dejar que el navegador salga normalmente
   });
 
   // IntersectionObserver para actualizar hash al hacer scroll
@@ -2910,6 +2894,13 @@ async function subirFotoCliente(){
         if(entry.isIntersecting){
           const id = entry.target.id;
           if(id && secciones.includes(id) && id !== ultimaSeccion){
+            // No actualizar hash si hay un panel/modal abierto
+            const catPanel = document.getElementById('catPanel');
+            const modalOv  = document.getElementById('modalOverlay');
+            const lb       = document.getElementById('lightbox');
+            if((catPanel && catPanel.classList.contains('open')) ||
+               (modalOv  && modalOv.classList.contains('open'))  ||
+               (lb       && lb.classList.contains('open'))) return;
             history.replaceState({ seccion: id }, '', '#' + id);
             ultimaSeccion = id;
           }
