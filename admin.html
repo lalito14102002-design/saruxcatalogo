@@ -125,6 +125,12 @@
 <script>
   let _beneficioCount = 0;
 
+  function toggleNivelTipoRequisito(){
+    const esMonto = document.getElementById('nivel-tipo-monto').checked;
+    document.getElementById('nivel-min-compras-wrap').style.display = esMonto ? 'none' : 'block';
+    document.getElementById('nivel-min-monto-wrap').style.display = esMonto ? 'block' : 'none';
+  }
+
   function agregarBeneficioForm(textoInit='', imagenInit=''){
     _beneficioCount++;
     const id = _beneficioCount;
@@ -1258,8 +1264,25 @@ Casi listo...
           <div class="admin-field-label">EMOJI *</div>
           <input id="nivel-emoji" class="admin-input" placeholder="Ej: 🥇" style="margin-bottom:.8rem">
 
-          <div class="admin-field-label">COMPRAS MÍNIMAS PARA ALCANZARLO</div>
-          <input id="nivel-min" type="number" min="0" class="admin-input" placeholder="Ej: 5" style="margin-bottom:.8rem">
+          <div class="admin-field-label">SUBIR DE NIVEL POR...</div>
+          <div style="display:flex;gap:1.2rem;margin-bottom:.8rem">
+            <label style="display:flex;align-items:center;gap:.4rem;cursor:pointer;font-family:var(--font-mono);font-size:.6rem;color:var(--gray)">
+              <input type="radio" name="nivel-tipo-requisito" id="nivel-tipo-compras" value="compras" checked onchange="toggleNivelTipoRequisito()"> NÚMERO DE COMPRAS
+            </label>
+            <label style="display:flex;align-items:center;gap:.4rem;cursor:pointer;font-family:var(--font-mono);font-size:.6rem;color:var(--gray)">
+              <input type="radio" name="nivel-tipo-requisito" id="nivel-tipo-monto" value="monto" onchange="toggleNivelTipoRequisito()"> MONTO MÍNIMO GASTADO ($)
+            </label>
+          </div>
+
+          <div id="nivel-min-compras-wrap">
+            <div class="admin-field-label">COMPRAS MÍNIMAS PARA ALCANZARLO</div>
+            <input id="nivel-min" type="number" min="0" class="admin-input" placeholder="Ej: 5" style="margin-bottom:.8rem">
+          </div>
+
+          <div id="nivel-min-monto-wrap" style="display:none">
+            <div class="admin-field-label">MONTO MÍNIMO GASTADO PARA ALCANZARLO ($)</div>
+            <input id="nivel-min-monto" type="number" min="0" step="0.01" class="admin-input" placeholder="Ej: 500" style="margin-bottom:.8rem">
+          </div>
 
           <div class="admin-field-label">COLOR</div>
           <div class="color-preview-wrap" style="margin-bottom:.8rem">
@@ -1326,9 +1349,12 @@ Casi listo...
           <div class="admin-field-label">FECHA DE EXPIRACIÓN <span style="color:var(--gray);font-size:.5rem">(opcional)</span></div>
           <input id="cup-expira" type="date" class="admin-input" style="margin-bottom:.8rem;width:200px">
 
-          <div style="display:flex;align-items:center;gap:.8rem;margin-bottom:1rem">
+          <div style="display:flex;align-items:center;gap:.8rem;margin-bottom:1rem;flex-wrap:wrap">
             <label style="display:flex;align-items:center;gap:.4rem;cursor:pointer;font-family:var(--font-mono);font-size:.55rem;color:var(--gray)">
               <input type="checkbox" id="cup-activo" checked> CUPÓN ACTIVO
+            </label>
+            <label style="display:flex;align-items:center;gap:.4rem;cursor:pointer;font-family:var(--font-mono);font-size:.55rem;color:var(--gray)">
+              <input type="checkbox" id="cup-puntos-doble"> 🎁 OTORGA PUNTOS DOBLES DE FIDELIDAD AL USARSE
             </label>
           </div>
 
@@ -2615,6 +2641,7 @@ Casi listo...
     document.getElementById('cup-limite').value = '';
     document.getElementById('cup-expira').value = '';
     document.getElementById('cup-activo').checked = true;
+    document.getElementById('cup-puntos-doble').checked = false;
     document.getElementById('cup-msg').textContent = '';
   }
 
@@ -2627,6 +2654,7 @@ Casi listo...
     const expiraRaw = document.getElementById('cup-expira').value;
     const expira = expiraRaw ? new Date(expiraRaw + 'T23:59:59').toISOString() : null;
     const activo = document.getElementById('cup-activo').checked;
+    const puntosDoble = document.getElementById('cup-puntos-doble').checked;
     const editId = document.getElementById('cup-edit-id').value;
     const msg = document.getElementById('cup-msg');
 
@@ -2643,7 +2671,7 @@ Casi listo...
     try {
       const payload = {
         codigo, porcentaje, aplica_a: aplicaA, categorias, tipos_producto: tipos,
-        limite_usos: limite, fecha_expira: expira, activo
+        limite_usos: limite, fecha_expira: expira, activo, puntos_doble: puntosDoble
       };
 
       let err;
@@ -2700,7 +2728,7 @@ Casi listo...
           <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:.6rem;margin-bottom:.5rem">
             <div>
               <div style="font-family:var(--font-display);font-size:1.1rem;letter-spacing:2px;color:var(--white)">${c.codigo}</div>
-              <div style="font-family:var(--font-mono);font-size:.6rem;color:var(--neon);margin-top:.2rem">${c.porcentaje}% DE DESCUENTO</div>
+              <div style="font-family:var(--font-mono);font-size:.6rem;color:var(--neon);margin-top:.2rem">${c.porcentaje}% DE DESCUENTO ${c.puntos_doble ? ' &nbsp;🎁 PUNTOS DOBLES' : ''}</div>
             </div>
             <span style="font-family:var(--font-mono);font-size:.45rem;letter-spacing:2px;padding:.25rem .6rem;border:1px solid ${estadoColor};color:${estadoColor};white-space:nowrap">${estadoLabel}</span>
           </div>
@@ -2730,6 +2758,7 @@ Casi listo...
     document.getElementById('cup-limite').value = data.limite_usos !== null ? data.limite_usos : '';
     document.getElementById('cup-expira').value = data.fecha_expira ? data.fecha_expira.slice(0,10) : '';
     document.getElementById('cup-activo').checked = data.activo !== false;
+    document.getElementById('cup-puntos-doble').checked = !!data.puntos_doble;
     if(data.aplica_a === 'categorias'){
       document.getElementById('cup-categorias-wrap').style.display = 'block';
       document.getElementById('cup-tipos-wrap').style.display = 'none';
@@ -3994,10 +4023,13 @@ function actualizarStockHint(val){
     <div style="background:rgba(76,175,80,.06);border:1px solid rgba(76,175,80,.25);padding:1rem;border-radius:3px;margin-top:.8rem">
       <div style="font-size:.55rem;letter-spacing:2px;color:#4caf50;font-family:var(--font-mono);margin-bottom:.5rem">🛒 REGISTRAR COMPRA</div>
       <div style="font-family:var(--font-mono);font-size:.6rem;color:var(--gray);margin-bottom:.8rem">Cada compra registrada sube al cliente de nivel en el sistema de fidelidad.</div>
-      <div style="display:flex;gap:.5rem;align-items:center">
+      <div style="display:flex;gap:.5rem;align-items:center;margin-bottom:.5rem">
         <input id="det-compra-monto" type="number" class="admin-input" placeholder="Monto $ (opcional)" style="flex:1">
         <button onclick="registrarCompraUsuario()" class="admin-btn" style="background:#4caf50;border-color:#4caf50;white-space:nowrap">✅ +1 COMPRA</button>
       </div>
+      <label style="display:flex;align-items:center;gap:.4rem;cursor:pointer;font-family:var(--font-mono);font-size:.55rem;color:var(--gray)">
+        <input type="checkbox" id="det-compra-doble"> 🎁 Usó un cupón de puntos dobles (cuenta como 2 compras/puntos)
+      </label>
       <div id="det-compra-msg" style="font-family:var(--font-mono);font-size:.6rem;color:#4caf50;min-height:.8rem;margin-top:.4rem"></div>
     </div>
   </div>
@@ -4026,7 +4058,7 @@ async function cargarNivelesAdmin(){
           <button onclick="eliminarNivelAdmin('${n.id}')" class="admin-btn-sm" style="border-color:rgba(232,25,44,.4)">🗑️</button>
         </div>
       </div>
-      <div style="font-family:var(--font-mono);font-size:.55rem;color:var(--gray);margin-bottom:.4rem">Desde ${n.min_compras} compra${n.min_compras!==1?'s':''}</div>
+      <div style="font-family:var(--font-mono);font-size:.55rem;color:var(--gray);margin-bottom:.4rem">Desde ${n.tipo_requisito==='monto' ? '$'+(n.min_monto||0) : n.min_compras+' compra'+(n.min_compras!==1?'s':'')}</div>
       <div style="font-family:var(--font-mono);font-size:.6rem;color:var(--white)">${benefHtml}</div>
     </div>`;
   }).join('');
@@ -4037,7 +4069,9 @@ async function guardarNivelAdmin(){
   const id   = document.getElementById('nivel-edit-id').value;
   const nombre = document.getElementById('nivel-nombre').value.trim();
   const emoji  = document.getElementById('nivel-emoji').value.trim();
+  const tipoRequisito = document.getElementById('nivel-tipo-monto').checked ? 'monto' : 'compras';
   const min    = parseInt(document.getElementById('nivel-min').value) || 0;
+  const minMonto = parseFloat(document.getElementById('nivel-min-monto').value) || 0;
   const color  = document.getElementById('nivel-color').value.trim() || '#ffffff';
   if(!nombre||!emoji){ msg.textContent='⚠️ Nombre y emoji son obligatorios'; return; }
   // Recoger beneficios del form dinámico
@@ -4049,13 +4083,13 @@ async function guardarNivelAdmin(){
   }).filter(b => (typeof b === 'string' ? b : b.texto));
   msg.textContent = 'Guardando...';
 
-  // Calcular orden basado en min_compras
-  const orden = min;
+  // Calcular orden basado en el requisito (monto o compras) para mantener el ranking correcto
+  const orden = tipoRequisito === 'monto' ? minMonto : min;
   let error;
   if(id){
-    ({ error } = await sb.from('fidelidad_niveles').update({nombre,emoji,min_compras:min,color,beneficios,orden}).eq('id',id));
+    ({ error } = await sb.from('fidelidad_niveles').update({nombre,emoji,min_compras:min,tipo_requisito:tipoRequisito,min_monto:minMonto,color,beneficios,orden}).eq('id',id));
   } else {
-    ({ error } = await sb.from('fidelidad_niveles').insert([{nombre,emoji,min_compras:min,color,beneficios,orden}]));
+    ({ error } = await sb.from('fidelidad_niveles').insert([{nombre,emoji,min_compras:min,tipo_requisito:tipoRequisito,min_monto:minMonto,color,beneficios,orden}]));
   }
   if(error){ msg.textContent='❌ '+error.message; return; }
   msg.style.color='#4caf50';
@@ -4071,6 +4105,10 @@ async function editarNivelAdmin(id){
   document.getElementById('nivel-nombre').value  = data.nombre;
   document.getElementById('nivel-emoji').value   = data.emoji;
   document.getElementById('nivel-min').value     = data.min_compras;
+  document.getElementById('nivel-min-monto').value = data.min_monto || 0;
+  document.getElementById('nivel-tipo-monto').checked = data.tipo_requisito === 'monto';
+  document.getElementById('nivel-tipo-compras').checked = data.tipo_requisito !== 'monto';
+  toggleNivelTipoRequisito();
   document.getElementById('nivel-color').value   = data.color;
   document.getElementById('nivel-color-picker').value = data.color;
   const b = Array.isArray(data.beneficios) ? data.beneficios : JSON.parse(data.beneficios||'[]');
@@ -4097,6 +4135,10 @@ function limpiarFormNivel(){
   document.getElementById('nivel-nombre').value  = '';
   document.getElementById('nivel-emoji').value   = '';
   document.getElementById('nivel-min').value     = '';
+  document.getElementById('nivel-min-monto').value = '';
+  document.getElementById('nivel-tipo-compras').checked = true;
+  document.getElementById('nivel-tipo-monto').checked = false;
+  toggleNivelTipoRequisito();
   document.getElementById('nivel-color').value   = '#ffd700';
   document.getElementById('nivel-beneficios-lista').innerHTML = '';
   document.getElementById('admin-nivel-form-titulo').textContent = '➕ AGREGAR NUEVO NIVEL';
@@ -4107,17 +4149,27 @@ function limpiarFormNivel(){
 async function registrarCompraUsuario(){
   const s   = _usuarioDetalleActual;
   const msg = document.getElementById('det-compra-msg');
+  const montoRaw = document.getElementById('det-compra-monto').value;
+  const monto = montoRaw ? parseFloat(montoRaw) || 0 : 0;
+  const esDoble = document.getElementById('det-compra-doble').checked;
+  const incremento = esDoble ? 2 : 1;
   msg.textContent = 'Registrando...';
-  const nuevasCompras = (s.compras || 0) + 1;
+  const nuevasCompras = (s.compras || 0) + incremento;
+  const nuevoMonto = (s.monto_total || 0) + monto;
   const { error } = await sb.from('suscriptores')
-    .update({ compras: nuevasCompras })
+    .update({ compras: nuevasCompras, monto_total: nuevoMonto })
     .eq('id', s.id);
   if(error){ msg.textContent = '❌ Error: ' + error.message; return; }
   _usuarioDetalleActual.compras = nuevasCompras;
+  _usuarioDetalleActual.monto_total = nuevoMonto;
   // Actualizar en cache
   const idx = _suscriptoresCache.findIndex(x => x.id === s.id);
-  if(idx >= 0) _suscriptoresCache[idx].compras = nuevasCompras;
-  msg.textContent = `✅ ¡Compra registrada! Total: ${nuevasCompras} compra${nuevasCompras!==1?'s':''}`;
+  if(idx >= 0){ _suscriptoresCache[idx].compras = nuevasCompras; _suscriptoresCache[idx].monto_total = nuevoMonto; }
+  msg.textContent = esDoble
+    ? `✅ ¡Compra registrada con puntos dobles! Total: ${nuevasCompras} puntos`
+    : `✅ ¡Compra registrada! Total: ${nuevasCompras} compra${nuevasCompras!==1?'s':''}`;
   document.getElementById('det-compras').textContent = nuevasCompras;
+  document.getElementById('det-compra-monto').value = '';
+  document.getElementById('det-compra-doble').checked = false;
 }
 </script>

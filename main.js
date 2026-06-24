@@ -3351,12 +3351,17 @@ async function mostrarCartaFidelidad(datos){
   }
 
   const compras = datos.compras || 0;
+  const montoTotal = datos.monto_total || 0;
+
+  // Valor de progreso de cada nivel: si es tipo 'monto' se compara el gasto acumulado, si no, el número de compras
+  const valorNivel = (n) => n.tipo_requisito === 'monto' ? n.min_monto : n.min_compras;
+  const valorCliente = (n) => n.tipo_requisito === 'monto' ? montoTotal : compras;
 
   // Encontrar nivel actual y siguiente
   let nivelActual = null;
   let nivelSiguiente = null;
   for(let i = 0; i < niveles.length; i++){
-    if(compras >= niveles[i].min_compras){
+    if(valorCliente(niveles[i]) >= valorNivel(niveles[i])){
       nivelActual = niveles[i];
       nivelSiguiente = niveles[i+1] || null;
     }
@@ -3365,6 +3370,8 @@ async function mostrarCartaFidelidad(datos){
   if(!nivelActual){
     // Aún no tiene ningún nivel — mostrar cuánto falta para el primero
     const primero = niveles[0];
+    const metaP = valorNivel(primero);
+    const valP  = valorCliente(primero);
     const cardEl = document.getElementById('perfil-fidelidad-card');
     if(cardEl) cardEl.style.display = 'block';
     document.getElementById('perfil-fidelidad-bg').style.background = 'linear-gradient(135deg, #2a2a2a, #1a1a1a)';
@@ -3372,9 +3379,12 @@ async function mostrarCartaFidelidad(datos){
     document.getElementById('perfil-nivel-emoji').textContent = '🎯';
     document.getElementById('perfil-nivel-titular').textContent = datos.nombre || datos.correo.split('@')[0];
     document.getElementById('perfil-nivel-compras').textContent = compras;
-    document.getElementById('perfil-nivel-siguiente').textContent = `${primero.min_compras - compras} compras para ${primero.emoji} ${primero.nombre}`;
-    document.getElementById('perfil-nivel-barra').style.width = (compras / primero.min_compras * 100) + '%';
+    document.getElementById('perfil-nivel-siguiente').textContent = primero.tipo_requisito === 'monto'
+      ? `Gasta $${(metaP - valP).toFixed(0)} más para ${primero.emoji} ${primero.nombre}`
+      : `${metaP - valP} compras para ${primero.emoji} ${primero.nombre}`;
+    document.getElementById('perfil-nivel-barra').style.width = (valP / metaP * 100) + '%';
     document.getElementById('perfil-nivel-beneficios').innerHTML = `<span style="color:var(--gray)">Realiza tu primera compra y desbloquea beneficios exclusivos 🚀</span>`;
+    try{ renderRoadmapFidelidad(niveles, nivelActual); }catch(e){}
     return;
   }
 
@@ -3382,11 +3392,14 @@ async function mostrarCartaFidelidad(datos){
   let progreso = 100;
   let siguienteTexto = '¡Nivel máximo alcanzado! 🏆';
   if(nivelSiguiente){
-    const base = nivelActual.min_compras;
-    const meta = nivelSiguiente.min_compras;
-    progreso = Math.min(((compras - base) / (meta - base)) * 100, 100);
-    const faltan = meta - compras;
-    siguienteTexto = `${faltan} compra${faltan!==1?'s':''} para ${nivelSiguiente.emoji} ${nivelSiguiente.nombre}`;
+    const base = valorNivel(nivelActual);
+    const meta = valorNivel(nivelSiguiente);
+    const val  = valorCliente(nivelSiguiente);
+    progreso = Math.min(((val - base) / (meta - base)) * 100, 100);
+    const faltan = meta - val;
+    siguienteTexto = nivelSiguiente.tipo_requisito === 'monto'
+      ? `Gasta $${faltan.toFixed(0)} más para ${nivelSiguiente.emoji} ${nivelSiguiente.nombre}`
+      : `${faltan} compra${faltan!==1?'s':''} para ${nivelSiguiente.emoji} ${nivelSiguiente.nombre}`;
   }
 
   // Colores por nivel
@@ -3416,6 +3429,35 @@ async function mostrarCartaFidelidad(datos){
       const img   = typeof b === 'object' && b.imagen ? `<img src="${b.imagen}" style="width:100%;max-height:120px;object-fit:cover;border-radius:3px;margin:.3rem 0">` : '';
       return `<div style="padding:.3rem 0;border-bottom:1px solid rgba(255,255,255,.06)">✅ ${texto}${img}</div>`;
     }).join('');
+
+  try{ renderRoadmapFidelidad(niveles, nivelActual); }catch(e){}
+}
+
+// ── Ruta completa de niveles (todos los premios, desbloqueados y por desbloquear) ──
+function renderRoadmapFidelidad(niveles, nivelActual){
+  const cont = document.getElementById('perfil-niveles-roadmap');
+  if(!cont) return;
+  const idxActual = nivelActual ? niveles.findIndex(n => n.id === nivelActual.id) : -1;
+
+  cont.innerHTML = niveles.map((n, i) => {
+    const desbloqueado = i <= idxActual;
+    const esActual = i === idxActual;
+    const beneficios = Array.isArray(n.beneficios) ? n.beneficios : JSON.parse(n.beneficios || '[]');
+    const requisito = n.tipo_requisito === 'monto' ? `Desde $${n.min_monto}` : `Desde ${n.min_compras} compra${n.min_compras!==1?'s':''}`;
+    const benefHtml = beneficios.map(b => {
+      const texto = typeof b === 'string' ? b : b.texto;
+      return `<div style="padding:.2rem 0">${desbloqueado ? '✅' : '🔒'} ${texto}</div>`;
+    }).join('');
+
+    return `<div style="background:${esActual ? 'rgba(255,255,255,.05)' : 'var(--bg)'};border:1px solid ${esActual ? n.color : 'rgba(255,255,255,.08)'};border-radius:4px;padding:.8rem;margin-bottom:.6rem;opacity:${desbloqueado ? '1' : '.55'}">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.3rem">
+        <div style="font-family:var(--font-display);font-size:.95rem;letter-spacing:2px;color:${desbloqueado ? n.color : 'var(--gray)'}">${n.emoji} ${n.nombre.toUpperCase()}</div>
+        ${esActual ? '<span style="font-family:var(--font-mono);font-size:.45rem;letter-spacing:1px;color:var(--neon)">★ TU NIVEL</span>' : ''}
+      </div>
+      <div style="font-family:var(--font-mono);font-size:.55rem;color:var(--gray);margin-bottom:.4rem">${requisito}</div>
+      <div style="font-family:var(--font-mono);font-size:.65rem;color:var(--white);line-height:1.6">${benefHtml}</div>
+    </div>`;
+  }).join('');
 }
 
 
