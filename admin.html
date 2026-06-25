@@ -4107,8 +4107,11 @@ Casi listo...
   }
 
   async function tcDibujarFrenteCliente(canvas, d){
+    const DPR = 2; // Render at 2x for crisp display
     const ctx=canvas.getContext('2d');
-    canvas.width=TC.W; canvas.height=TC.H;
+    canvas.width=TC.W * DPR; canvas.height=TC.H * DPR;
+    canvas.style.width = TC.W + 'px'; canvas.style.height = TC.H + 'px';
+    ctx.scale(DPR, DPR);
     // Fondo
     ctx.fillStyle=TC.NEGRO; ctx.fillRect(0,0,TC.W,TC.H);
     // Franja roja
@@ -4117,18 +4120,29 @@ Casi listo...
     const g=ctx.createLinearGradient(0,0,TC.W,TC.H);
     g.addColorStop(0,'rgba(232,25,44,0.07)'); g.addColorStop(1,'rgba(0,0,0,0)');
     ctx.fillStyle=g; ctx.fillRect(0,0,TC.W,TC.H);
-    // Logo
-    ctx.fillStyle=TC.BLANCO; ctx.font='bold 32px Arial Black,Arial';
-    ctx.fillText('SARUX',28,52);
-    ctx.fillStyle=TC.ROJO; ctx.beginPath(); ctx.arc(147,44,4,0,Math.PI*2); ctx.fill();
+    // Logo (imagen)
+    await new Promise(res => {
+      const logoImg = new Image();
+      logoImg.crossOrigin = 'anonymous';
+      logoImg.onload = () => {
+        // Dibujar logo a la izquierda, alto ~30px
+        const logoH = 30, logoW = logoImg.width * (logoH / logoImg.height);
+        ctx.drawImage(logoImg, 28, 24, logoW, logoH);
+        res();
+      };
+      logoImg.onerror = () => {
+        // Fallback: texto si no carga la imagen
+        ctx.fillStyle=TC.BLANCO; ctx.font='bold 32px Arial Black,Arial';
+        ctx.fillText('SARUX',28,52);
+        ctx.fillStyle=TC.ROJO; ctx.beginPath(); ctx.arc(147,44,4,0,Math.PI*2); ctx.fill();
+        res();
+      };
+      logoImg.src = '/icon-192.png';
+    });
     // Línea sep
     ctx.strokeStyle='rgba(232,25,44,0.3)'; ctx.lineWidth=0.5;
     ctx.beginPath(); ctx.moveTo(28,62); ctx.lineTo(TC.W-28,62); ctx.stroke();
-    // Nivel badge
-    const niv=TC.NIVELES.find(n=>n.nombre===(d.nivel||'BRONCE'))||TC.NIVELES[0];
-    ctx.fillStyle=niv.color; rrect(ctx,TC.W-100,18,80,22,4); ctx.fill();
-    ctx.fillStyle=TC.NEGRO; ctx.font='bold 9px Arial'; ctx.textAlign='center';
-    ctx.fillText(niv.emoji+' '+niv.nombre,TC.W-60,33); ctx.textAlign='left';
+    // (nivel badge removido)
     // Nombre
     ctx.fillStyle=TC.BLANCO; ctx.font='bold 22px Arial Black,Arial';
     ctx.fillText((d.nombre||'CLIENTE SARUX').toUpperCase(),28,100);
@@ -4189,8 +4203,11 @@ Casi listo...
   }
 
   async function tcDibujarReverso(canvas){
+    const DPR = 2;
     const ctx=canvas.getContext('2d');
-    canvas.width=TC.W; canvas.height=TC.H;
+    canvas.width=TC.W * DPR; canvas.height=TC.H * DPR;
+    canvas.style.width = TC.W + 'px'; canvas.style.height = TC.H + 'px';
+    ctx.scale(DPR, DPR);
     ctx.fillStyle=TC.NEGRO; ctx.fillRect(0,0,TC.W,TC.H);
     ctx.fillStyle=TC.ROJO; ctx.fillRect(TC.W-6,0,6,TC.H);
     // Título
@@ -4233,8 +4250,11 @@ Casi listo...
   }
 
   async function tcDibujarInvitacionFrente(canvas){
+    const DPR = 2;
     const ctx=canvas.getContext('2d');
-    canvas.width=TC.W; canvas.height=TC.H;
+    canvas.width=TC.W * DPR; canvas.height=TC.H * DPR;
+    canvas.style.width = TC.W + 'px'; canvas.style.height = TC.H + 'px';
+    ctx.scale(DPR, DPR);
     ctx.fillStyle=TC.NEGRO; ctx.fillRect(0,0,TC.W,TC.H);
     ctx.fillStyle=TC.ROJO; ctx.fillRect(0,0,6,TC.H); ctx.fillRect(TC.W-6,0,6,TC.H);
     const cg=ctx.createRadialGradient(TC.W*.35,TC.H*.5,10,TC.W*.35,TC.H*.5,160);

@@ -269,10 +269,14 @@ function renderPage(){
 
   document.getElementById('footerIg').href=NEGOCIO.instagram||'#';
   document.getElementById('footerTt').href=NEGOCIO.tiktok||'#';
+  const _fWa1=document.getElementById('footerWa'); if(_fWa1) _fWa1.href=`https://wa.me/${NEGOCIO.whatsapp||''}`;
+  const _fFb1=document.getElementById('footerFb'); if(_fFb1) _fFb1.href=NEGOCIO.facebook||'#';
   document.getElementById('footerCopy').textContent=`© ${new Date().getFullYear()} ${NEGOCIO.nombre} — Todos los derechos reservados`;
   document.getElementById('floatWa').href=`https://wa.me/${NEGOCIO.whatsapp}?text=${encodeURIComponent('Hola! Vi el catálogo de Sarux 🛍️')}`;
   document.getElementById('footerIg').href=NEGOCIO.instagram||'#';
   document.getElementById('footerTt').href=NEGOCIO.tiktok||'#';
+  const _fWa2=document.getElementById('footerWa'); if(_fWa2) _fWa2.href=`https://wa.me/${NEGOCIO.whatsapp||''}`;
+  const _fFb2=document.getElementById('footerFb'); if(_fFb2) _fFb2.href=NEGOCIO.facebook||'#';
   window.dispatchEvent(new Event('renderDone'));
   // Activar lazy loading para todas las imágenes recién renderizadas
   setTimeout(initLazyImages, 50);
@@ -3466,19 +3470,28 @@ function abrirTerminosFidelidad(){
   const overlay = document.getElementById('terminosFidelidadOverlay');
   if(overlay) overlay.style.display = 'flex';
 }
+window.abrirTerminosFidelidad = abrirTerminosFidelidad;
+
 function cerrarTerminosFidelidad(){
   const overlay = document.getElementById('terminosFidelidadOverlay');
   if(overlay) overlay.style.display = 'none';
 }
+window.cerrarTerminosFidelidad = cerrarTerminosFidelidad;
 
 // ── Solicitar tarjeta física de fidelidad por WhatsApp ─────────
 function solicitarTarjetaFisica(){
-  if(!_perfilActual){ return; }
-  const nombre = _perfilActual.nombre || _perfilActual.correo.split('@')[0];
-  const idCliente = _perfilActual.uid_sarux || '—';
+  const perfil = _perfilActual;
+  if(!perfil){
+    // Si no hay perfil cargado, abrir WhatsApp con mensaje genérico
+    window.open(`https://wa.me/${NEGOCIO.whatsapp}?text=${encodeURIComponent('Hola! Quiero solicitar mi tarjeta de fidelidad física de SARUX 🪪')}`, '_blank');
+    return;
+  }
+  const nombre = perfil.nombre || perfil.correo.split('@')[0];
+  const idCliente = perfil.uid_sarux || '—';
   const msg = `Hola! Quiero solicitar mi tarjeta de fidelidad física de SARUX 🪪\n\nNombre: ${nombre}\nID de cliente: ${idCliente}`;
   window.open(`https://wa.me/${NEGOCIO.whatsapp}?text=${encodeURIComponent(msg)}`, '_blank');
 }
+window.solicitarTarjetaFisica = solicitarTarjetaFisica;
 
 // ── Ruta completa de niveles (todos los premios, desbloqueados y por desbloquear) ──
 function renderRoadmapFidelidad(niveles, nivelActual){
