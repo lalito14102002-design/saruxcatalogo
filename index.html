@@ -177,6 +177,24 @@
 <!-- POPUP BIENVENIDA -->
 <div id="popup"></div>
 
+<!-- POPUP CUPÓN (bienvenida app / cumpleaños) -->
+<div id="cuponPopupOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:99995;align-items:center;justify-content:center;padding:1rem" onclick="if(event.target===this)cerrarCuponPopup()">
+  <div style="background:var(--card);border:1px solid rgba(232,25,44,.4);max-width:400px;width:100%;position:relative;animation:slideUp .3s ease;text-align:center">
+    <button onclick="cerrarCuponPopup()" style="position:absolute;top:.8rem;right:.8rem;background:none;border:none;color:var(--gray);font-size:1.2rem;cursor:pointer;z-index:2">✕</button>
+    <div style="background:var(--neon);height:4px;width:100%"></div>
+    <div style="padding:2rem 1.5rem 1.7rem">
+      <div id="cuponPopupEmoji" style="font-size:2.8rem;margin-bottom:.6rem">🎁</div>
+      <div id="cuponPopupTitulo" style="font-family:var(--font-display);font-size:1.4rem;letter-spacing:2px;color:var(--white);line-height:1.2;margin-bottom:.6rem"></div>
+      <p id="cuponPopupTexto" style="font-size:.8rem;color:var(--gray);line-height:1.6;margin:0 0 1.2rem"></p>
+      <div style="background:rgba(232,25,44,.08);border:1px dashed var(--neon);padding:.8rem;margin-bottom:1.3rem">
+        <div style="font-family:var(--font-mono);font-size:.55rem;letter-spacing:2px;color:var(--gray);margin-bottom:.3rem">TU CÓDIGO</div>
+        <div id="cuponPopupCodigo" style="font-family:var(--font-display);font-size:1.3rem;letter-spacing:3px;color:var(--neon)"></div>
+      </div>
+      <button onclick="cerrarCuponPopup()" style="width:100%;background:var(--neon);color:#000;border:none;padding:1rem;font-family:var(--font-display);font-size:.85rem;letter-spacing:3px;cursor:pointer">¡GENIAL!</button>
+    </div>
+  </div>
+</div>
+
 <!-- POPUP SUSCRIPCIÓN -->
 <div id="susPopupOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:99990;align-items:center;justify-content:center;padding:1rem" onclick="if(event.target===this)cerrarSusPopup()">
   <div style="background:var(--card);border:1px solid rgba(232,25,44,.4);max-width:400px;width:100%;position:relative;animation:slideUp .3s ease">
@@ -480,6 +498,16 @@
     <li><a href="#" id="footerTt">TikTok</a></li>
   </ul>
   <div class="footer-copy" id="footerCopy"></div>
+
+  <!-- Banner de descarga de la app, solo visible en la versión web (footer) -->
+  <div id="pwaFooterBanner" style="display:none;align-items:center;gap:.8rem;max-width:600px;margin:1.5rem auto 0;background:#0a0000;border:1px solid var(--neon);border-radius:6px;padding:1rem 1.2rem">
+    <img src="/icon-192.png" style="width:44px;height:44px;border-radius:8px;flex-shrink:0">
+    <div style="flex:1;min-width:0;text-align:left">
+      <div id="pwaFooterBannerTitulo" style="font-family:var(--font-display);font-size:.9rem;letter-spacing:2px;color:var(--white);line-height:1.2">📲 DESCARGA LA APP</div>
+      <div id="pwaFooterBannerMsg" style="font-family:var(--font-mono);font-size:.6rem;color:var(--gray);margin-top:.2rem;line-height:1.4">Instala SARUX y obtén 10% de descuento en tu primera compra 🎁</div>
+    </div>
+    <button onclick="instalarPWADesdeFooter()" style="background:var(--neon);color:#000;border:none;font-family:var(--font-mono);font-size:.6rem;letter-spacing:2px;padding:.5rem .9rem;cursor:pointer;font-weight:700;white-space:nowrap;flex-shrink:0">INSTALAR</button>
+  </div>
 </footer>
 
 <a id="floatWa" href="#" target="_blank" class="float-wa">📱</a>
@@ -680,7 +708,7 @@
   </div>
 </div>
 
-<!-- ── PWA: Banner de instalación ── -->
+<!-- ── PWA: Banner de instalación (flotante, aparece sobre cualquier página) ── -->
 <div id="pwaBanner" style="display:none;position:fixed;bottom:0;left:0;right:0;z-index:99999;background:#0a0000;border-top:2px solid var(--neon);padding:1rem 1.2rem;box-shadow:0 -4px 30px rgba(232,25,44,.25)">
   <div style="display:flex;align-items:center;gap:.8rem;max-width:600px;margin:0 auto">
     <img src="/icon-192.png" style="width:44px;height:44px;border-radius:8px;flex-shrink:0">
@@ -695,12 +723,19 @@
   </div>
 </div>
 
-<!-- ── PWA: Service Worker + lógica de instalación ── -->
 <script>
 (function(){
   let _deferredPrompt = null;
-  const BANNER_KEY = 'sarux_pwa_banner_cerrado';
   const INSTALL_KEY = 'sarux_pwa_instalada';
+
+  // Detecta si la página ya corre como app instalada (standalone).
+  // Si es así, NUNCA debe mostrarse el banner de instalación, ni el flotante ni el del footer.
+  const esStandalone = (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches)
+    || window.navigator.standalone === true;
+
+  if(esStandalone){
+    try{ localStorage.setItem(INSTALL_KEY, '1'); }catch(e){}
+  }
 
   // Registrar Service Worker
   if('serviceWorker' in navigator){
@@ -711,106 +746,22 @@
     });
   }
 
-  // Capturar el evento de instalación del navegador
+  // Capturar el evento de instalación del navegador (no dispara dentro de la app instalada)
   window.addEventListener('beforeinstallprompt', e => {
     e.preventDefault();
     _deferredPrompt = e;
-
-    // No mostrar si ya lo cerró o ya instaló
-    if(localStorage.getItem(BANNER_KEY) || localStorage.getItem(INSTALL_KEY)) return;
-
-    // Esperar a que cargue la config para usar el mensaje personalizado
+    if(esStandalone) return;
+    // El banner siempre puede aparecer de nuevo en cada visita, aunque el usuario
+    // ya tenga sesión iniciada o lo haya cerrado antes — solo se detiene si ya está instalada.
+    if(localStorage.getItem(INSTALL_KEY)) return;
     setTimeout(() => mostrarBannerPWA(), 3000);
-  });
-
-  // Detectar cuando se instala exitosamente
-  window.addEventListener('appinstalled', () => {
-    localStorage.setItem(INSTALL_KEY, '1');
-    document.getElementById('pwaBanner').style.display = 'none';
-    registrarInstalacionPWA();
-  });
-
-  function mostrarBannerPWA(){
-    const cfg = (typeof APP_DATA !== 'undefined' && APP_DATA.PWA_BANNER) || {};
-    if(cfg.activo === false) return;
-
-    const titulo = cfg.titulo || '📲 DESCARGA LA APP';
-    const msg    = cfg.mensaje || 'Instala SARUX y obtén 10% de descuento en tu primera compra 🎁';
-
-    document.getElementById('pwaBannerTitulo').textContent = titulo;
-    document.getElementById('pwaBannerMsg').textContent    = msg;
-    document.getElementById('pwaBanner').style.display     = 'block';
-  }
-
-  window.instalarPWA = async function(){
-    if(!_deferredPrompt) return;
-    _deferredPrompt.prompt();
-    const { outcome } = await _deferredPrompt.userChoice;
-    if(outcome === 'accepted'){
-      localStorage.setItem(INSTALL_KEY, '1');
-      registrarInstalacionPWA();
-    }
-    _deferredPrompt = null;
-    document.getElementById('pwaBanner').style.display = 'none';
-  };
-
-  window.cerrarBannerPWA = function(){
-    document.getElementById('pwaBanner').style.display = 'none';
-    localStorage.setItem(BANNER_KEY, '1');
-  };
-
-  // Registrar instalación en Supabase
-  async function registrarInstalacionPWA(){
-    try{
-      const sb = window.supabase || (typeof createClient !== 'undefined' ? createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY) : null);
-      if(!sb) return;
-      await sb.from('pwa_instalaciones').insert([{
-        fecha: new Date().toISOString(),
-        user_agent: navigator.userAgent.substring(0, 200)
-      }]);
-    } catch(e){ console.warn('PWA install log:', e); }
-  }
-})();
-</script>
-<!-- ── PWA: Banner de instalación ── -->
-<div id="pwaBanner" style="display:none;position:fixed;bottom:0;left:0;right:0;z-index:99999;background:#0a0000;border-top:2px solid var(--neon);padding:1rem 1.2rem;box-shadow:0 -4px 30px rgba(232,25,44,.25)">
-  <div style="display:flex;align-items:center;gap:.8rem;max-width:600px;margin:0 auto">
-    <img src="/icon-192.png" style="width:44px;height:44px;border-radius:8px;flex-shrink:0">
-    <div style="flex:1;min-width:0">
-      <div id="pwaBannerTitulo" style="font-family:var(--font-display);font-size:.9rem;letter-spacing:2px;color:var(--white);line-height:1.2">📲 DESCARGA LA APP</div>
-      <div id="pwaBannerMsg" style="font-family:var(--font-mono);font-size:.6rem;color:var(--gray);margin-top:.2rem;line-height:1.4">Instala SARUX y obtén 10% de descuento en tu primera compra 🎁</div>
-    </div>
-    <div style="display:flex;flex-direction:column;gap:.4rem;flex-shrink:0">
-      <button id="pwaBannerBtn" onclick="instalarPWA()" style="background:var(--neon);color:#000;border:none;font-family:var(--font-mono);font-size:.6rem;letter-spacing:2px;padding:.5rem .9rem;cursor:pointer;font-weight:700;white-space:nowrap">INSTALAR</button>
-      <button onclick="cerrarBannerPWA()" style="background:none;border:none;color:var(--gray);font-family:var(--font-mono);font-size:.55rem;letter-spacing:1px;cursor:pointer;padding:.2rem 0">No gracias</button>
-    </div>
-  </div>
-</div>
-
-<script>
-(function(){
-  let _deferredPrompt = null;
-  const BANNER_KEY  = 'sarux_pwa_banner_cerrado';
-  const INSTALL_KEY = 'sarux_pwa_instalada';
-
-  if('serviceWorker' in navigator){
-    window.addEventListener('load', () => {
-      navigator.serviceWorker.register('/sw.js')
-        .then(r => console.log('[SARUX SW] OK:', r.scope))
-        .catch(e => console.warn('[SARUX SW] Error:', e));
-    });
-  }
-
-  window.addEventListener('beforeinstallprompt', e => {
-    e.preventDefault();
-    _deferredPrompt = e;
-    if(localStorage.getItem(BANNER_KEY) || localStorage.getItem(INSTALL_KEY)) return;
-    setTimeout(() => mostrarBannerPWA(), 3000);
+    mostrarBannerFooterPWA();
   });
 
   window.addEventListener('appinstalled', () => {
     localStorage.setItem(INSTALL_KEY, '1');
     document.getElementById('pwaBanner').style.display = 'none';
+    ocultarBannerFooterPWA();
     registrarInstalacionPWA();
     // Dar cupón si hay sesión activa y es primera instalación
     try{
@@ -823,6 +774,7 @@
   });
 
   function mostrarBannerPWA(){
+    if(esStandalone || localStorage.getItem(INSTALL_KEY)) return;
     const cfg = (typeof APP_DATA !== 'undefined' && APP_DATA.PWA_BANNER) || {};
     if(cfg.activo === false) return;
     const titulo = cfg.titulo || '📲 DESCARGA LA APP';
@@ -849,12 +801,35 @@
     }
     _deferredPrompt = null;
     document.getElementById('pwaBanner').style.display = 'none';
+    ocultarBannerFooterPWA();
   };
 
   window.cerrarBannerPWA = function(){
+    // Solo oculta el banner flotante de esta sesión de navegación;
+    // no guarda preferencia permanente, así vuelve a aparecer en la próxima visita.
     document.getElementById('pwaBanner').style.display = 'none';
-    localStorage.setItem(BANNER_KEY, '1');
   };
+
+  // ── Banner de instalación al final de la página (footer), solo en web ──
+  function mostrarBannerFooterPWA(){
+    if(esStandalone || localStorage.getItem(INSTALL_KEY)) return;
+    const footerBanner = document.getElementById('pwaFooterBanner');
+    if(!footerBanner) return;
+    const cfg = (typeof APP_DATA !== 'undefined' && APP_DATA.PWA_BANNER) || {};
+    if(cfg.activo === false) return;
+    const titulo = cfg.titulo || '📲 DESCARGA LA APP';
+    const msg    = cfg.mensaje || 'Instala SARUX y obtén 10% de descuento en tu primera compra 🎁';
+    const t = document.getElementById('pwaFooterBannerTitulo');
+    const m = document.getElementById('pwaFooterBannerMsg');
+    if(t) t.textContent = titulo;
+    if(m) m.textContent = msg;
+    footerBanner.style.display = 'flex';
+  }
+  function ocultarBannerFooterPWA(){
+    const footerBanner = document.getElementById('pwaFooterBanner');
+    if(footerBanner) footerBanner.style.display = 'none';
+  }
+  window.instalarPWADesdeFooter = window.instalarPWA;
 
   async function registrarInstalacionPWA(){
     try{

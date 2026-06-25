@@ -79,6 +79,11 @@ const DEFAULTS = {
   LLUVIA_CONFIG:{activa:false,cantidad:20,velocidad:2,espera:0},
   FOTOS_CLIENTES_CFG:{activo:true,titulo:"FOTOS REALES",subtitulo:"Clientes reales, resultados reales"},
   PWA_BANNER:{activo:false,titulo:"📲 DESCARGA LA APP",mensaje:"Instala SARUX y obtén 10% de descuento en tu primera compra 🎁"},
+  CUPONES_CFG:{
+    bienvenida_porcentaje: 10,
+    cumpleanos_porcentaje: 20,
+    cumpleanos_mensaje: "¡Feliz cumpleaños, {nombre}! 🎂 Aquí tienes un regalo de SARUX."
+  },
   FIDELIDAD_PRECIO:30,
   FIDELIDAD_TERMINOS:"TÉRMINOS Y CONDICIONES — TARJETA DE FIDELIDAD SARUX\n\nAdquisición y Reposición de la Tarjeta\n1. La tarjeta de fidelidad Sarux tiene un costo de $30 MXN.\n2. Es obligatorio presentar la tarjeta física en cada compra para acumular y hacer válidos los beneficios. Sin tarjeta no se registra la compra.\n3. En caso de pérdida o daño, la reposición tiene un costo de $50 MXN.\n4. La tarjeta es personal e intransferible.\n5. Cada cliente puede tener únicamente una cuenta activa vinculada a su correo electrónico.\n\nAcumulación de Compras\n6. Las compras se registran únicamente al presentar la tarjeta física al momento del pedido. No se aplican compras anteriores de forma retroactiva.\n7. Los pedidos realizados sin tarjeta o como invitado no acumulan compras.\n8. Las compras canceladas o con devolución no cuentan para acumular.\n9. Los errores en el registro de compras deben reportarse en un máximo de 7 días posteriores al pedido.\n\nVigencia\n10. Los puntos acumulados tienen una vigencia de 6 meses a partir de la entrega de la tarjeta. Al vencer este plazo, el contador regresa a cero.\n11. Los beneficios de cada nivel aplican únicamente mientras el cliente mantenga el nivel activo.\n\nBeneficios y Descuentos\n12. Los descuentos no son acumulables entre sí ni con otras promociones, salvo aviso expreso de Sarux.\n13. El cupón de cumpleaños tiene validez de 30 días a partir de la fecha de cumpleaños y aplica solo durante ese mes.\n14. La fecha de cumpleaños solo puede modificarse una vez y debe coincidir con una identificación oficial.\n15. Los beneficios no tienen valor en efectivo ni pueden canjearse por dinero.\n16. El nivel alcanzado no garantiza disponibilidad de productos exclusivos si están agotados.\n17. La atención prioritaria por WhatsApp del nivel Diamante tiene un horario de respuesta de 24 horas hábiles.\n\nProtección contra Mal Uso\n18. Queda prohibido crear cuentas falsas o múltiples para acumular compras artificialmente.\n19. En caso de detectar fraude o mal uso, Sarux cancelará la cuenta sin previo aviso.\n20. Sarux se reserva el derecho de verificar la identidad del cliente antes de aplicar cualquier beneficio.\n\nDatos Personales\n21. Los datos registrados se usan exclusivamente para la gestión del programa de fidelidad. Sarux no los comparte con terceros.\n22. Sarux no se hace responsable si el cliente no recibe notificaciones por tener el correo incorrecto registrado.\n\nModificaciones al Programa\n23. Sarux puede modificar, suspender o cancelar el programa en cualquier momento, notificando con anticipación por redes sociales o sitio web."
 };
@@ -3089,7 +3094,10 @@ async function verificarCodigoPerfil(){
 
   // Si es primera vez → dar cupón de bienvenida
   if(esPrimeraVez){
-    try{ await otorgarCuponBienvenida(data); }catch(e){}
+    try{
+      const cupon = await otorgarCuponBienvenida(data);
+      mostrarPopupCupon('bienvenida', cupon, data.nombre);
+    }catch(e){}
   }
 
   mostrarPaso3Perfil(_perfilActual);
@@ -3170,40 +3178,95 @@ async function guardarPerfil(){
   setTimeout(()=>{ msg.textContent=''; msg.style.color='var(--neon)'; }, 2500);
 }
 
+// ── Popup de cupón (bienvenida app / cumpleaños) ──────────────
+function mostrarPopupCupon(tipo, cupon, nombre){
+  const overlay = document.getElementById('cuponPopupOverlay');
+  if(!overlay || !cupon) return;
+  const emoji  = document.getElementById('cuponPopupEmoji');
+  const titulo = document.getElementById('cuponPopupTitulo');
+  const texto  = document.getElementById('cuponPopupTexto');
+  const codigo = document.getElementById('cuponPopupCodigo');
+
+  if(tipo === 'cumpleanos'){
+    const plantilla = (APP_DATA.CUPONES_CFG && APP_DATA.CUPONES_CFG.cumpleanos_mensaje)
+      || '¡Feliz cumpleaños, {nombre}! 🎂 Aquí tienes un regalo de SARUX.';
+    emoji.textContent  = '🎂';
+    titulo.textContent = '¡FELIZ CUMPLEAÑOS!';
+    texto.textContent  = plantilla.replace('{nombre}', nombre || '');
+  } else {
+    emoji.textContent  = '🎁';
+    titulo.textContent = '¡BIENVENIDO AL CLUB SARUX!';
+    texto.textContent  = 'Gracias por registrarte. Aquí tienes tu cupón de bienvenida para tu primera compra.';
+  }
+  codigo.textContent = `${cupon.codigo} · ${cupon.porcentaje}% OFF`;
+  overlay.style.display = 'flex';
+}
+function cerrarCuponPopup(){
+  const overlay = document.getElementById('cuponPopupOverlay');
+  if(overlay) overlay.style.display = 'none';
+}
+
+// ── Cupón automático de bienvenida (primera vez que se registra) ──
+async function otorgarCuponBienvenida(datos){
+  // Evitar duplicados: si ya tiene un cupón de bienvenida, no crear otro
+  const { data: existente } = await sb.from('cupones_usuario')
+    .select('id, codigo, porcentaje')
+    .eq('correo', datos.correo)
+    .eq('motivo', 'bienvenida')
+    .single();
+
+  if(existente) return existente;
+
+  const pctBienvenida = (APP_DATA.CUPONES_CFG && APP_DATA.CUPONES_CFG.bienvenida_porcentaje) || 10;
+  const codigo = 'BIENVENIDO' + Math.floor(1000 + Math.random() * 9000);
+
+  const { data: creado } = await sb.from('cupones_usuario').insert([{
+    suscriptor_id: datos.id,
+    correo:        datos.correo,
+    codigo,
+    porcentaje:    pctBienvenida,
+    motivo:        'bienvenida'
+  }]).select().single();
+
+  return creado || { codigo, porcentaje: pctBienvenida };
+}
+
 // ── Cupón automático de cumpleaños ───────────────────────────
 async function verificarCuponCumpleanos(datos){
-  if(!datos.cumpleanos) return;
+  if(!datos.cumpleanos) return null;
   const hoy   = new Date();
   const cumple = new Date(datos.cumpleanos);
   const esCumple = (hoy.getMonth() === cumple.getMonth() &&
                     hoy.getDate()  === cumple.getDate());
-  if(!esCumple) return;
+  if(!esCumple) return null;
 
   // Verificar si ya tiene cupón de cumpleaños activo este año
   const { data: existente } = await sb.from('cupones_usuario')
-    .select('id')
+    .select('id, codigo, porcentaje')
     .eq('correo', datos.correo)
     .eq('motivo', 'cumpleanos')
     .eq('usado', false)
     .gte('created_at', `${hoy.getFullYear()}-01-01`)
     .single();
 
-  if(existente) return; // ya tiene uno
+  if(existente) return null; // ya tiene uno y ya se le mostró en un ingreso anterior
 
   // Crear cupón de cumpleaños
   const codigo = 'CUMPLE' + datos.correo.split('@')[0].toUpperCase().slice(0,6)
                            + hoy.getFullYear();
   const expira = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate(), 23, 59, 59).toISOString();
 
-  const pctCumple = (REFERIDOS_CFG && REFERIDOS_CFG.porcentaje_cupon_cumpleanos) || 20;
-  await sb.from('cupones_usuario').insert([{
+  const pctCumple = (APP_DATA.CUPONES_CFG && APP_DATA.CUPONES_CFG.cumpleanos_porcentaje) || 20;
+  const { data: creado } = await sb.from('cupones_usuario').insert([{
     suscriptor_id: datos.id,
     correo:        datos.correo,
     codigo,
     porcentaje:    pctCumple,
     motivo:        'cumpleanos',
     fecha_expira:  expira
-  }]);
+  }]).select().single();
+
+  return creado || { codigo, porcentaje: pctCumple };
 }
 
 // ── Cargar cupones del usuario ────────────────────────────────
@@ -3242,18 +3305,25 @@ function cerrarSesionPerfil(){
   mostrarPaso1Perfil();
 }
 
-// ── Sumar visita al cargar la página ─────────────────────────
+// ── Sumar visita al cargar la página + revisar cupón de cumpleaños ──
 (async function registrarVisita(){
   const token  = localStorage.getItem(PERFIL_KEY);
   const correo = localStorage.getItem(PERFIL_CORREO);
   if(!token || !correo) return;
   try {
     const { data } = await sb.from('suscriptores')
-      .select('visitas,id').eq('correo', correo).eq('token_sesion', token).single();
-    if(data) await sb.from('suscriptores')
-      .update({ visitas: (data.visitas||0) + 1 }).eq('id', data.id);
+      .select('id, correo, nombre, cumpleanos, visitas').eq('correo', correo).eq('token_sesion', token).single();
+    if(data){
+      await sb.from('suscriptores')
+        .update({ visitas: (data.visitas||0) + 1 }).eq('id', data.id);
+      try{
+        const cupon = await verificarCuponCumpleanos(data);
+        if(cupon) mostrarPopupCupon('cumpleanos', cupon, data.nombre);
+      }catch(e){}
+    }
   } catch(e){}
 })();
+
 
 
 // ═══════════════════════════════════════════════════════════════
