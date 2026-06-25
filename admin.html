@@ -122,6 +122,7 @@
 </style>
 <!-- SDK de Supabase -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script>
   let _beneficioCount = 0;
 
@@ -4112,9 +4113,21 @@ Casi listo...
 
   async function tcGetQR(){
     return new Promise(res=>{
-      const img=new Image(); img.crossOrigin='anonymous';
-      img.onload=()=>res(img); img.onerror=()=>res(null);
-      img.src=`https://api.qrserver.com/v1/create-qr-code/?size=120x120&color=ffffff&bgcolor=060606&data=${encodeURIComponent('https://saruxcatalogo.pages.dev')}`;
+      try{
+        const div=document.createElement("div");
+        div.style.cssText="position:absolute;left:-9999px;top:-9999px;width:120px;height:120px";
+        document.body.appendChild(div);
+        new QRCode(div,{text:"https://saruxcatalogo.pages.dev",width:120,height:120,colorDark:"#ffffff",colorLight:"#060606",correctLevel:QRCode.CorrectLevel.H});
+        setTimeout(function(){
+          const img=div.querySelector("img")||div.querySelector("canvas");
+          if(!img){document.body.removeChild(div);res(null);return;}
+          const out=new Image();
+          if(img.tagName==="CANVAS"){out.src=img.toDataURL();}
+          else{out.src=img.src;}
+          out.onload=function(){document.body.removeChild(div);res(out);};
+          out.onerror=function(){document.body.removeChild(div);res(null);};
+        },300);
+      }catch(e){res(null);}
     });
   }
 
@@ -4275,53 +4288,127 @@ Casi listo...
 
   async function tcDibujarInvitacionFrente(canvas){
     const DPR = 2;
-    const ctx=canvas.getContext('2d');
-    canvas.width=TC.W * DPR; canvas.height=TC.H * DPR;
-    canvas.style.width = TC.W + 'px'; canvas.style.height = TC.H + 'px';
+    const ctx = canvas.getContext('2d');
+    canvas.width  = TC.W * DPR;
+    canvas.height = TC.H * DPR;
+    canvas.style.width  = TC.W + 'px';
+    canvas.style.height = TC.H + 'px';
     ctx.scale(DPR, DPR);
-    ctx.fillStyle=TC.NEGRO; ctx.fillRect(0,0,TC.W,TC.H);
-    ctx.fillStyle=TC.ROJO; ctx.fillRect(0,0,6,TC.H); ctx.fillRect(TC.W-6,0,6,TC.H);
-    const cg=ctx.createRadialGradient(TC.W*.35,TC.H*.5,10,TC.W*.35,TC.H*.5,160);
-    cg.addColorStop(0,'rgba(232,25,44,0.12)'); cg.addColorStop(1,'rgba(0,0,0,0)');
-    ctx.fillStyle=cg; ctx.fillRect(0,0,TC.W,TC.H);
-    ctx.fillStyle=TC.ROJO; ctx.font='bold 48px Arial Black,Arial';
-    ctx.textAlign='center'; ctx.fillText('SARUX',TC.W/2,72);
-    ctx.fillStyle='rgba(255,255,255,0.5)'; ctx.font='9px monospace';
-    ctx.fillText('DISEÑO · SUBLIMACIÓN · PERSONALIZACIÓN',TC.W/2,92);
-    ctx.strokeStyle='rgba(232,25,44,0.5)'; ctx.lineWidth=0.8;
-    ctx.beginPath(); ctx.moveTo(60,104); ctx.lineTo(TC.W-60,104); ctx.stroke();
-    ctx.fillStyle=TC.BLANCO; ctx.font='bold 16px Arial Black';
-    ctx.fillText('¡ÚNETE AL CLUB SARUX!',TC.W/2,132);
-    ctx.fillStyle='rgba(255,255,255,0.6)'; ctx.font='10px Arial';
-    ctx.fillText('Regístrate y accede a descuentos exclusivos,',TC.W/2,152);
-    ctx.fillText('cupones de cumpleaños y recompensas por compra.',TC.W/2,167);
-    ctx.fillStyle='rgba(232,25,44,0.1)'; rrect(ctx,TC.W/2-85,180,170,24,4); ctx.fill();
-    ctx.strokeStyle='rgba(232,25,44,0.4)'; ctx.lineWidth=0.5; ctx.stroke();
-    ctx.fillStyle=TC.ROJO; ctx.font='bold 9px monospace';
-    ctx.fillText('↓ ESCANEA Y REGÍSTRATE ↓',TC.W/2,196);
-    const qr=await tcGetQR();
-    if(qr){ ctx.drawImage(qr,TC.W/2-35,210,70,70); }
-    else {
-      ctx.fillStyle='rgba(255,255,255,0.1)'; rrect(ctx,TC.W/2-35,210,70,70,4); ctx.fill();
-      ctx.fillStyle=TC.BLANCO; ctx.font='8px monospace';
-      ctx.fillText('QR CODE',TC.W/2,248);
+
+    // Fondo negro
+    ctx.fillStyle = TC.NEGRO;
+    ctx.fillRect(0, 0, TC.W, TC.H);
+
+    // Franjas rojas laterales
+    ctx.fillStyle = TC.ROJO;
+    ctx.fillRect(0, 0, 6, TC.H);
+    ctx.fillRect(TC.W - 6, 0, 6, TC.H);
+
+    // Degradado sutil rojo
+    const cg = ctx.createRadialGradient(TC.W * .5, TC.H * .3, 10, TC.W * .5, TC.H * .3, 200);
+    cg.addColorStop(0, 'rgba(232,25,44,0.15)');
+    cg.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = cg;
+    ctx.fillRect(0, 0, TC.W, TC.H);
+
+    // LOGO SARUX GRANDE
+    ctx.textAlign = 'center';
+    ctx.fillStyle = TC.ROJO;
+    ctx.font = 'bold 72px Arial Black, Arial';
+    ctx.fillText('SARUX', TC.W / 2, 80);
+
+    // Subtítulo
+    ctx.fillStyle = 'rgba(255,255,255,0.45)';
+    ctx.font = '8.5px monospace';
+    ctx.fillText('DISEÑO  ·  SUBLIMACIÓN  ·  PERSONALIZACIÓN', TC.W / 2, 98);
+
+    // Línea divisoria
+    ctx.strokeStyle = 'rgba(232,25,44,0.5)';
+    ctx.lineWidth = 0.8;
+    ctx.beginPath(); ctx.moveTo(50, 110); ctx.lineTo(TC.W - 50, 110); ctx.stroke();
+
+    // Título invitación
+    ctx.fillStyle = TC.BLANCO;
+    ctx.font = 'bold 15px Arial Black, Arial';
+    ctx.fillText('¡ÚNETE AL CLUB SARUX!', TC.W / 2, 132);
+
+    // Descripción
+    ctx.fillStyle = 'rgba(255,255,255,0.6)';
+    ctx.font = '9.5px Arial';
+    ctx.fillText('Regístrate y accede a descuentos exclusivos,', TC.W / 2, 150);
+    ctx.fillText('cupones de cumpleaños y recompensas por compra.', TC.W / 2, 164);
+
+    // Botón escanea
+    ctx.fillStyle = 'rgba(232,25,44,0.15)';
+    rrect(ctx, TC.W / 2 - 90, 175, 180, 22, 4); ctx.fill();
+    ctx.strokeStyle = 'rgba(232,25,44,0.5)'; ctx.lineWidth = 0.8; ctx.stroke();
+    ctx.fillStyle = TC.ROJO;
+    ctx.font = 'bold 8.5px monospace';
+    ctx.fillText('↓  ESCANEA Y REGÍSTRATE  ↓', TC.W / 2, 190);
+
+    // QR
+    const qr = await tcGetQR();
+    const qrSize = 74, qrX = TC.W / 2 - qrSize / 2, qrY = 200;
+    if (qr) {
+      ctx.drawImage(qr, qrX, qrY, qrSize, qrSize);
+    } else {
+      ctx.fillStyle = 'rgba(255,255,255,0.1)';
+      rrect(ctx, qrX, qrY, qrSize, qrSize, 4); ctx.fill();
+      ctx.fillStyle = TC.BLANCO; ctx.font = '8px monospace';
+      ctx.fillText('QR CODE', TC.W / 2, qrY + qrSize / 2);
     }
-    // Footer redes en invitación
-    const neg3=window.APP_DATA&&window.APP_DATA.NEGOCIO ? window.APP_DATA.NEGOCIO : {};
-    const wa3=(neg3.whatsapp||'').replace(/^52/,'').replace(/\D/g,'');
-    const ig3=(neg3.instagram||'').replace(/.*instagram.com\//,'').replace(/\//,'');
-    const tt3=(neg3.tiktok_user||neg3.tiktok||'').replace('https://tiktok.com/','').replace(/\//,'');
-    const fb3=(neg3.facebook||'').replace(/.*facebook.com\//,'').replace(/\//,'');
-    const r3=[wa3?'📱 '+wa3:'',ig3?'IG @'+ig3:'',fb3?'FB '+fb3:'',tt3?'TT '+tt3:''].filter(Boolean).join('  ·  ');
-    ctx.fillStyle='rgba(255,255,255,0.4)'; ctx.font='7px monospace';
-    ctx.textAlign='center';
-    ctx.fillText(r3||'saruxcatalogo.pages.dev',TC.W/2,TC.H-8);
-    ctx.textAlign='left';
-    ctx.strokeStyle='rgba(232,25,44,0.2)'; ctx.lineWidth=1;
-    rrect(ctx,1,1,TC.W-2,TC.H-2,8); ctx.stroke();
+    // URL debajo del QR
+    ctx.fillStyle = 'rgba(255,255,255,0.3)';
+    ctx.font = '6.5px monospace';
+    ctx.fillText('saruxcatalogo.pages.dev', TC.W / 2, qrY + qrSize + 10);
+
+    // Redes sociales con iconos — fila inferior
+    const neg = window.APP_DATA && window.APP_DATA.NEGOCIO ? window.APP_DATA.NEGOCIO : {};
+    const waNum = (neg.whatsapp || '522229250603').replace(/^52/, '').replace(/\D/g, '');
+    const igUser = (neg.instagram || '').replace(/.*instagram\.com\//, '').replace(/\/$/, '') || 'sarux.oficial';
+    const ttUser = (neg.tiktok_user || '@sarux.oficial');
+    const fbUser = (neg.facebook || '').replace(/.*facebook\.com\//, '').replace(/\/$/, '') || 'sarux';
+
+    const redes = [
+      { color: '#25d366', label: waNum,       icon: 'wa'  },
+      { color: '#e1306c', label: '@'+igUser,  icon: 'ig'  },
+      { color: '#1877f2', label: fbUser,      icon: 'fb'  },
+      { color: '#ffffff', label: ttUser,      icon: 'tt'  },
+    ];
+
+    const iconSize = 10, gap = 4, rowY = TC.H - 18;
+    // Calcular ancho total de la fila
+    const itemW = 80, totalW = redes.length * itemW;
+    const startX = (TC.W - totalW) / 2;
+
+    ctx.font = '7px Arial';
+    redes.forEach(function(r, i){
+      const cx = startX + i * itemW + itemW / 2;
+      // mini círculo de color
+      ctx.fillStyle = r.color;
+      ctx.beginPath(); ctx.arc(cx - 22, rowY - 1, 5, 0, Math.PI * 2); ctx.fill();
+      // símbolo
+      ctx.fillStyle = '#000';
+      ctx.font = 'bold 6px Arial';
+      ctx.textAlign = 'center';
+      if(r.icon==='wa') ctx.fillText('W', cx - 22, rowY + 2);
+      else if(r.icon==='ig') ctx.fillText('IG', cx - 22, rowY + 2);
+      else if(r.icon==='fb') ctx.fillText('f', cx - 22, rowY + 2);
+      else ctx.fillText('T', cx - 22, rowY + 2);
+      // texto usuario
+      ctx.fillStyle = 'rgba(255,255,255,0.65)';
+      ctx.font = '6.5px monospace';
+      ctx.textAlign = 'left';
+      ctx.fillText(r.label, cx - 14, rowY + 2);
+    });
+    ctx.textAlign = 'left';
+
+    // Borde exterior
+    ctx.strokeStyle = 'rgba(232,25,44,0.2)'; ctx.lineWidth = 1;
+    rrect(ctx, 1, 1, TC.W - 2, TC.H - 2, 8); ctx.stroke();
   }
 
-  async function renderTarjetaAdmin(){
+    async function renderTarjetaAdmin(){
     const cf=document.getElementById('canvas-tarjeta-frente');
     const cr=document.getElementById('canvas-tarjeta-reverso');
     if(!cf||!cr) return;
