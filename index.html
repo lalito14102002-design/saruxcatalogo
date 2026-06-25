@@ -612,6 +612,16 @@
             🏆 VER TODOS LOS NIVELES Y PREMIOS
           </button>
           <div id="perfil-niveles-roadmap" style="display:none;margin-top:.8rem"></div>
+          <div style="display:flex;gap:.5rem;margin-top:.8rem">
+            <button onclick="abrirTerminosFidelidad()"
+              style="flex:1;background:none;border:1px solid rgba(255,255,255,.15);color:var(--gray);font-family:var(--font-mono);font-size:.55rem;letter-spacing:1px;padding:.6rem .4rem;cursor:pointer;border-radius:2px">
+              📜 TÉRMINOS Y CONDICIONES
+            </button>
+            <button onclick="solicitarTarjetaFisica()"
+              style="flex:1;background:rgba(37,211,102,.12);border:1px solid rgba(37,211,102,.35);color:#25d366;font-family:var(--font-mono);font-size:.55rem;letter-spacing:1px;padding:.6rem .4rem;cursor:pointer;border-radius:2px">
+              🪪 SOLICITAR MI TARJETA
+            </button>
+          </div>
         </div>
       </div>
 
@@ -652,6 +662,19 @@
         CERRAR SESIÓN
       </button>
     </div>
+  </div>
+</div>
+
+<!-- ── Modal: Términos y condiciones de la tarjeta de fidelidad ── -->
+<div id="terminosFidelidadOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:99996;align-items:center;justify-content:center;padding:1rem;overflow-y:auto">
+  <div style="background:var(--card);border:1px solid rgba(232,25,44,.3);border-radius:4px;width:100%;max-width:460px;position:relative;padding:1.5rem;margin:auto;max-height:85vh;overflow-y:auto">
+    <button onclick="cerrarTerminosFidelidad()" style="position:absolute;top:.8rem;right:.8rem;background:none;border:none;color:var(--gray);font-size:1.2rem;cursor:pointer">✕</button>
+    <div style="font-size:.6rem;letter-spacing:3px;color:var(--neon);font-family:var(--font-mono);margin-bottom:.5rem">SARUX</div>
+    <div style="font-family:var(--font-display);font-size:1.2rem;letter-spacing:2px;color:var(--white);margin-bottom:1rem">TÉRMINOS Y CONDICIONES</div>
+    <div id="terminosFidelidadTexto" style="font-family:var(--font-mono);font-size:.7rem;color:var(--gray);line-height:1.8;white-space:pre-wrap"></div>
+    <button onclick="cerrarTerminosFidelidad()" style="width:100%;background:var(--neon);color:var(--white);border:none;padding:.8rem;font-family:var(--font-mono);font-size:.6rem;letter-spacing:3px;cursor:pointer;margin-top:1.2rem">
+      ENTENDIDO
+    </button>
   </div>
 </div>
 

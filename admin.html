@@ -340,7 +340,7 @@
         <button class="admin-nav-btn" onclick="showSec('pasos',this)">👣 Cómo pedir</button>
         <button class="admin-nav-btn" onclick="showSec('ticker',this)">📢 Ticker</button>
         <button class="admin-nav-btn" onclick="showSec('suscriptores',this);cargarSuscriptoresAdmin()">📧 Suscriptores</button>
-        <button class="admin-nav-btn" onclick="showSec('fidelidad',this);cargarNivelesAdmin()">🏅 Fidelidad</button>
+        <button class="admin-nav-btn" onclick="showSec('fidelidad',this);cargarNivelesAdmin();cargarTerminosFidelidad()">🏅 Fidelidad</button>
         <button class="admin-nav-btn" onclick="showSec('tarjetas',this);initTarjetasAdmin()">🪪 Tarjetas</button>
         <button class="admin-nav-btn" onclick="showSec('cupones',this);cargarCuponesAdmin()">🎟️ Cupones</button>
         <button class="admin-nav-btn" onclick="showSec('storage',this);cargarStorage()">💾 Almacenamiento</button>
@@ -385,7 +385,8 @@
     CARD_FIT: "contain",
     IMAGENES_PERSONALIZACION: [],  
     IMAGEN_LLUVIA: "",
-    LLUVIA_CONFIG: {activa:true, cantidad:20, velocidad:2, espera:0}
+    LLUVIA_CONFIG: {activa:true, cantidad:20, velocidad:2, espera:0},
+    FIDELIDAD_TERMINOS:"TÉRMINOS Y CONDICIONES — TARJETA DE FIDELIDAD SARUX\n\nAdquisición y Reposición de la Tarjeta\n1. La tarjeta de fidelidad Sarux tiene un costo de $30 MXN.\n2. Es obligatorio presentar la tarjeta física en cada compra para acumular y hacer válidos los beneficios. Sin tarjeta no se registra la compra.\n3. En caso de pérdida o daño, la reposición tiene un costo de $50 MXN.\n4. La tarjeta es personal e intransferible.\n5. Cada cliente puede tener únicamente una cuenta activa vinculada a su correo electrónico.\n\nAcumulación de Compras\n6. Las compras se registran únicamente al presentar la tarjeta física al momento del pedido. No se aplican compras anteriores de forma retroactiva.\n7. Los pedidos realizados sin tarjeta o como invitado no acumulan compras.\n8. Las compras canceladas o con devolución no cuentan para acumular.\n9. Los errores en el registro de compras deben reportarse en un máximo de 7 días posteriores al pedido.\n\nVigencia\n10. Los puntos acumulados tienen una vigencia de 6 meses a partir de la entrega de la tarjeta. Al vencer este plazo, el contador regresa a cero.\n11. Los beneficios de cada nivel aplican únicamente mientras el cliente mantenga el nivel activo.\n\nBeneficios y Descuentos\n12. Los descuentos no son acumulables entre sí ni con otras promociones, salvo aviso expreso de Sarux.\n13. El cupón de cumpleaños tiene validez de 30 días a partir de la fecha de cumpleaños y aplica solo durante ese mes.\n14. La fecha de cumpleaños solo puede modificarse una vez y debe coincidir con una identificación oficial.\n15. Los beneficios no tienen valor en efectivo ni pueden canjearse por dinero.\n16. El nivel alcanzado no garantiza disponibilidad de productos exclusivos si están agotados.\n17. La atención prioritaria por WhatsApp del nivel Diamante tiene un horario de respuesta de 24 horas hábiles.\n\nProtección contra Mal Uso\n18. Queda prohibido crear cuentas falsas o múltiples para acumular compras artificialmente.\n19. En caso de detectar fraude o mal uso, Sarux cancelará la cuenta sin previo aviso.\n20. Sarux se reserva el derecho de verificar la identidad del cliente antes de aplicar cualquier beneficio.\n\nDatos Personales\n21. Los datos registrados se usan exclusivamente para la gestión del programa de fidelidad. Sarux no los comparte con terceros.\n22. Sarux no se hace responsable si el cliente no recibe notificaciones por tener el correo incorrecto registrado.\n\nModificaciones al Programa\n23. Sarux puede modificar, suspender o cancelar el programa en cualquier momento, notificando con anticipación por redes sociales o sitio web."
   };
 
   // Variables globales sincronizadas con APP_DATA
@@ -1456,6 +1457,18 @@ Casi listo...
         <div id="admin-niveles-lista">
           <div style="font-family:var(--font-mono);font-size:.6rem;color:var(--gray)">Cargando...</div>
         </div>
+
+        <!-- Términos y condiciones de la tarjeta de fidelidad -->
+        <div style="background:var(--card2);border:1px solid var(--border);padding:1.2rem;margin-top:1.5rem">
+          <div class="admin-card-title" style="margin-bottom:.4rem">📜 TÉRMINOS Y CONDICIONES — TARJETA DE FIDELIDAD</div>
+          <div style="font-family:var(--font-mono);font-size:.55rem;color:var(--gray);margin-bottom:.8rem;line-height:1.6">
+            Este texto es el que ven tus clientes al dar clic en "Ver términos y condiciones" dentro de su perfil. Usa saltos de línea para separar puntos.
+          </div>
+          <textarea id="fidelidad-terminos-edit" class="admin-textarea" rows="14" style="font-family:var(--font-mono);font-size:.65rem;line-height:1.6"></textarea>
+          <div id="fidelidad-terminos-msg" style="font-family:var(--font-mono);font-size:.6rem;color:var(--neon);min-height:.9rem;margin:.6rem 0"></div>
+          <button class="admin-btn" onclick="guardarTerminosFidelidad()" style="justify-content:center;background:var(--neon);color:#000;font-weight:bold">💾 Guardar términos y condiciones</button>
+        </div>
+
       </div>
 
       <div id="sec-cupones" class="admin-section">
@@ -4075,6 +4088,16 @@ Casi listo...
     ctx.lineTo(x,y+r); ctx.arcTo(x,y,x+r,y,r); ctx.closePath();
   }
 
+  // Vigencia: 6 meses a partir del momento en que se genera/descarga la tarjeta
+  function tcCalcularVigencia(){
+    const hoy = new Date();
+    const venc = new Date(hoy.getFullYear(), hoy.getMonth()+6, hoy.getDate());
+    const dd = String(venc.getDate()).padStart(2,'0');
+    const mm = String(venc.getMonth()+1).padStart(2,'0');
+    const yyyy = venc.getFullYear();
+    return `${dd}/${mm}/${yyyy}`;
+  }
+
   async function tcGetQR(){
     return new Promise(res=>{
       const img=new Image(); img.crossOrigin='anonymous';
@@ -4118,24 +4141,38 @@ Casi listo...
     ctx.strokeStyle='rgba(212,175,55,0.25)'; ctx.lineWidth=0.5;
     for(let i=0;i<3;i++){ctx.beginPath();ctx.moveTo(28,140+i*9);ctx.lineTo(72,140+i*9);ctx.stroke();}
     ctx.beginPath();ctx.moveTo(50,132);ctx.lineTo(50,166);ctx.stroke();
-    // Campos
+    // Campos (grid 2x2: incluye vigencia calculada al momento de generar/descargar)
+    const vigenciaTexto = tcCalcularVigencia();
     const campos=[
       {label:'MIEMBRO DESDE',valor:d.registro||'—'},
-      {label:'CUMPLEAÑOS',valor:d.cumple||'—'},
       {label:'ID CLIENTE',valor:d.uid||'—'},
+      {label:'CUMPLEAÑOS',valor:d.cumple||'—'},
+      {label:'VIGENCIA HASTA',valor:vigenciaTexto},
     ];
+    const colW=182, colH=27, gapX=8, gapY=6, gridX=90, gridY=132;
     campos.forEach((c,i)=>{
-      const x=90+i*126, y=138;
-      ctx.fillStyle='rgba(255,255,255,0.08)'; rrect(ctx,x,y,116,30,3); ctx.fill();
+      const col=i%2, row=Math.floor(i/2);
+      const x=gridX+col*(colW+gapX), y=gridY+row*(colH+gapY);
+      ctx.fillStyle='rgba(255,255,255,0.08)'; rrect(ctx,x,y,colW,colH,3); ctx.fill();
       ctx.fillStyle='rgba(232,25,44,0.8)'; ctx.font='7px monospace';
-      ctx.fillText(c.label,x+6,y+11);
+      ctx.fillText(c.label,x+6,y+10);
       ctx.fillStyle=TC.BLANCO; ctx.font='bold 10px monospace';
-      ctx.fillText(c.valor,x+6,y+24);
+      ctx.fillText(c.valor,x+6,y+22);
     });
-    // Línea inferior
-    ctx.fillStyle=TC.ROJO; ctx.fillRect(28,TC.H-52,TC.W-56,1);
-    ctx.fillStyle='rgba(255,255,255,0.3)'; ctx.font='8px monospace';
-    ctx.fillText('DISEÑO · SUBLIMACIÓN · PERSONALIZACIÓN',28,TC.H-36);
+    // Línea separadora antes del footer
+    const lineaY=gridY+2*colH+gapY+8;
+    ctx.fillStyle=TC.ROJO; ctx.fillRect(28,lineaY,TC.W-56,1);
+    // QR pequeño a la derecha (lleva a la página web) + nota de términos a la izquierda
+    const qr=await tcGetQR();
+    const qrSize=46, qrX=TC.W-28-qrSize, qrY=lineaY+10;
+    if(qr){ ctx.drawImage(qr,qrX,qrY,qrSize,qrSize); }
+    else { ctx.fillStyle='rgba(255,255,255,0.1)'; rrect(ctx,qrX,qrY,qrSize,qrSize,3); ctx.fill(); }
+    ctx.fillStyle='rgba(255,255,255,0.35)'; ctx.font='6px monospace'; ctx.textAlign='center';
+    ctx.fillText('ESCANEA',qrX+qrSize/2,qrY+qrSize+10);
+    ctx.textAlign='left';
+    ctx.fillStyle='rgba(255,255,255,0.55)'; ctx.font='8px monospace';
+    ctx.fillText('Consulta términos y condiciones',28,lineaY+20);
+    ctx.fillText('en tu perfil de usuario SARUX',28,lineaY+31);
     // Redes sociales dinámicas
     const neg=window.APP_DATA&&window.APP_DATA.NEGOCIO ? window.APP_DATA.NEGOCIO : {};
     const wa=neg.whatsapp||''; const ig=neg.instagram||''; const fb=neg.facebook||''; const tt=neg.tiktok_user||neg.tiktok||'';
@@ -4299,7 +4336,9 @@ Casi listo...
     renderTarjetaAdmin();
   }
 
-  function descargarTarjetaCara(cara){
+  async function descargarTarjetaCara(cara){
+    // Re-renderiza primero para que la vigencia quede calculada justo al momento de la descarga
+    await renderTarjetaAdmin();
     const id=cara==='frente'?'canvas-tarjeta-frente':'canvas-tarjeta-reverso';
     const c=document.getElementById(id); if(!c) return;
     const a=document.createElement('a');
@@ -4307,8 +4346,8 @@ Casi listo...
     a.href=c.toDataURL('image/png',1.0); a.click();
   }
 
-  function descargarAmbas(){
-    descargarTarjetaCara('frente');
+  async function descargarAmbas(){
+    await descargarTarjetaCara('frente');
     setTimeout(()=>descargarTarjetaCara('reverso'),350);
   }
 
@@ -4551,11 +4590,30 @@ function actualizarStockHint(val){
 </body>
 </html><script>
 // ── Fidelidad Admin ──────────────────────────────────────
+// ── Términos y condiciones de la tarjeta de fidelidad ──────
+function cargarTerminosFidelidad(){
+  const ta = document.getElementById('fidelidad-terminos-edit');
+  if(!ta) return;
+  ta.value = (APP_DATA && APP_DATA.FIDELIDAD_TERMINOS) || DEFAULTS.FIDELIDAD_TERMINOS || '';
+}
+
+async function guardarTerminosFidelidad(){
+  const ta  = document.getElementById('fidelidad-terminos-edit');
+  const msg = document.getElementById('fidelidad-terminos-msg');
+  if(!ta) return;
+  APP_DATA.FIDELIDAD_TERMINOS = ta.value;
+  const { error } = await sb.from('site_config').upsert({ id: 1, config_data: APP_DATA, updated_at: new Date() });
+  if(error){ if(msg) msg.textContent = '❌ Error al guardar'; return; }
+  try { localStorage.removeItem('sarux_cfg'); } catch(e){}
+  if(msg){ msg.textContent = '✅ Términos guardados'; setTimeout(()=>{ msg.textContent=''; }, 2000); }
+}
+
 async function cargarNivelesAdmin(){
   const lista = document.getElementById('admin-niveles-lista');
   lista.innerHTML = '<div style="font-family:var(--font-mono);font-size:.6rem;color:var(--gray)">Cargando...</div>';
   const { data } = await sb.from('fidelidad_niveles').select('*').order('orden',{ascending:true});
   if(!data || !data.length){ lista.innerHTML = '<div style="font-family:var(--font-mono);font-size:.6rem;color:var(--gray)">No hay niveles aún.</div>'; return; }
+  _nivelesOrdenCache = data.map(x=>x.id);
   lista.innerHTML = data.map((n,i) => {
     const beneficios = Array.isArray(n.beneficios) ? n.beneficios : JSON.parse(n.beneficios||'[]');
     const benefHtml = beneficios.map(b => {
@@ -4567,6 +4625,8 @@ async function cargarNivelesAdmin(){
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.4rem">
         <div style="font-family:var(--font-display);font-size:1rem;letter-spacing:2px;color:${n.color}">${n.emoji} ${n.nombre}</div>
         <div style="display:flex;gap:.4rem">
+          <button onclick="moverNivelPorIndice(${i},-1)" class="admin-btn-sm" title="Subir">↑</button>
+          <button onclick="moverNivelPorIndice(${i},1)" class="admin-btn-sm" title="Bajar">↓</button>
           <button onclick="editarNivelAdmin('${n.id}')" class="admin-btn-sm">✏️</button>
           <button onclick="eliminarNivelAdmin('${n.id}')" class="admin-btn-sm" style="border-color:rgba(232,25,44,.4)">🗑️</button>
         </div>
@@ -4596,18 +4656,56 @@ async function guardarNivelAdmin(){
   }).filter(b => (typeof b === 'string' ? b : b.texto));
   msg.textContent = 'Guardando...';
 
-  // Calcular orden basado en el requisito (monto o compras) para mantener el ranking correcto
-  const orden = tipoRequisito === 'monto' ? minMonto : min;
   let error;
   if(id){
-    ({ error } = await sb.from('fidelidad_niveles').update({nombre,emoji,min_compras:min,tipo_requisito:tipoRequisito,min_monto:minMonto,color,beneficios,orden}).eq('id',id));
+    // Al editar NO tocar el orden — el usuario lo controla con ↑ ↓
+    ({ error } = await sb.from('fidelidad_niveles').update({nombre,emoji,min_compras:min,tipo_requisito:tipoRequisito,min_monto:minMonto,color,beneficios}).eq('id',id));
   } else {
+    // Al crear, poner al final (orden = 999 + timestamp para no chocar)
+    const orden = Date.now() % 100000;
     ({ error } = await sb.from('fidelidad_niveles').insert([{nombre,emoji,min_compras:min,tipo_requisito:tipoRequisito,min_monto:minMonto,color,beneficios,orden}]));
   }
   if(error){ msg.textContent='❌ '+error.message; return; }
   msg.style.color='#4caf50';
   msg.textContent='✅ Nivel guardado';
   limpiarFormNivel();
+  cargarNivelesAdmin();
+}
+
+async function moverNivel(id, dir, idx, ids){
+  // dir: -1 sube, 1 baja
+  const nuevoIdx = idx + dir;
+  if(nuevoIdx < 0 || nuevoIdx >= ids.length) return;
+  // Intercambiar orden entre este y el vecino
+  const idVecino = ids[nuevoIdx];
+  // Obtener órdenes actuales
+  const { data: niveles } = await sb.from('fidelidad_niveles').select('id,orden').in('id',[id,idVecino]);
+  if(!niveles||niveles.length<2) return;
+  const este   = niveles.find(n=>n.id===id);
+  const vecino = niveles.find(n=>n.id===idVecino);
+  // Si tienen el mismo orden, asignar índices temporales
+  const ordenEste   = este.orden   ?? idx;
+  const ordenVecino = vecino.orden ?? nuevoIdx;
+  await sb.from('fidelidad_niveles').update({orden: ordenVecino}).eq('id', id);
+  await sb.from('fidelidad_niveles').update({orden: ordenEste}).eq('id', idVecino);
+  cargarNivelesAdmin();
+}
+
+let _nivelesOrdenCache = [];
+async function moverNivelPorIndice(idx, dir){
+  if(!_nivelesOrdenCache.length) return;
+  const nuevoIdx = idx + dir;
+  if(nuevoIdx < 0 || nuevoIdx >= _nivelesOrdenCache.length) return;
+  const id       = _nivelesOrdenCache[idx];
+  const idVecino = _nivelesOrdenCache[nuevoIdx];
+  const { data: niveles } = await sb.from('fidelidad_niveles').select('id,orden').in('id',[id,idVecino]);
+  if(!niveles||niveles.length<2) return;
+  const este   = niveles.find(n=>n.id===id);
+  const vecino = niveles.find(n=>n.id===idVecino);
+  const oEste   = este.orden   !== null ? este.orden   : idx * 10;
+  const oVecino = vecino.orden !== null ? vecino.orden : nuevoIdx * 10;
+  await sb.from('fidelidad_niveles').update({orden: oVecino}).eq('id', id);
+  await sb.from('fidelidad_niveles').update({orden: oEste}).eq('id', idVecino);
   cargarNivelesAdmin();
 }
 
