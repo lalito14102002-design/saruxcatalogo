@@ -4120,24 +4120,24 @@ Casi listo...
     const g=ctx.createLinearGradient(0,0,TC.W,TC.H);
     g.addColorStop(0,'rgba(232,25,44,0.07)'); g.addColorStop(1,'rgba(0,0,0,0)');
     ctx.fillStyle=g; ctx.fillRect(0,0,TC.W,TC.H);
-    // Logo (imagen)
+    // Logo (imagen real SARUX)
     await new Promise(res => {
       const logoImg = new Image();
       logoImg.crossOrigin = 'anonymous';
       logoImg.onload = () => {
-        // Dibujar logo a la izquierda, alto ~30px
-        const logoH = 30, logoW = logoImg.width * (logoH / logoImg.height);
-        ctx.drawImage(logoImg, 28, 24, logoW, logoH);
+        // El logo es cuadrado 1080x1080, mostrarlo a ~38px de alto
+        const logoH = 38, logoW = logoImg.width * (logoH / logoImg.height);
+        ctx.drawImage(logoImg, 28, 14, logoW, logoH);
         res();
       };
       logoImg.onerror = () => {
-        // Fallback: texto si no carga la imagen
+        // Fallback texto
         ctx.fillStyle=TC.BLANCO; ctx.font='bold 32px Arial Black,Arial';
         ctx.fillText('SARUX',28,52);
         ctx.fillStyle=TC.ROJO; ctx.beginPath(); ctx.arc(147,44,4,0,Math.PI*2); ctx.fill();
         res();
       };
-      logoImg.src = '/icon-192.png';
+      logoImg.src = '/sarux-logo.png';
     });
     // Línea sep
     ctx.strokeStyle='rgba(232,25,44,0.3)'; ctx.lineWidth=0.5;
@@ -4188,15 +4188,27 @@ Casi listo...
     ctx.fillText('Consulta términos y condiciones',28,lineaY+20);
     ctx.fillText('en tu perfil de usuario SARUX',28,lineaY+31);
     // Redes sociales dinámicas
-    const neg=window.APP_DATA&&window.APP_DATA.NEGOCIO ? window.APP_DATA.NEGOCIO : {};
+    const neg=window.APP_DATA&&window.APP_DATA.NEGOCIO ? window.APP_DATA.NEGOCIO : (window.NEGOCIO||{});
     const wa=neg.whatsapp||''; const ig=neg.instagram||''; const fb=neg.facebook||''; const tt=neg.tiktok_user||neg.tiktok||'';
-    const waNum=wa.replace(/^52/,'').replace(/\D/g,'');
-    const igUser=ig.replace(/.*instagram.com\//,'').replace(/\//,'');
-    const fbUser=fb.replace(/.*facebook.com\//,'').replace(/\//,'');
-    const ttUser=tt.replace('https://tiktok.com/','').replace(/\//,'');
-    const redesTxt=[waNum?'📱 '+waNum:'',igUser?'IG: @'+igUser:'',fbUser?'FB: '+fbUser:'',ttUser?'TT: '+ttUser:''].filter(Boolean).join('  ·  ');
+    const waNum=wa.replace(/\D/g,'').replace(/^521?/,'').slice(-10);
+    const igUser=(ig.match(/instagram\.com\/([^/?#]+)/)||[])[1]||'';
+    const fbUser=(fb.match(/facebook\.com\/([^/?#]+)/)||[])[1]||'';
+    const ttUser=tt.replace(/https?:\/\/(www\.)?tiktok\.com\//,'').replace(/\//,'');
+    const partes=[];
+    if(waNum) partes.push('WA: '+waNum);
+    if(igUser) partes.push('IG: @'+igUser);
+    if(fbUser) partes.push('FB: /'+fbUser);
+    if(ttUser) partes.push('TT: '+ttUser);
+    const redesTxt = partes.length ? partes.join('  ·  ') : 'saruxcatalogo.pages.dev';
     ctx.fillStyle='rgba(255,255,255,0.5)'; ctx.font='7.5px monospace';
-    ctx.fillText(redesTxt||'saruxcatalogo.pages.dev',28,TC.H-20);
+    // Si el texto es muy largo, dividirlo en 2 líneas
+    if(ctx.measureText(redesTxt).width > TC.W-56){
+      const mid=Math.floor(partes.length/2);
+      ctx.fillText(partes.slice(0,mid).join('  ·  '),28,TC.H-28);
+      ctx.fillText(partes.slice(mid).join('  ·  '),28,TC.H-16);
+    } else {
+      ctx.fillText(redesTxt,28,TC.H-20);
+    }
     // Borde
     ctx.strokeStyle='rgba(232,25,44,0.2)'; ctx.lineWidth=1;
     rrect(ctx,1,1,TC.W-2,TC.H-2,8); ctx.stroke();
