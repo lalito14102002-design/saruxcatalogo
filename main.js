@@ -3,6 +3,31 @@ const SUPABASE_URL = window.SUPABASE_URL || 'https://ngavbeiochxdvgzcywuh.supaba
 const SUPABASE_ANON_KEY = window.SUPABASE_ANON_KEY || '';
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
+// ── Abrir enlaces externos (WhatsApp, Instagram, etc.) de forma robusta ──
+// En PWAs instaladas (display:"standalone"), muchos navegadores/WebViews de Android
+// bloquean o ignoran silenciosamente window.open(url,'_blank'), dejando los botones
+// sin respuesta. Esta función detecta ese caso y hace fallback a location.href,
+// que el sistema operativo intercepta correctamente para abrir WhatsApp/Instagram.
+function abrirEnlaceExterno(url){
+  if(!url) return;
+  try{
+    const esStandalone = window.matchMedia && window.matchMedia('(display-mode: standalone)').matches
+      || window.navigator.standalone === true;
+    if(esStandalone){
+      window.location.href = url;
+      return;
+    }
+    const ventana = window.open(url, '_blank');
+    if(!ventana){
+      // window.open fue bloqueado por el navegador: usamos fallback
+      window.location.href = url;
+    }
+  }catch(e){
+    window.location.href = url;
+  }
+}
+window.abrirEnlaceExterno = abrirEnlaceExterno;
+
 // ── STUBS: funciones del sistema de referidos (pendientes de implementar) ──
 // Estas funciones se definen aquí para evitar errores si se llaman antes de estar listas.
 function detectarRefEnURL(){
@@ -236,15 +261,15 @@ function renderPage(){
   const ig=document.getElementById('igGrid');ig.innerHTML='';
   (window.IG_POSTS_D||[]).forEach(p=>{
     if(p.imagen){
-      ig.innerHTML+=`<div class="ig-item" style="padding:0;overflow:hidden;position:relative" onclick="window.open('${p.url||NEGOCIO.instagram||'#'}','_blank')">
+      ig.innerHTML+=`<div class="ig-item" style="padding:0;overflow:hidden;position:relative" onclick="abrirEnlaceExterno('${p.url||NEGOCIO.instagram||'#'}')">
         <img src="${p.imagen}" style="width:100%;height:100%;object-fit:cover;display:block" onerror="this.parentElement.innerHTML='<span class=\\'ig-icon\\'>📸</span><span style=\\'font-size:.5rem;color:var(--gray)\\'>Ver post</span>'">
         <div style="position:absolute;bottom:0;left:0;right:0;background:linear-gradient(transparent,rgba(0,0,0,.6));padding:.4rem .3rem;font-size:.45rem;color:#fff;font-family:var(--font-mono);letter-spacing:1px;line-height:1.3;overflow:hidden;max-height:2.5rem">${p.titulo||''}</div>
       </div>`;
     } else {
-      ig.innerHTML+=`<div class="ig-item" onclick="window.open('${p.url||NEGOCIO.instagram||'#'}','_blank')"><span class="ig-icon">📸</span><span style="font-size:.5rem">${p.titulo||'Ver post'}</span></div>`;
+      ig.innerHTML+=`<div class="ig-item" onclick="abrirEnlaceExterno('${p.url||NEGOCIO.instagram||'#'}')"><span class="ig-icon">📸</span><span style="font-size:.5rem">${p.titulo||'Ver post'}</span></div>`;
     }
   });
-  if(!(window.IG_POSTS_D||[]).length)for(let i=0;i<6;i++)ig.innerHTML+=`<div class="ig-item" onclick="window.open('${NEGOCIO.instagram||'#'}','_blank')"><span class="ig-icon">📸</span><span style="font-size:.5rem">Ver post</span></div>`;
+  if(!(window.IG_POSTS_D||[]).length)for(let i=0;i<6;i++)ig.innerHTML+=`<div class="ig-item" onclick="abrirEnlaceExterno('${NEGOCIO.instagram||'#'}')"><span class="ig-icon">📸</span><span style="font-size:.5rem">Ver post</span></div>`;
   document.getElementById('igBtn').href=NEGOCIO.instagram||'#';
 
   document.getElementById('faqList').innerHTML=FAQS_D.map((f,i)=>`<div class="faq-item" id="faq-${i}"><div class="faq-q" onclick="toggleFaq(${i})"><span class="faq-q-text">${f.pregunta}</span><i class="faq-icon">+</i></div><div class="faq-a">${f.respuesta}</div></div>`).join('');
@@ -1059,7 +1084,7 @@ function abrirModal(p,catNombre,catEmoji){
     msg += `\n¿Pueden confirmar disponibilidad? ¡Gracias! 🙏`;
 
     trackWA(p.nombre);
-    window.open(`https://wa.me/${NEGOCIO.whatsapp}?text=${encodeURIComponent(msg)}`, '_blank');
+    abrirEnlaceExterno(`https://wa.me/${NEGOCIO.whatsapp}?text=${encodeURIComponent(msg)}`);
   };
 
   document.getElementById('modalOverlay').classList.add('open');
@@ -1156,7 +1181,7 @@ function abrirPromoModal(realIdx){
   else cdEl.textContent = '';
   // Botón WA
   const msg = `Hola! Me interesa la promo: ${p.nombre} — ${p.descuento} — ${p.precio} 🔥`;
-  document.getElementById('promoModalBuyBtn').onclick = ()=>window.open(`https://wa.me/${NEGOCIO.whatsapp}?text=${encodeURIComponent(msg)}`,'_blank');
+  document.getElementById('promoModalBuyBtn').onclick = ()=>abrirEnlaceExterno(`https://wa.me/${NEGOCIO.whatsapp}?text=${encodeURIComponent(msg)}`);
   document.getElementById('promoModalOverlay').classList.add('open');
   document.body.style.overflow='hidden';
 }
@@ -1175,7 +1200,7 @@ function abrirPaqueteModal(idx){
   document.getElementById('paqueteModalPiezas').textContent = p.piezas;
   document.getElementById('paqueteModalIncluye').textContent = p.incluye;
   const msg = `Hola! Me interesa el paquete de mayoreo: ${p.nombre} (${p.piezas}) - ${p.precio} 🎊`;
-  document.getElementById('paqueteModalBuyBtn').onclick = ()=>window.open(`https://wa.me/${NEGOCIO.whatsapp}?text=${encodeURIComponent(msg)}`,'_blank');
+  document.getElementById('paqueteModalBuyBtn').onclick = ()=>abrirEnlaceExterno(`https://wa.me/${NEGOCIO.whatsapp}?text=${encodeURIComponent(msg)}`);
   document.getElementById('paqueteModalOverlay').classList.add('open');
   document.body.style.overflow='hidden';
 }
@@ -1769,7 +1794,7 @@ function enviarFavoritosWA(){
   if(!_favoritos.length) return;
   var lista = _favoritos.map(function(f){ return '• '+f.nombre+' ($'+f.precio+' MXN)'; }).join('\n');
   var msg = 'Hola! Me interesan estos productos de Sarux:\n\n'+lista+'\n\n¿Me pueden dar más información?';
-  window.open('https://wa.me/'+NEGOCIO.whatsapp+'?text='+encodeURIComponent(msg),'_blank');
+  abrirEnlaceExterno('https://wa.me/'+NEGOCIO.whatsapp+'?text='+encodeURIComponent(msg));
 }
 // ── FIN FAVORITOS ─────────────────────────────────────────────────────────────
 
@@ -1920,7 +1945,7 @@ function pedirPorWhatsApp(){
   }
 
   const msg = `Hola! Quiero hacer el siguiente pedido en SARUX 🛍️%0A%0A${lineas}%0A%0A${resumenTotal}%0A%0A¿Me pueden confirmar disponibilidad?`;
-  window.open(`https://wa.me/${NEGOCIO.whatsapp}?text=${msg}`, '_blank');
+  abrirEnlaceExterno(`https://wa.me/${NEGOCIO.whatsapp}?text=${msg}`);
 
   if(cuponAplicado){
     if(cuponAplicado.esReferido){ try{ if(typeof registrarUsoReferido==='function') registrarUsoReferido(); }catch(e){} }
@@ -2837,7 +2862,7 @@ async function subirFotoCliente(){
     try {
       const wa = window.APP_DATA?.NEGOCIO?.whatsapp || window.NEGOCIO?.whatsapp || '522229250603';
       const msg = `🔔 *Nueva reseña en SARUX*%0A%0A👤 *Cliente:* ${encodeURIComponent(nombre)}%0A🛍️ *Producto:* ${encodeURIComponent(producto)}%0A⭐ *Estrellas:* ${estrellas}/5%0A💬 *Reseña:* ${encodeURIComponent(resena || 'Sin texto')}`;
-      window.open(`https://wa.me/${wa}?text=${msg}`, '_blank');
+      abrirEnlaceExterno(`https://wa.me/${wa}?text=${msg}`);
     } catch(e){}
 
   } catch(e){
@@ -3485,13 +3510,13 @@ function solicitarTarjetaFisica(){
   const perfil = _perfilActual;
   if(!perfil){
     const msg = "Hola! Solicito mi tarjeta de fidelidad SARUX \n\nPrecio de la tarjeta: $" + precio + " MXN";
-    window.open("https://wa.me/"+NEGOCIO.whatsapp+"?text="+encodeURIComponent(msg), "_blank");
+    abrirEnlaceExterno("https://wa.me/"+NEGOCIO.whatsapp+"?text="+encodeURIComponent(msg));
     return;
   }
   const nombre = perfil.nombre || perfil.correo.split("@")[0];
   const idCliente = perfil.uid_sarux || "-";
   const msg = "Hola! Solicito mi tarjeta de fidelidad SARUX \n\nNombre: " + nombre + "\nID de cliente: " + idCliente + "\n\nPrecio de la tarjeta: $" + precio + " MXN";
-  window.open("https://wa.me/"+NEGOCIO.whatsapp+"?text="+encodeURIComponent(msg), "_blank");
+  abrirEnlaceExterno("https://wa.me/"+NEGOCIO.whatsapp+"?text="+encodeURIComponent(msg));
 }
 window.solicitarTarjetaFisica = solicitarTarjetaFisica;
 
@@ -3525,23 +3550,19 @@ function renderRoadmapFidelidad(niveles, nivelActual){
 
 
 
-// ── Botones de fidelidad: listeners robustos para móvil ─────────
+// ── Botones de fidelidad: listeners robustos para móvil y PWA ───
 function _bindBotonFidelidad(id, fn){
   var btn = document.getElementById(id);
   if(!btn) return;
-  var _tocando = false;
-  btn.addEventListener('touchstart', function(e){ _tocando = true; }, {passive:true});
-  btn.addEventListener('touchend', function(e){
-    if(!_tocando) return;
-    _tocando = false;
-    e.preventDefault();
-    e.stopPropagation();
+  var _ultimoToque = 0;
+  function _ejecutar(e){
+    var ahora = Date.now();
+    if(ahora - _ultimoToque < 500) return; // evita doble-disparo touch+click
+    _ultimoToque = ahora;
     fn();
-  });
-  btn.addEventListener('click', function(e){
-    e.stopPropagation();
-    fn();
-  });
+  }
+  btn.addEventListener('touchend', _ejecutar, {passive:true});
+  btn.addEventListener('click', _ejecutar);
 }
 
 document.addEventListener('DOMContentLoaded', function(){
