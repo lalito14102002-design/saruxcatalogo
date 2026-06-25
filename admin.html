@@ -341,6 +341,7 @@
         <button class="admin-nav-btn" onclick="showSec('ticker',this)">📢 Ticker</button>
         <button class="admin-nav-btn" onclick="showSec('suscriptores',this);cargarSuscriptoresAdmin()">📧 Suscriptores</button>
         <button class="admin-nav-btn" onclick="showSec('fidelidad',this);cargarNivelesAdmin()">🏅 Fidelidad</button>
+        <button class="admin-nav-btn" onclick="showSec('tarjetas',this);initTarjetasAdmin()">🪪 Tarjetas</button>
         <button class="admin-nav-btn" onclick="showSec('cupones',this);cargarCuponesAdmin()">🎟️ Cupones</button>
         <button class="admin-nav-btn" onclick="showSec('storage',this);cargarStorage()">💾 Almacenamiento</button>
         <button class="admin-nav-btn" onclick="showSec('nube',this)">☁️ Subir a internet</button>
@@ -1286,6 +1287,114 @@ Casi listo...
         <!-- Lista de suscriptores -->
         <div id="admin-sus-lista">
           <div style="font-family:var(--font-mono);font-size:.6rem;color:var(--gray)">Cargando...</div>
+        </div>
+      </div>
+
+      <!-- ══════════════════════════════════════════════════════════
+           SECCIÓN: TARJETAS DE FIDELIDAD E INVITACIÓN
+           ══════════════════════════════════════════════════════════ -->
+      <div id="sec-tarjetas" class="admin-section">
+        <div class="admin-section-title">🪪 TARJETAS</div>
+        <div class="admin-section-sub">Genera tarjetas de cliente personalizadas y tarjetas de invitación para nuevos miembros. Tamaño: 8 × 5 cm listas para imprimir.</div>
+
+        <!-- Selector tipo -->
+        <div style="display:flex;gap:.5rem;margin-bottom:1rem">
+          <button id="tab-tarjeta-cliente" class="admin-btn" onclick="cambiarTipoTarjeta('cliente')" style="flex:1;justify-content:center;background:rgba(232,25,44,.15);border-color:var(--neon);color:var(--neon)">👤 Tarjeta Cliente</button>
+          <button id="tab-tarjeta-invitacion" class="admin-btn" onclick="cambiarTipoTarjeta('invitacion')" style="flex:1;justify-content:center">✉️ Invitación</button>
+        </div>
+
+        <!-- Formulario cliente -->
+        <div id="form-tarjeta-cliente" style="background:var(--card2);border:1px solid var(--border);padding:1rem;margin-bottom:1rem">
+          <div class="admin-card-title" style="margin-bottom:.8rem">DATOS DEL CLIENTE</div>
+
+          <!-- Buscar suscriptor existente -->
+          <div style="margin-bottom:.8rem">
+            <div class="admin-field-label">BUSCAR CLIENTE (opcional)</div>
+            <div style="display:flex;gap:.4rem">
+              <input id="tarjeta-buscar" class="admin-input" placeholder="Nombre, correo o ID..." style="flex:1"
+                onkeydown="if(event.key==='Enter') buscarClienteTarjeta()">
+              <button class="admin-btn" onclick="buscarClienteTarjeta()">Buscar</button>
+            </div>
+            <div id="tarjeta-buscar-resultados" style="margin-top:.4rem"></div>
+          </div>
+
+          <div style="display:grid;gap:.6rem">
+            <div>
+              <div class="admin-field-label">NOMBRE COMPLETO</div>
+              <input id="tc-nombre" class="admin-input" placeholder="Ej: JUAN PÉREZ" oninput="renderTarjetaAdmin()">
+            </div>
+            <div>
+              <div class="admin-field-label">CORREO ELECTRÓNICO</div>
+              <input id="tc-correo" class="admin-input" placeholder="Ej: juan@correo.com" oninput="renderTarjetaAdmin()">
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem">
+              <div>
+                <div class="admin-field-label">FECHA DE REGISTRO</div>
+                <input id="tc-registro" class="admin-input" type="date" oninput="renderTarjetaAdmin()">
+              </div>
+              <div>
+                <div class="admin-field-label">CUMPLEAÑOS</div>
+                <input id="tc-cumple" class="admin-input" type="date" oninput="renderTarjetaAdmin()">
+              </div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem">
+              <div>
+                <div class="admin-field-label">ID CLIENTE</div>
+                <input id="tc-uid" class="admin-input" placeholder="Ej: SARUX-00042" oninput="renderTarjetaAdmin()">
+              </div>
+              <div>
+                <div class="admin-field-label">NIVEL</div>
+                <select id="tc-nivel" class="admin-input" onchange="renderTarjetaAdmin()">
+                  <option value="BRONCE">🥉 BRONCE</option>
+                  <option value="PLATA">🥈 PLATA</option>
+                  <option value="ORO">🥇 ORO</option>
+                  <option value="DIAMANTE">💎 DIAMANTE</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Info invitación -->
+        <div id="form-tarjeta-invitacion" style="display:none;background:var(--card2);border:1px solid var(--border);padding:1rem;margin-bottom:1rem">
+          <div class="admin-card-title" style="margin-bottom:.5rem">TARJETA DE INVITACIÓN</div>
+          <div style="font-family:var(--font-mono);font-size:.55rem;color:var(--gray);line-height:1.7">
+            La tarjeta incluye automáticamente:<br>
+            ✓ Logo SARUX<br>
+            ✓ Texto de invitación a registrarse<br>
+            ✓ Código QR que dirige a tu página web<br>
+            ✓ Reverso con los niveles de recompensas
+          </div>
+        </div>
+
+        <!-- Previsualizaciones -->
+        <div style="margin-bottom:.8rem">
+          <div class="admin-field-label" style="margin-bottom:.4rem">FRENTE</div>
+          <div style="border:1px solid var(--border);border-radius:4px;overflow:hidden;background:#000">
+            <canvas id="canvas-tarjeta-frente" style="display:block;width:100%;image-rendering:auto"></canvas>
+          </div>
+        </div>
+        <div style="margin-bottom:1rem">
+          <div class="admin-field-label" style="margin-bottom:.4rem">REVERSO</div>
+          <div style="border:1px solid var(--border);border-radius:4px;overflow:hidden;background:#000">
+            <canvas id="canvas-tarjeta-reverso" style="display:block;width:100%;image-rendering:auto"></canvas>
+          </div>
+        </div>
+
+        <!-- Botones descarga -->
+        <div style="display:flex;gap:.5rem;flex-wrap:wrap">
+          <button class="admin-btn" onclick="descargarAmbas()" style="flex:1;justify-content:center;background:var(--neon);color:#000;font-weight:bold">
+            ⬇ DESCARGAR AMBAS CARAS
+          </button>
+        </div>
+        <div style="display:flex;gap:.5rem;margin-top:.4rem">
+          <button class="admin-btn" onclick="descargarTarjetaCara('frente')" style="flex:1;justify-content:center">Solo frente</button>
+          <button class="admin-btn" onclick="descargarTarjetaCara('reverso')" style="flex:1;justify-content:center">Solo reverso</button>
+        </div>
+
+        <div style="font-family:var(--font-mono);font-size:.5rem;color:var(--gray);text-align:center;margin-top:.8rem;line-height:1.7">
+          Imágenes 472 × 295 px = 8 × 5 cm a 150 dpi<br>
+          Recomendado: imprimir en papel fotográfico o cartulina mate
         </div>
       </div>
 
@@ -3944,6 +4053,301 @@ Casi listo...
     if(msg){ msg.textContent = '✅ Banner guardado'; setTimeout(()=>{ msg.textContent=''; }, 2000); }
   }
   // ──────────────────────────────────────────────────────────
+
+  // ── Tarjetas de fidelidad e invitación ────────────────────
+  const TC = {
+    W: 472, H: 295,
+    ROJO: '#e8192c', NEGRO: '#060606', BLANCO: '#ffffff', GRIS: '#888',
+    NIVELES: [
+      { nombre:'BRONCE',   emoji:'🥉', color:'#cd7f32', min:1,  beneficios:['5% descuento en toda compra','Cupón de cumpleaños'] },
+      { nombre:'PLATA',    emoji:'🥈', color:'#aaa9ad', min:5,  beneficios:['10% descuento en toda compra','Cupón de cumpleaños','Acceso a preventa'] },
+      { nombre:'ORO',      emoji:'🥇', color:'#d4af37', min:10, beneficios:['15% descuento en toda compra','Cupón de cumpleaños','Acceso a preventa','Diseño exclusivo gratis'] },
+      { nombre:'DIAMANTE', emoji:'💎', color:'#b9f2ff', min:20, beneficios:['20% descuento en toda compra','Cupón de cumpleaños','Acceso a preventa','Diseño exclusivo gratis','Envío gratis en Puebla'] },
+    ]
+  };
+  let _tipoTarjeta = 'cliente';
+
+  function rrect(ctx, x, y, w, h, r){
+    ctx.beginPath();
+    ctx.moveTo(x+r,y); ctx.lineTo(x+w-r,y); ctx.arcTo(x+w,y,x+w,y+r,r);
+    ctx.lineTo(x+w,y+h-r); ctx.arcTo(x+w,y+h,x+w-r,y+h,r);
+    ctx.lineTo(x+r,y+h); ctx.arcTo(x,y+h,x,y+h-r,r);
+    ctx.lineTo(x,y+r); ctx.arcTo(x,y,x+r,y,r); ctx.closePath();
+  }
+
+  async function tcGetQR(){
+    return new Promise(res=>{
+      const img=new Image(); img.crossOrigin='anonymous';
+      img.onload=()=>res(img); img.onerror=()=>res(null);
+      img.src=`https://api.qrserver.com/v1/create-qr-code/?size=120x120&color=ffffff&bgcolor=060606&data=${encodeURIComponent('https://saruxcatalogo.pages.dev')}`;
+    });
+  }
+
+  async function tcDibujarFrenteCliente(canvas, d){
+    const ctx=canvas.getContext('2d');
+    canvas.width=TC.W; canvas.height=TC.H;
+    // Fondo
+    ctx.fillStyle=TC.NEGRO; ctx.fillRect(0,0,TC.W,TC.H);
+    // Franja roja
+    ctx.fillStyle=TC.ROJO; ctx.fillRect(0,0,6,TC.H);
+    // Degradado
+    const g=ctx.createLinearGradient(0,0,TC.W,TC.H);
+    g.addColorStop(0,'rgba(232,25,44,0.07)'); g.addColorStop(1,'rgba(0,0,0,0)');
+    ctx.fillStyle=g; ctx.fillRect(0,0,TC.W,TC.H);
+    // Logo
+    ctx.fillStyle=TC.BLANCO; ctx.font='bold 32px Arial Black,Arial';
+    ctx.fillText('SARUX',28,52);
+    ctx.fillStyle=TC.ROJO; ctx.beginPath(); ctx.arc(147,44,4,0,Math.PI*2); ctx.fill();
+    // Línea sep
+    ctx.strokeStyle='rgba(232,25,44,0.3)'; ctx.lineWidth=0.5;
+    ctx.beginPath(); ctx.moveTo(28,62); ctx.lineTo(TC.W-28,62); ctx.stroke();
+    // Nivel badge
+    const niv=TC.NIVELES.find(n=>n.nombre===(d.nivel||'BRONCE'))||TC.NIVELES[0];
+    ctx.fillStyle=niv.color; rrect(ctx,TC.W-100,18,80,22,4); ctx.fill();
+    ctx.fillStyle=TC.NEGRO; ctx.font='bold 9px Arial'; ctx.textAlign='center';
+    ctx.fillText(niv.emoji+' '+niv.nombre,TC.W-60,33); ctx.textAlign='left';
+    // Nombre
+    ctx.fillStyle=TC.BLANCO; ctx.font='bold 22px Arial Black,Arial';
+    ctx.fillText((d.nombre||'CLIENTE SARUX').toUpperCase(),28,100);
+    // Correo
+    ctx.fillStyle=TC.GRIS; ctx.font='10px monospace';
+    ctx.fillText(d.correo||'—',28,118);
+    // Chip decorativo
+    ctx.fillStyle='rgba(212,175,55,0.15)'; rrect(ctx,28,132,44,34,4); ctx.fill();
+    ctx.strokeStyle='rgba(212,175,55,0.4)'; ctx.lineWidth=0.8; ctx.stroke();
+    ctx.strokeStyle='rgba(212,175,55,0.25)'; ctx.lineWidth=0.5;
+    for(let i=0;i<3;i++){ctx.beginPath();ctx.moveTo(28,140+i*9);ctx.lineTo(72,140+i*9);ctx.stroke();}
+    ctx.beginPath();ctx.moveTo(50,132);ctx.lineTo(50,166);ctx.stroke();
+    // Campos
+    const campos=[
+      {label:'MIEMBRO DESDE',valor:d.registro||'—'},
+      {label:'CUMPLEAÑOS',valor:d.cumple||'—'},
+      {label:'ID CLIENTE',valor:d.uid||'—'},
+    ];
+    campos.forEach((c,i)=>{
+      const x=90+i*126, y=138;
+      ctx.fillStyle='rgba(255,255,255,0.08)'; rrect(ctx,x,y,116,30,3); ctx.fill();
+      ctx.fillStyle='rgba(232,25,44,0.8)'; ctx.font='7px monospace';
+      ctx.fillText(c.label,x+6,y+11);
+      ctx.fillStyle=TC.BLANCO; ctx.font='bold 10px monospace';
+      ctx.fillText(c.valor,x+6,y+24);
+    });
+    // Línea inferior
+    ctx.fillStyle=TC.ROJO; ctx.fillRect(28,TC.H-52,TC.W-56,1);
+    ctx.fillStyle='rgba(255,255,255,0.3)'; ctx.font='8px monospace';
+    ctx.fillText('DISEÑO · SUBLIMACIÓN · PERSONALIZACIÓN',28,TC.H-36);
+    // Redes sociales dinámicas
+    const neg=window.APP_DATA&&window.APP_DATA.NEGOCIO ? window.APP_DATA.NEGOCIO : {};
+    const wa=neg.whatsapp||''; const ig=neg.instagram||''; const fb=neg.facebook||''; const tt=neg.tiktok_user||neg.tiktok||'';
+    const waNum=wa.replace(/^52/,'').replace(/\D/g,'');
+    const igUser=ig.replace(/.*instagram.com\//,'').replace(/\//,'');
+    const fbUser=fb.replace(/.*facebook.com\//,'').replace(/\//,'');
+    const ttUser=tt.replace('https://tiktok.com/','').replace(/\//,'');
+    const redesTxt=[waNum?'📱 '+waNum:'',igUser?'IG: @'+igUser:'',fbUser?'FB: '+fbUser:'',ttUser?'TT: '+ttUser:''].filter(Boolean).join('  ·  ');
+    ctx.fillStyle='rgba(255,255,255,0.5)'; ctx.font='7.5px monospace';
+    ctx.fillText(redesTxt||'saruxcatalogo.pages.dev',28,TC.H-20);
+    // Borde
+    ctx.strokeStyle='rgba(232,25,44,0.2)'; ctx.lineWidth=1;
+    rrect(ctx,1,1,TC.W-2,TC.H-2,8); ctx.stroke();
+  }
+
+  async function tcDibujarReverso(canvas){
+    const ctx=canvas.getContext('2d');
+    canvas.width=TC.W; canvas.height=TC.H;
+    ctx.fillStyle=TC.NEGRO; ctx.fillRect(0,0,TC.W,TC.H);
+    ctx.fillStyle=TC.ROJO; ctx.fillRect(TC.W-6,0,6,TC.H);
+    // Título
+    ctx.fillStyle=TC.BLANCO; ctx.font='bold 13px Arial Black';
+    ctx.fillText('PROGRAMA DE RECOMPENSAS',20,30);
+    ctx.strokeStyle='rgba(232,25,44,0.4)'; ctx.lineWidth=0.5;
+    ctx.beginPath(); ctx.moveTo(20,38); ctx.lineTo(TC.W-20,38); ctx.stroke();
+    // Niveles
+    TC.NIVELES.forEach((n,i)=>{
+      const col=i%2, row=Math.floor(i/2);
+      const x=20+col*226, y=50+row*112, bw=210, bh=100;
+      ctx.fillStyle='rgba(255,255,255,0.03)'; rrect(ctx,x,y,bw,bh,6); ctx.fill();
+      ctx.strokeStyle=n.color+'44'; ctx.lineWidth=1; ctx.stroke();
+      ctx.fillStyle=n.color; rrect(ctx,x,y,bw,4,6); ctx.fill();
+      ctx.font='12px Arial'; ctx.fillStyle=TC.BLANCO; ctx.fillText(n.emoji,x+10,y+22);
+      ctx.fillStyle=n.color; ctx.font='bold 11px Arial Black';
+      ctx.fillText(n.nombre,x+28,y+22);
+      ctx.fillStyle='rgba(255,255,255,0.35)'; ctx.font='8px monospace';
+      ctx.fillText('Desde '+n.min+' compras',x+10,y+35);
+      n.beneficios.forEach((b,bi)=>{
+        ctx.fillStyle='rgba(255,255,255,0.7)'; ctx.font='8px Arial';
+        ctx.fillText('✓ '+b,x+10,y+50+bi*13);
+      });
+    });
+    // Footer
+    ctx.strokeStyle='rgba(232,25,44,0.3)'; ctx.lineWidth=0.5;
+    ctx.beginPath(); ctx.moveTo(20,TC.H-22); ctx.lineTo(TC.W-20,TC.H-22); ctx.stroke();
+    const neg2=window.APP_DATA&&window.APP_DATA.NEGOCIO ? window.APP_DATA.NEGOCIO : {};
+    const wa2=(neg2.whatsapp||'').replace(/^52/,'').replace(/\D/g,'');
+    const ig2=(neg2.instagram||'').replace(/.*instagram.com\//,'').replace(/\//,'');
+    const tt2=(neg2.tiktok_user||neg2.tiktok||'').replace('https://tiktok.com/','').replace(/\//,'');
+    const fb2=(neg2.facebook||'').replace(/.*facebook.com\//,'').replace(/\//,'');
+    const r2=[wa2?'📱 '+wa2:'',ig2?'@'+ig2:'',fb2?fb2:'',tt2?tt2:''].filter(Boolean).join('  ·  ');
+    ctx.fillStyle='rgba(255,255,255,0.25)'; ctx.font='7px monospace';
+    ctx.textAlign='center';
+    ctx.fillText(r2||'SARUX · saruxcatalogo.pages.dev',TC.W/2,TC.H-10);
+    ctx.textAlign='left';
+    ctx.strokeStyle='rgba(232,25,44,0.2)'; ctx.lineWidth=1;
+    rrect(ctx,1,1,TC.W-2,TC.H-2,8); ctx.stroke();
+  }
+
+  async function tcDibujarInvitacionFrente(canvas){
+    const ctx=canvas.getContext('2d');
+    canvas.width=TC.W; canvas.height=TC.H;
+    ctx.fillStyle=TC.NEGRO; ctx.fillRect(0,0,TC.W,TC.H);
+    ctx.fillStyle=TC.ROJO; ctx.fillRect(0,0,6,TC.H); ctx.fillRect(TC.W-6,0,6,TC.H);
+    const cg=ctx.createRadialGradient(TC.W*.35,TC.H*.5,10,TC.W*.35,TC.H*.5,160);
+    cg.addColorStop(0,'rgba(232,25,44,0.12)'); cg.addColorStop(1,'rgba(0,0,0,0)');
+    ctx.fillStyle=cg; ctx.fillRect(0,0,TC.W,TC.H);
+    ctx.fillStyle=TC.ROJO; ctx.font='bold 48px Arial Black,Arial';
+    ctx.textAlign='center'; ctx.fillText('SARUX',TC.W/2,72);
+    ctx.fillStyle='rgba(255,255,255,0.5)'; ctx.font='9px monospace';
+    ctx.fillText('DISEÑO · SUBLIMACIÓN · PERSONALIZACIÓN',TC.W/2,92);
+    ctx.strokeStyle='rgba(232,25,44,0.5)'; ctx.lineWidth=0.8;
+    ctx.beginPath(); ctx.moveTo(60,104); ctx.lineTo(TC.W-60,104); ctx.stroke();
+    ctx.fillStyle=TC.BLANCO; ctx.font='bold 16px Arial Black';
+    ctx.fillText('¡ÚNETE AL CLUB SARUX!',TC.W/2,132);
+    ctx.fillStyle='rgba(255,255,255,0.6)'; ctx.font='10px Arial';
+    ctx.fillText('Regístrate y accede a descuentos exclusivos,',TC.W/2,152);
+    ctx.fillText('cupones de cumpleaños y recompensas por compra.',TC.W/2,167);
+    ctx.fillStyle='rgba(232,25,44,0.1)'; rrect(ctx,TC.W/2-85,180,170,24,4); ctx.fill();
+    ctx.strokeStyle='rgba(232,25,44,0.4)'; ctx.lineWidth=0.5; ctx.stroke();
+    ctx.fillStyle=TC.ROJO; ctx.font='bold 9px monospace';
+    ctx.fillText('↓ ESCANEA Y REGÍSTRATE ↓',TC.W/2,196);
+    const qr=await tcGetQR();
+    if(qr){ ctx.drawImage(qr,TC.W/2-35,210,70,70); }
+    else {
+      ctx.fillStyle='rgba(255,255,255,0.1)'; rrect(ctx,TC.W/2-35,210,70,70,4); ctx.fill();
+      ctx.fillStyle=TC.BLANCO; ctx.font='8px monospace';
+      ctx.fillText('QR CODE',TC.W/2,248);
+    }
+    // Footer redes en invitación
+    const neg3=window.APP_DATA&&window.APP_DATA.NEGOCIO ? window.APP_DATA.NEGOCIO : {};
+    const wa3=(neg3.whatsapp||'').replace(/^52/,'').replace(/\D/g,'');
+    const ig3=(neg3.instagram||'').replace(/.*instagram.com\//,'').replace(/\//,'');
+    const tt3=(neg3.tiktok_user||neg3.tiktok||'').replace('https://tiktok.com/','').replace(/\//,'');
+    const fb3=(neg3.facebook||'').replace(/.*facebook.com\//,'').replace(/\//,'');
+    const r3=[wa3?'📱 '+wa3:'',ig3?'IG @'+ig3:'',fb3?'FB '+fb3:'',tt3?'TT '+tt3:''].filter(Boolean).join('  ·  ');
+    ctx.fillStyle='rgba(255,255,255,0.4)'; ctx.font='7px monospace';
+    ctx.textAlign='center';
+    ctx.fillText(r3||'saruxcatalogo.pages.dev',TC.W/2,TC.H-8);
+    ctx.textAlign='left';
+    ctx.strokeStyle='rgba(232,25,44,0.2)'; ctx.lineWidth=1;
+    rrect(ctx,1,1,TC.W-2,TC.H-2,8); ctx.stroke();
+  }
+
+  async function renderTarjetaAdmin(){
+    const cf=document.getElementById('canvas-tarjeta-frente');
+    const cr=document.getElementById('canvas-tarjeta-reverso');
+    if(!cf||!cr) return;
+    const datos={
+      nombre:   (document.getElementById('tc-nombre')||{}).value||'',
+      correo:   (document.getElementById('tc-correo')||{}).value||'',
+      registro: (document.getElementById('tc-registro')||{}).value||'',
+      cumple:   (document.getElementById('tc-cumple')||{}).value||'',
+      uid:      (document.getElementById('tc-uid')||{}).value||'',
+      nivel:    (document.getElementById('tc-nivel')||{}).value||'BRONCE',
+    };
+    if(_tipoTarjeta==='cliente') await tcDibujarFrenteCliente(cf,datos);
+    else await tcDibujarInvitacionFrente(cf);
+    await tcDibujarReverso(cr);
+  }
+
+  async function initTarjetasAdmin(){
+    // Cargar niveles desde Supabase (siempre frescos)
+    try{
+      const {data} = await sb.from('fidelidad_niveles').select('*').order('orden',{ascending:true});
+      if(data && data.length){
+        TC.NIVELES = data.map(n=>{
+          const beneficios = Array.isArray(n.beneficios)
+            ? n.beneficios.map(b=> typeof b==='string' ? b : b.texto)
+            : JSON.parse(n.beneficios||'[]').map(b=> typeof b==='string' ? b : b.texto);
+          return {
+            nombre:   (n.nombre||'').toUpperCase(),
+            emoji:    n.emoji||'⭐',
+            color:    n.color||'#888',
+            min:      n.min_compras||1,
+            beneficios
+          };
+        });
+        // Actualizar el select de niveles con los reales
+        const sel=document.getElementById('tc-nivel');
+        if(sel){
+          sel.innerHTML=TC.NIVELES.map(n=>`<option value="${n.nombre}">${n.emoji} ${n.nombre}</option>`).join('');
+        }
+      }
+    }catch(e){ console.warn('Niveles desde defaults',e); }
+    // Valores por defecto
+    const hoy=new Date().toISOString().slice(0,10);
+    const ni=document.getElementById('tc-nombre'); if(ni&&!ni.value) ni.value='';
+    const ri=document.getElementById('tc-registro'); if(ri&&!ri.value) ri.value=hoy;
+    renderTarjetaAdmin();
+  }
+
+  function cambiarTipoTarjeta(tipo){
+    _tipoTarjeta=tipo;
+    document.getElementById('form-tarjeta-cliente').style.display=tipo==='cliente'?'block':'none';
+    document.getElementById('form-tarjeta-invitacion').style.display=tipo==='invitacion'?'block':'none';
+    const bc=document.getElementById('tab-tarjeta-cliente');
+    const bi=document.getElementById('tab-tarjeta-invitacion');
+    if(bc){ bc.style.background=tipo==='cliente'?'rgba(232,25,44,.15)':''; bc.style.borderColor=tipo==='cliente'?'var(--neon)':''; bc.style.color=tipo==='cliente'?'var(--neon)':''; }
+    if(bi){ bi.style.background=tipo==='invitacion'?'rgba(232,25,44,.15)':''; bi.style.borderColor=tipo==='invitacion'?'var(--neon)':''; bi.style.color=tipo==='invitacion'?'var(--neon)':''; }
+    renderTarjetaAdmin();
+  }
+
+  function descargarTarjetaCara(cara){
+    const id=cara==='frente'?'canvas-tarjeta-frente':'canvas-tarjeta-reverso';
+    const c=document.getElementById(id); if(!c) return;
+    const a=document.createElement('a');
+    a.download=`sarux_tarjeta_${_tipoTarjeta}_${cara}.png`;
+    a.href=c.toDataURL('image/png',1.0); a.click();
+  }
+
+  function descargarAmbas(){
+    descargarTarjetaCara('frente');
+    setTimeout(()=>descargarTarjetaCara('reverso'),350);
+  }
+
+  async function buscarClienteTarjeta(){
+    const q=(document.getElementById('tarjeta-buscar').value||'').trim().toLowerCase();
+    const wrap=document.getElementById('tarjeta-buscar-resultados');
+    if(!q||!wrap) return;
+    wrap.innerHTML='<div style="font-family:var(--font-mono);font-size:.55rem;color:var(--gray)">Buscando...</div>';
+    const {data}=await sb.from('suscriptores').select('*').limit(50);
+    if(!data||!data.length){ wrap.innerHTML='<div style="font-family:var(--font-mono);font-size:.55rem;color:var(--gray)">Sin resultados</div>'; return; }
+    const matches=data.filter(s=>(s.nombre||'').toLowerCase().includes(q)||(s.correo||'').toLowerCase().includes(q)||(s.uid_sarux||'').toLowerCase().includes(q));
+    if(!matches.length){ wrap.innerHTML='<div style="font-family:var(--font-mono);font-size:.55rem;color:var(--gray)">No encontrado</div>'; return; }
+    wrap.innerHTML=matches.slice(0,5).map(s=>`
+      <div onclick="cargarClienteEnTarjeta(${JSON.stringify(s).replace(/"/g,'&quot;')})"
+        style="background:var(--card2);border:1px solid var(--border);padding:.5rem .7rem;margin-top:.3rem;cursor:pointer;font-family:var(--font-mono);font-size:.6rem">
+        <span style="color:var(--white)">${s.nombre||'Sin nombre'}</span>
+        <span style="color:var(--gray);margin-left:.5rem">${s.correo||''}</span>
+        <span style="color:var(--neon);margin-left:.5rem">${s.uid_sarux||''}</span>
+      </div>`).join('');
+  }
+
+  function cargarClienteEnTarjeta(s){
+    document.getElementById('tc-nombre').value=s.nombre||'';
+    document.getElementById('tc-correo').value=s.correo||'';
+    document.getElementById('tc-registro').value=(s.created_at||'').slice(0,10);
+    document.getElementById('tc-cumple').value=s.cumpleanos||'';
+    document.getElementById('tc-uid').value=s.uid_sarux||'';
+    // Nivel — calcular desde compras
+    const c=s.compras||0;
+    let nivel='BRONCE';
+    if(c>=20) nivel='DIAMANTE';
+    else if(c>=10) nivel='ORO';
+    else if(c>=5) nivel='PLATA';
+    document.getElementById('tc-nivel').value=nivel;
+    document.getElementById('tarjeta-buscar-resultados').innerHTML=
+      '<div style="font-family:var(--font-mono);font-size:.55rem;color:var(--neon)">✅ Cliente cargado</div>';
+    renderTarjetaAdmin();
+  }
+  // ─────────────────────────────────────────────────────────────
 
   function loadIconoPreview(red){
     const key='icono_'+red; const url=NEGOCIO[key]; const prev=document.getElementById('prev-icono-'+red);
