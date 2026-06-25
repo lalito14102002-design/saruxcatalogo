@@ -4176,8 +4176,8 @@ Casi listo...
     ctx.fillStyle='rgba(212,175,55,0.15)'; rrect(ctx,28,140,44,34,4); ctx.fill();
     ctx.strokeStyle='rgba(212,175,55,0.4)'; ctx.lineWidth=0.8; ctx.stroke();
     ctx.strokeStyle='rgba(212,175,55,0.25)'; ctx.lineWidth=0.5;
-    for(let i=0;i<3;i++){ctx.beginPath();ctx.moveTo(28,140+i*9);ctx.lineTo(72,140+i*9);ctx.stroke();}
-    ctx.beginPath();ctx.moveTo(50,132);ctx.lineTo(50,166);ctx.stroke();
+    for(let i=1;i<4;i++){ctx.beginPath();ctx.moveTo(28,140+i*8.5);ctx.lineTo(72,140+i*8.5);ctx.stroke();}
+    ctx.beginPath();ctx.moveTo(50,140);ctx.lineTo(50,174);ctx.stroke();
     // Campos (grid 2x2: incluye vigencia calculada al momento de generar/descargar)
     const vigenciaTexto = tcCalcularVigencia();
     const campos=[
