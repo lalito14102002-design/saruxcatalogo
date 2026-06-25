@@ -3524,13 +3524,27 @@ function renderRoadmapFidelidad(niveles, nivelActual){
 
 
 
-// ── Asegurar que los botones de fidelidad funcionen en móvil ─────────
+
+// ── Botones de fidelidad: listeners robustos para móvil ─────────
+function _bindBotonFidelidad(id, fn){
+  var btn = document.getElementById(id);
+  if(!btn) return;
+  var _tocando = false;
+  btn.addEventListener('touchstart', function(e){ _tocando = true; }, {passive:true});
+  btn.addEventListener('touchend', function(e){
+    if(!_tocando) return;
+    _tocando = false;
+    e.preventDefault();
+    e.stopPropagation();
+    fn();
+  });
+  btn.addEventListener('click', function(e){
+    e.stopPropagation();
+    fn();
+  });
+}
+
 document.addEventListener('DOMContentLoaded', function(){
-  // Agregar listeners directos como respaldo al onclick
-  setTimeout(function(){
-    var btnTerminos = document.querySelector('[onclick="abrirTerminosFidelidad()"]');
-    var btnTarjeta = document.querySelector('[onclick="solicitarTarjetaFisica()"]');
-    if(btnTerminos){ btnTerminos.addEventListener('click', function(e){ e.preventDefault(); abrirTerminosFidelidad(); }); }
-    if(btnTarjeta){ btnTarjeta.addEventListener('click', function(e){ e.preventDefault(); solicitarTarjetaFisica(); }); }
-  }, 2000);
+  _bindBotonFidelidad('btn-terminos-fidelidad', function(){ abrirTerminosFidelidad(); });
+  _bindBotonFidelidad('btn-solicitar-tarjeta', function(){ solicitarTarjetaFisica(); });
 });
