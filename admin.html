@@ -122,7 +122,6 @@
 </style>
 <!-- SDK de Supabase -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script>
   let _beneficioCount = 0;
 
@@ -4111,25 +4110,56 @@ Casi listo...
     return `${dd}/${mm}/${yyyy}`;
   }
 
-  async function tcGetQR(){
-    return new Promise(res=>{
-      try{
-        const div=document.createElement("div");
-        div.style.cssText="position:absolute;left:-9999px;top:-9999px;width:120px;height:120px";
-        document.body.appendChild(div);
-        new QRCode(div,{text:"https://saruxcatalogo.pages.dev",width:120,height:120,colorDark:"#ffffff",colorLight:"#060606",correctLevel:QRCode.CorrectLevel.H});
-        setTimeout(function(){
-          const img=div.querySelector("img")||div.querySelector("canvas");
-          if(!img){document.body.removeChild(div);res(null);return;}
-          const out=new Image();
-          if(img.tagName==="CANVAS"){out.src=img.toDataURL();}
-          else{out.src=img.src;}
-          out.onload=function(){document.body.removeChild(div);res(out);};
-          out.onerror=function(){document.body.removeChild(div);res(null);};
-        },300);
-      }catch(e){res(null);}
-    });
+  // Dibuja QR directamente en el canvas destino — sin librerías externas ni CORS
+  function tcDrawQR(ctx, x, y, size, darkColor, lightColor){
+    // Matriz QR hardcodeada para "https://saruxcatalogo.pages.dev" (Version 4, ECC M)
+    // Generada offline — siempre funciona sin internet ni CORS
+    const M=[
+      [1,1,1,1,1,1,1,0,0,0,1,1,0,0,1,0,0,0,0,1,0,0,1,1,1,1,1,1,1],
+      [1,0,0,0,0,0,1,0,0,0,1,0,1,0,0,0,1,1,0,0,0,0,1,0,0,0,0,0,1],
+      [1,0,1,1,1,0,1,0,0,1,1,1,1,0,1,1,0,1,1,1,1,0,1,0,1,1,1,0,1],
+      [1,0,1,1,1,0,1,0,0,0,0,0,0,1,0,0,1,0,1,0,0,0,1,0,1,1,1,0,1],
+      [1,0,1,1,1,0,1,0,0,1,0,1,0,0,0,0,0,0,1,0,1,0,1,0,1,1,1,0,1],
+      [1,0,0,0,0,0,1,0,1,0,0,1,1,0,0,1,1,0,0,1,0,0,1,0,0,0,0,0,1],
+      [1,1,1,1,1,1,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,1,1,1,1,1,1],
+      [0,0,0,0,0,0,0,0,0,1,1,0,1,1,0,1,1,1,1,1,1,0,0,0,0,0,0,0,0],
+      [1,0,0,1,0,1,1,0,1,0,1,0,1,0,1,0,1,0,0,1,0,1,0,1,0,0,0,0,0],
+      [1,1,1,1,1,1,0,0,1,0,0,0,0,1,0,1,1,1,0,0,1,0,1,0,0,1,0,0,1],
+      [1,1,0,1,1,0,1,1,0,1,0,1,0,1,1,1,0,1,0,1,0,0,1,1,1,1,1,1,0],
+      [0,1,0,0,0,1,0,1,1,1,0,0,1,1,0,0,1,0,1,0,0,1,0,1,0,0,1,1,0],
+      [0,1,0,0,0,1,1,1,0,0,1,1,0,0,1,1,0,1,0,0,1,1,1,1,0,1,0,1,1],
+      [1,0,0,1,0,0,0,1,0,1,0,1,1,1,1,1,1,1,0,1,1,1,0,0,0,0,0,0,0],
+      [0,1,1,1,1,0,1,1,0,1,0,1,0,1,1,0,0,1,0,0,1,0,1,1,0,1,1,1,1],
+      [0,1,1,0,1,1,0,1,1,1,1,1,1,0,0,1,0,1,1,0,1,0,1,1,0,1,0,1,0],
+      [1,1,0,1,1,1,1,0,0,1,0,0,0,1,0,0,0,1,0,0,1,1,0,1,0,0,0,1,0],
+      [0,1,1,0,1,1,0,0,0,1,0,0,0,1,1,1,1,0,1,0,0,1,1,1,0,1,0,0,1],
+      [1,0,0,0,0,1,1,1,1,0,1,0,1,0,1,1,1,1,1,0,1,0,1,1,1,0,0,1,1],
+      [0,0,1,1,1,1,0,1,1,0,0,0,0,0,1,0,0,1,1,0,1,0,1,1,0,0,0,1,1],
+      [1,0,0,0,0,1,1,0,1,0,0,1,1,0,0,1,1,0,1,1,1,1,1,1,1,0,1,0,0],
+      [0,0,0,0,0,0,0,0,1,0,1,1,1,0,1,1,0,0,0,1,1,0,0,0,1,0,1,1,1],
+      [1,1,1,1,1,1,1,0,0,0,1,1,0,0,0,0,0,1,0,0,1,0,1,0,1,0,0,1,0],
+      [1,0,0,0,0,0,1,0,1,0,1,1,0,0,1,0,1,0,0,0,1,0,0,0,1,1,1,0,1],
+      [1,0,1,1,1,0,1,0,0,1,0,1,1,0,0,0,0,1,0,0,1,1,1,1,1,0,0,1,0],
+      [1,0,1,1,1,0,1,0,1,1,1,1,1,1,0,0,0,1,0,1,0,0,1,1,1,1,1,0,1],
+      [1,0,1,1,1,0,1,0,0,0,0,0,1,1,1,0,0,1,0,0,0,1,0,0,1,1,1,0,1],
+      [1,0,0,0,0,0,1,0,0,0,1,0,1,0,0,1,1,1,0,1,1,0,0,0,1,0,0,1,0],
+      [1,1,1,1,1,1,1,0,1,0,0,0,0,0,0,0,0,1,0,0,1,0,0,0,1,0,0,1,0]
+    ];
+    const n=M.length;
+    const cell=size/n;
+    ctx.fillStyle=lightColor;
+    ctx.fillRect(x,y,size,size);
+    ctx.fillStyle=darkColor;
+    for(let r=0;r<n;r++){
+      for(let c=0;c<n;c++){
+        if(M[r][c]===1){
+          ctx.fillRect(x+c*cell, y+r*cell, cell, cell);
+        }
+      }
+    }
   }
+
+  async function tcGetQR(){ return null; } // legacy — usar tcDrawQR directo
 
   async function tcDibujarFrenteCliente(canvas, d){
     const DPR = 2; // Render at 2x for crisp display
@@ -4150,32 +4180,31 @@ Casi listo...
       const logoImg = new Image();
       logoImg.crossOrigin = 'anonymous';
       logoImg.onload = () => {
-        // El logo es cuadrado 1080x1080, mostrarlo a ~38px de alto
-        const logoH = 38, logoW = logoImg.width * (logoH / logoImg.height);
-        ctx.drawImage(logoImg, 28, 14, logoW, logoH);
+        // Logo grande centrado arriba
+        const logoH = 70, logoW = logoImg.width * (logoH / logoImg.height);
+        ctx.drawImage(logoImg, TC.W/2 - logoW/2, 6, logoW, logoH);
         res();
       };
       logoImg.onerror = () => {
-        // Fallback texto
-        ctx.fillStyle=TC.BLANCO; ctx.font='bold 32px Arial Black,Arial';
-        ctx.fillText('SARUX',28,52);
-        ctx.fillStyle=TC.ROJO; ctx.beginPath(); ctx.arc(147,44,4,0,Math.PI*2); ctx.fill();
+        ctx.fillStyle=TC.BLANCO; ctx.font='bold 52px Arial Black,Arial';
+        ctx.textAlign='center';
+        ctx.fillText('SARUX', TC.W/2, 62);
+        ctx.textAlign='left';
         res();
       };
       logoImg.src = '/sarux-logo.png';
     });
     // Línea sep
     ctx.strokeStyle='rgba(232,25,44,0.3)'; ctx.lineWidth=0.5;
-    ctx.beginPath(); ctx.moveTo(28,62); ctx.lineTo(TC.W-28,62); ctx.stroke();
-    // (nivel badge removido)
+    ctx.beginPath(); ctx.moveTo(28,82); ctx.lineTo(TC.W-28,82); ctx.stroke();
     // Nombre
     ctx.fillStyle=TC.BLANCO; ctx.font='bold 22px Arial Black,Arial';
-    ctx.fillText((d.nombre||'CLIENTE SARUX').toUpperCase(),28,100);
+    ctx.fillText((d.nombre||'CLIENTE SARUX').toUpperCase(),28,110);
     // Correo
     ctx.fillStyle=TC.GRIS; ctx.font='10px monospace';
-    ctx.fillText(d.correo||'—',28,118);
+    ctx.fillText(d.correo||'—',28,127);
     // Chip decorativo
-    ctx.fillStyle='rgba(212,175,55,0.15)'; rrect(ctx,28,132,44,34,4); ctx.fill();
+    ctx.fillStyle='rgba(212,175,55,0.15)'; rrect(ctx,28,140,44,34,4); ctx.fill();
     ctx.strokeStyle='rgba(212,175,55,0.4)'; ctx.lineWidth=0.8; ctx.stroke();
     ctx.strokeStyle='rgba(212,175,55,0.25)'; ctx.lineWidth=0.5;
     for(let i=0;i<3;i++){ctx.beginPath();ctx.moveTo(28,140+i*9);ctx.lineTo(72,140+i*9);ctx.stroke();}
@@ -4202,10 +4231,8 @@ Casi listo...
     const lineaY=gridY+2*colH+gapY+8;
     ctx.fillStyle=TC.ROJO; ctx.fillRect(28,lineaY,TC.W-56,1);
     // QR pequeño a la derecha (lleva a la página web) + nota de términos a la izquierda
-    const qr=await tcGetQR();
     const qrSize=46, qrX=TC.W-28-qrSize, qrY=lineaY+10;
-    if(qr){ ctx.drawImage(qr,qrX,qrY,qrSize,qrSize); }
-    else { ctx.fillStyle='rgba(255,255,255,0.1)'; rrect(ctx,qrX,qrY,qrSize,qrSize,3); ctx.fill(); }
+    tcDrawQR(ctx, qrX, qrY, qrSize, '#ffffff', '#060606');
     ctx.fillStyle='rgba(255,255,255,0.35)'; ctx.font='6px monospace'; ctx.textAlign='center';
     ctx.fillText('ESCANEA',qrX+qrSize/2,qrY+qrSize+10);
     ctx.textAlign='left';
@@ -4311,56 +4338,62 @@ Casi listo...
     ctx.fillStyle = cg;
     ctx.fillRect(0, 0, TC.W, TC.H);
 
-    // LOGO SARUX GRANDE
-    ctx.textAlign = 'center';
-    ctx.fillStyle = TC.ROJO;
-    ctx.font = 'bold 72px Arial Black, Arial';
-    ctx.fillText('SARUX', TC.W / 2, 80);
+    // LOGO SARUX GRANDE (imagen real)
+    await new Promise(res => {
+      const logoImg = new Image();
+      logoImg.crossOrigin = 'anonymous';
+      logoImg.onload = () => {
+        const logoH = 90, logoW = logoImg.width * (logoH / logoImg.height);
+        ctx.drawImage(logoImg, TC.W/2 - logoW/2, 4, logoW, logoH);
+        res();
+      };
+      logoImg.onerror = () => {
+        ctx.textAlign = 'center';
+        ctx.fillStyle = TC.ROJO;
+        ctx.font = 'bold 72px Arial Black, Arial';
+        ctx.fillText('SARUX', TC.W / 2, 80);
+        res();
+      };
+      logoImg.src = '/sarux-logo.png';
+    });
 
     // Subtítulo
+    ctx.textAlign = 'center';
     ctx.fillStyle = 'rgba(255,255,255,0.45)';
     ctx.font = '8.5px monospace';
-    ctx.fillText('DISEÑO  ·  SUBLIMACIÓN  ·  PERSONALIZACIÓN', TC.W / 2, 98);
+    ctx.fillText('DISEÑO  ·  SUBLIMACIÓN  ·  PERSONALIZACIÓN', TC.W / 2, 103);
 
     // Línea divisoria
     ctx.strokeStyle = 'rgba(232,25,44,0.5)';
     ctx.lineWidth = 0.8;
-    ctx.beginPath(); ctx.moveTo(50, 110); ctx.lineTo(TC.W - 50, 110); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(50, 114); ctx.lineTo(TC.W - 50, 114); ctx.stroke();
 
     // Título invitación
     ctx.fillStyle = TC.BLANCO;
     ctx.font = 'bold 15px Arial Black, Arial';
-    ctx.fillText('¡ÚNETE AL CLUB SARUX!', TC.W / 2, 132);
+    ctx.fillText('¡ÚNETE AL CLUB SARUX!', TC.W / 2, 140);
 
     // Descripción
     ctx.fillStyle = 'rgba(255,255,255,0.6)';
     ctx.font = '9.5px Arial';
-    ctx.fillText('Regístrate y accede a descuentos exclusivos,', TC.W / 2, 150);
-    ctx.fillText('cupones de cumpleaños y recompensas por compra.', TC.W / 2, 164);
+    ctx.fillText('Regístrate y accede a descuentos exclusivos,', TC.W / 2, 157);
+    ctx.fillText('cupones de cumpleaños y recompensas por compra.', TC.W / 2, 170);
 
     // Botón escanea
     ctx.fillStyle = 'rgba(232,25,44,0.15)';
-    rrect(ctx, TC.W / 2 - 90, 175, 180, 22, 4); ctx.fill();
+    rrect(ctx, TC.W / 2 - 90, 180, 180, 22, 4); ctx.fill();
     ctx.strokeStyle = 'rgba(232,25,44,0.5)'; ctx.lineWidth = 0.8; ctx.stroke();
     ctx.fillStyle = TC.ROJO;
     ctx.font = 'bold 8.5px monospace';
-    ctx.fillText('↓  ESCANEA Y REGÍSTRATE  ↓', TC.W / 2, 190);
+    ctx.fillText('↓  ESCANEA Y REGÍSTRATE  ↓', TC.W / 2, 195);
 
-    // QR
-    const qr = await tcGetQR();
-    const qrSize = 74, qrX = TC.W / 2 - qrSize / 2, qrY = 200;
-    if (qr) {
-      ctx.drawImage(qr, qrX, qrY, qrSize, qrSize);
-    } else {
-      ctx.fillStyle = 'rgba(255,255,255,0.1)';
-      rrect(ctx, qrX, qrY, qrSize, qrSize, 4); ctx.fill();
-      ctx.fillStyle = TC.BLANCO; ctx.font = '8px monospace';
-      ctx.fillText('QR CODE', TC.W / 2, qrY + qrSize / 2);
-    }
+    // QR — generado directamente en canvas sin dependencias externas
+    const qrSize = 68, qrX = TC.W / 2 - qrSize / 2, qrY = 204;
+    tcDrawQR(ctx, qrX, qrY, qrSize, '#ffffff', '#060606');
     // URL debajo del QR
     ctx.fillStyle = 'rgba(255,255,255,0.3)';
     ctx.font = '6.5px monospace';
-    ctx.fillText('saruxcatalogo.pages.dev', TC.W / 2, qrY + qrSize + 10);
+    ctx.fillText('saruxcatalogo.pages.dev', TC.W / 2, qrY + qrSize + 9);
 
     // Redes sociales con iconos — fila inferior
     const neg = window.APP_DATA && window.APP_DATA.NEGOCIO ? window.APP_DATA.NEGOCIO : {};
