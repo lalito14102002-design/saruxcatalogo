@@ -340,7 +340,7 @@
         <button class="admin-nav-btn" onclick="showSec('pasos',this)">👣 Cómo pedir</button>
         <button class="admin-nav-btn" onclick="showSec('ticker',this)">📢 Ticker</button>
         <button class="admin-nav-btn" onclick="showSec('suscriptores',this);cargarSuscriptoresAdmin()">📧 Suscriptores</button>
-        <button class="admin-nav-btn" onclick="showSec('fidelidad',this);cargarNivelesAdmin();cargarTerminosFidelidad()">🏅 Fidelidad</button>
+        <button class="admin-nav-btn" onclick="showSec('fidelidad',this);cargarNivelesAdmin();cargarTerminosFidelidad();cargarPrecioTarjeta()">🏅 Fidelidad</button>
         <button class="admin-nav-btn" onclick="showSec('tarjetas',this);initTarjetasAdmin()">🪪 Tarjetas</button>
         <button class="admin-nav-btn" onclick="showSec('cupones',this);cargarCuponesAdmin()">🎟️ Cupones</button>
         <button class="admin-nav-btn" onclick="showSec('storage',this);cargarStorage()">💾 Almacenamiento</button>
@@ -1456,6 +1456,18 @@ Casi listo...
         <div class="admin-card-title" style="margin-bottom:.8rem">📋 NIVELES ACTUALES</div>
         <div id="admin-niveles-lista">
           <div style="font-family:var(--font-mono);font-size:.6rem;color:var(--gray)">Cargando...</div>
+        </div>
+
+        <!-- Precio de la tarjeta de fidelidad -->
+        <div style="background:var(--card2);border:1px solid var(--border);padding:1.2rem;margin-top:1.5rem">
+          <div class="admin-card-title" style="margin-bottom:.4rem">💳 PRECIO DE LA TARJETA DE FIDELIDAD</div>
+          <div style="font-family:var(--font-mono);font-size:.55rem;color:var(--gray);margin-bottom:.8rem;line-height:1.6">
+            Este precio aparece en el mensaje de WhatsApp cuando un cliente solicita su tarjeta.
+          </div>
+          <div class="admin-field-label">PRECIO (MXN)</div>
+          <input id="fidelidad-precio-edit" type="number" min="0" class="admin-input" placeholder="30" style="width:140px;margin-bottom:.8rem">
+          <div id="fidelidad-precio-msg" style="font-family:var(--font-mono);font-size:.6rem;color:var(--neon);min-height:.9rem;margin:.6rem 0"></div>
+          <button class="admin-btn" onclick="guardarPrecioTarjeta()" style="justify-content:center;background:var(--neon);color:#000;font-weight:bold">💾 Guardar precio</button>
         </div>
 
         <!-- Términos y condiciones de la tarjeta de fidelidad -->
@@ -4622,6 +4634,25 @@ function actualizarStockHint(val){
 </body>
 </html><script>
 // ── Fidelidad Admin ──────────────────────────────────────
+// ── Precio de la tarjeta de fidelidad ──────
+function cargarPrecioTarjeta(){
+  const inp = document.getElementById("fidelidad-precio-edit");
+  if(!inp) return;
+  inp.value = (APP_DATA && APP_DATA.FIDELIDAD_PRECIO) || DEFAULTS.FIDELIDAD_PRECIO || 30;
+}
+
+async function guardarPrecioTarjeta(){
+  const inp = document.getElementById("fidelidad-precio-edit");
+  const msg = document.getElementById("fidelidad-precio-msg");
+  if(!inp) return;
+  const precio = parseInt(inp.value) || 30;
+  APP_DATA.FIDELIDAD_PRECIO = precio;
+  const { error } = await sb.from("site_config").upsert({ id: 1, config_data: APP_DATA, updated_at: new Date() });
+  if(error){ if(msg) msg.textContent = "❌ Error al guardar"; return; }
+  try { localStorage.removeItem("sarux_cfg"); } catch(e){}
+  if(msg){ msg.textContent = "✅ Precio guardado ($" + precio + " MXN)"; setTimeout(()=>{ msg.textContent=""; }, 2500); }
+}
+
 // ── Términos y condiciones de la tarjeta de fidelidad ──────
 function cargarTerminosFidelidad(){
   const ta = document.getElementById('fidelidad-terminos-edit');

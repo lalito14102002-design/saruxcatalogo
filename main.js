@@ -54,6 +54,7 @@ const DEFAULTS = {
   LLUVIA_CONFIG:{activa:false,cantidad:20,velocidad:2,espera:0},
   FOTOS_CLIENTES_CFG:{activo:true,titulo:"FOTOS REALES",subtitulo:"Clientes reales, resultados reales"},
   PWA_BANNER:{activo:false,titulo:"📲 DESCARGA LA APP",mensaje:"Instala SARUX y obtén 10% de descuento en tu primera compra 🎁"},
+  FIDELIDAD_PRECIO:30,
   FIDELIDAD_TERMINOS:"TÉRMINOS Y CONDICIONES — TARJETA DE FIDELIDAD SARUX\n\nAdquisición y Reposición de la Tarjeta\n1. La tarjeta de fidelidad Sarux tiene un costo de $30 MXN.\n2. Es obligatorio presentar la tarjeta física en cada compra para acumular y hacer válidos los beneficios. Sin tarjeta no se registra la compra.\n3. En caso de pérdida o daño, la reposición tiene un costo de $50 MXN.\n4. La tarjeta es personal e intransferible.\n5. Cada cliente puede tener únicamente una cuenta activa vinculada a su correo electrónico.\n\nAcumulación de Compras\n6. Las compras se registran únicamente al presentar la tarjeta física al momento del pedido. No se aplican compras anteriores de forma retroactiva.\n7. Los pedidos realizados sin tarjeta o como invitado no acumulan compras.\n8. Las compras canceladas o con devolución no cuentan para acumular.\n9. Los errores en el registro de compras deben reportarse en un máximo de 7 días posteriores al pedido.\n\nVigencia\n10. Los puntos acumulados tienen una vigencia de 6 meses a partir de la entrega de la tarjeta. Al vencer este plazo, el contador regresa a cero.\n11. Los beneficios de cada nivel aplican únicamente mientras el cliente mantenga el nivel activo.\n\nBeneficios y Descuentos\n12. Los descuentos no son acumulables entre sí ni con otras promociones, salvo aviso expreso de Sarux.\n13. El cupón de cumpleaños tiene validez de 30 días a partir de la fecha de cumpleaños y aplica solo durante ese mes.\n14. La fecha de cumpleaños solo puede modificarse una vez y debe coincidir con una identificación oficial.\n15. Los beneficios no tienen valor en efectivo ni pueden canjearse por dinero.\n16. El nivel alcanzado no garantiza disponibilidad de productos exclusivos si están agotados.\n17. La atención prioritaria por WhatsApp del nivel Diamante tiene un horario de respuesta de 24 horas hábiles.\n\nProtección contra Mal Uso\n18. Queda prohibido crear cuentas falsas o múltiples para acumular compras artificialmente.\n19. En caso de detectar fraude o mal uso, Sarux cancelará la cuenta sin previo aviso.\n20. Sarux se reserva el derecho de verificar la identidad del cliente antes de aplicar cualquier beneficio.\n\nDatos Personales\n21. Los datos registrados se usan exclusivamente para la gestión del programa de fidelidad. Sarux no los comparte con terceros.\n22. Sarux no se hace responsable si el cliente no recibe notificaciones por tener el correo incorrecto registrado.\n\nModificaciones al Programa\n23. Sarux puede modificar, suspender o cancelar el programa en cualquier momento, notificando con anticipación por redes sociales o sitio web."
 };
 
@@ -3480,16 +3481,17 @@ window.cerrarTerminosFidelidad = cerrarTerminosFidelidad;
 
 // ── Solicitar tarjeta física de fidelidad por WhatsApp ─────────
 function solicitarTarjetaFisica(){
+  const precio = (typeof APP_DATA!=="undefined" && APP_DATA.FIDELIDAD_PRECIO) || DEFAULTS.FIDELIDAD_PRECIO || 30;
   const perfil = _perfilActual;
   if(!perfil){
-    // Si no hay perfil cargado, abrir WhatsApp con mensaje genérico
-    window.open(`https://wa.me/${NEGOCIO.whatsapp}?text=${encodeURIComponent('Hola! Quiero solicitar mi tarjeta de fidelidad física de SARUX 🪪')}`, '_blank');
+    const msg = "Hola! Solicito mi tarjeta de fidelidad SARUX \n\nPrecio de la tarjeta: $" + precio + " MXN";
+    window.open("https://wa.me/"+NEGOCIO.whatsapp+"?text="+encodeURIComponent(msg), "_blank");
     return;
   }
-  const nombre = perfil.nombre || perfil.correo.split('@')[0];
-  const idCliente = perfil.uid_sarux || '—';
-  const msg = `Hola! Quiero solicitar mi tarjeta de fidelidad física de SARUX 🪪\n\nNombre: ${nombre}\nID de cliente: ${idCliente}`;
-  window.open(`https://wa.me/${NEGOCIO.whatsapp}?text=${encodeURIComponent(msg)}`, '_blank');
+  const nombre = perfil.nombre || perfil.correo.split("@")[0];
+  const idCliente = perfil.uid_sarux || "-";
+  const msg = "Hola! Solicito mi tarjeta de fidelidad SARUX \n\nNombre: " + nombre + "\nID de cliente: " + idCliente + "\n\nPrecio de la tarjeta: $" + precio + " MXN";
+  window.open("https://wa.me/"+NEGOCIO.whatsapp+"?text="+encodeURIComponent(msg), "_blank");
 }
 window.solicitarTarjetaFisica = solicitarTarjetaFisica;
 
@@ -3521,3 +3523,14 @@ function renderRoadmapFidelidad(niveles, nivelActual){
 }
 
 
+
+// ── Asegurar que los botones de fidelidad funcionen en móvil ─────────
+document.addEventListener('DOMContentLoaded', function(){
+  // Agregar listeners directos como respaldo al onclick
+  setTimeout(function(){
+    var btnTerminos = document.querySelector('[onclick="abrirTerminosFidelidad()"]');
+    var btnTarjeta = document.querySelector('[onclick="solicitarTarjetaFisica()"]');
+    if(btnTerminos){ btnTerminos.addEventListener('click', function(e){ e.preventDefault(); abrirTerminosFidelidad(); }); }
+    if(btnTarjeta){ btnTarjeta.addEventListener('click', function(e){ e.preventDefault(); solicitarTarjetaFisica(); }); }
+  }, 2000);
+});
