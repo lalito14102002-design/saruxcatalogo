@@ -4201,7 +4201,7 @@ Casi listo...
     ctx.fillStyle=TC.ROJO; ctx.fillRect(28,lineaY,TC.W-56,1);
     // QR pequeño a la derecha (lleva a la página web) + nota de términos a la izquierda
     const qrSize=46, qrX=TC.W-28-qrSize, qrY=lineaY+10;
-    tcDrawQR(ctx, qrX, qrY, qrSize);
+    await tcDrawQR(ctx, qrX, qrY, qrSize);
     ctx.fillStyle='rgba(255,255,255,0.35)'; ctx.font='6px monospace'; ctx.textAlign='center';
     ctx.fillText('ESCANEA',qrX+qrSize/2,qrY+qrSize+10);
     ctx.textAlign='left';
@@ -4358,7 +4358,7 @@ Casi listo...
 
     // QR — generado directamente en canvas sin dependencias externas
     const qrSize = 68, qrX = TC.W / 2 - qrSize / 2, qrY = 204;
-    tcDrawQR(ctx, qrX, qrY, qrSize);
+    await tcDrawQR(ctx, qrX, qrY, qrSize);
     // URL debajo del QR
     ctx.fillStyle = 'rgba(255,255,255,0.3)';
     ctx.font = '6.5px monospace';
