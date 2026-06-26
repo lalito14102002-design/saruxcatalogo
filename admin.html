@@ -321,6 +321,7 @@
       <div class="admin-nav-group"><span class="admin-nav-label">📝 Contenido</span>
         <button class="admin-nav-btn" onclick="showSec('popup',this)">🎁 Popup</button>
         <button class="admin-nav-btn" onclick="showSec('cupones',this);cargarCuponesCfgUI()">🎟️ Cupones</button>
+        <button class="admin-nav-btn" onclick="showSec('mantenimiento',this);cargarMantenimientoCfgUI()">🔧 Mantenimiento</button>
         <button class="admin-nav-btn" onclick="showSec('promos',this)">🔥 Promociones</button>
         <button class="admin-nav-btn" onclick="showSec('productos',this)">📦 Catálogo</button>
         <button class="admin-nav-btn" onclick="showSec('filtros',this)">🔍 Filtros</button>
@@ -830,6 +831,20 @@ Casi listo...
           <div class="admin-field"><label>Mensaje del popup de cumpleaños (usa {nombre} para insertar el nombre del cliente)</label><textarea class="admin-textarea" id="cup-cumple-msg" rows="3"></textarea></div>
           <button class="admin-btn-save" onclick="guardarCuponesCfg()">Guardar</button>
           <span id="cup-msg" style="font-family:var(--font-mono);font-size:.6rem;color:var(--neon);margin-left:.8rem"></span>
+        </div>
+      </div>
+      <div id="sec-mantenimiento" class="admin-section">
+        <div class="admin-section-title">🔧 MODO MANTENIMIENTO</div>
+        <div class="admin-card">
+          <div style="font-family:var(--font-mono);font-size:.6rem;color:var(--gray);letter-spacing:1px;line-height:1.8;margin-bottom:1rem">
+            Actívalo justo antes de subir cambios grandes. Los usuarios (web y app) verán un aviso de pantalla completa en menos de 20 segundos, y se les quitará solo al desactivarlo o cuando se acabe el tiempo.
+          </div>
+          <div class="admin-field"><label class="admin-toggle"><input type="checkbox" id="mant-activo"><div class="toggle-track"></div><span>Activar mantenimiento ahora</span></label></div>
+          <div class="admin-field"><label>Título</label><input class="admin-input" id="mant-titulo" placeholder="🔧 ACTUALIZACIÓN EN CURSO"></div>
+          <div class="admin-field"><label>Mensaje</label><textarea class="admin-textarea" id="mant-mensaje" rows="2" placeholder="Estamos mejorando SARUX para ti. Vuelve en unos minutos."></textarea></div>
+          <div class="admin-field"><label>Duración estimada (minutos) — déjalo en 0 para no mostrar cuenta regresiva</label><input class="admin-input" id="mant-minutos" type="number" min="0" max="240" value="0"></div>
+          <button class="admin-btn-save" onclick="guardarMantenimientoCfg()">Guardar</button>
+          <span id="mant-msg" style="font-family:var(--font-mono);font-size:.6rem;color:var(--neon);margin-left:.8rem"></span>
         </div>
       </div>
       <div id="sec-promos" class="admin-section"><div class="admin-section-title">PROMOCIONES</div><div id="admin-promos-list"></div><button class="admin-btn-add" onclick="addPromo()">+ Agregar promoción</button></div>
@@ -4114,6 +4129,41 @@ Casi listo...
     const { error } = await sb.from('site_config').upsert({ id: 1, config_data: APP_DATA, updated_at: new Date() });
     if(error){ if(msg) msg.textContent = '❌ Error al guardar'; return; }
     if(msg){ msg.textContent = '✅ Guardado'; setTimeout(()=>{ msg.textContent=''; }, 2000); }
+  }
+  // ──────────────────────────────────────────────────────────
+
+  // ── Modo mantenimiento (aviso de actualización con cuenta regresiva) ──
+  function cargarMantenimientoCfgUI(){
+    const cfg = APP_DATA.MANTENIMIENTO_CFG || {};
+    const a = document.getElementById('mant-activo');
+    if(a) a.checked = !!cfg.activo;
+    const t = document.getElementById('mant-titulo');
+    if(t) t.value = cfg.titulo || '🔧 ACTUALIZACIÓN EN CURSO';
+    const m = document.getElementById('mant-mensaje');
+    if(m) m.value = cfg.mensaje || 'Estamos mejorando SARUX para ti. Vuelve en unos minutos.';
+    const min = document.getElementById('mant-minutos');
+    if(min){
+      if(cfg.termina_en){
+        const restanteMin = Math.max(0, Math.round((new Date(cfg.termina_en).getTime() - Date.now()) / 60000));
+        min.value = restanteMin;
+      } else {
+        min.value = 0;
+      }
+    }
+  }
+
+  async function guardarMantenimientoCfg(){
+    const msg = document.getElementById('mant-msg');
+    const minutos = Number(document.getElementById('mant-minutos').value) || 0;
+    APP_DATA.MANTENIMIENTO_CFG = {
+      activo:  document.getElementById('mant-activo').checked,
+      titulo:  document.getElementById('mant-titulo').value.trim() || '🔧 ACTUALIZACIÓN EN CURSO',
+      mensaje: document.getElementById('mant-mensaje').value.trim() || 'Estamos mejorando SARUX para ti. Vuelve en unos minutos.',
+      termina_en: minutos > 0 ? new Date(Date.now() + minutos * 60000).toISOString() : null
+    };
+    const { error } = await sb.from('site_config').upsert({ id: 1, config_data: APP_DATA, updated_at: new Date() });
+    if(error){ if(msg) msg.textContent = '❌ Error al guardar'; return; }
+    if(msg){ msg.textContent = APP_DATA.MANTENIMIENTO_CFG.activo ? '✅ Mantenimiento ACTIVADO' : '✅ Mantenimiento desactivado'; setTimeout(()=>{ msg.textContent=''; }, 3000); }
   }
   // ──────────────────────────────────────────────────────────
 

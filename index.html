@@ -2,6 +2,9 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="description" id="page-desc" content="SARUX en Puebla Centro. Diseños originales en playeras, tazas, termos, cilindros, sudaderas y más. Personalización para bodas, XV años, graduaciones y empresas. ¡Envíos a todo México!">
 <meta name="keywords" content="SARUX, playeras personalizadas Puebla, tazas sublimación Puebla, termos personalizados, diseño gráfico Puebla, sublimación Puebla, regalos personalizados, bodas Puebla, XV años Puebla, graduaciones Puebla">
@@ -30,17 +33,21 @@
 <meta name="theme-color" content="#e8192c">
 <link rel="apple-touch-icon" href="/icon-192.png">
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32'%3E%3Crect width='32' height='32' fill='%23060606'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' fill='%23e8192c' font-family='Arial Black' font-size='14'%3ES%3C/text%3E%3C/svg%3E">
-<!-- PWA -->
-<link rel="manifest" href="/manifest.json">
-<meta name="theme-color" content="#e8192c">
-<link rel="apple-touch-icon" href="/icon-192.png">
 <title id="page-title">SARUX | Diseño y Sublimación en Puebla — Playeras, Tazas, Termos Personalizados</title>
 <meta name="description" id="page-desc" content="SARUX — Diseños originales en playeras, tazas, termos y más.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="preconnect" href="https://ngavbeiochxdvgzcywuh.supabase.co">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Space+Mono:wght@400;700&family=Rajdhani:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=3">
+<script>
+  // ── Versión automática para evitar caché vieja ──────────────────
+  // Se genera sola a partir de la hora real, sin que nadie tenga que editar números.
+  // Cambia cada 5 minutos, así que cualquier archivo subido se refleja casi de inmediato
+  // sin depender de que alguien recuerde subir un "?v=" manualmente.
+  window.SARUX_BUILD_VERSION = Math.floor(Date.now() / (5 * 60 * 1000));
+  document.write('<link rel="stylesheet" href="styles.css?v=' + window.SARUX_BUILD_VERSION + '">');
+</script>
+<noscript><link rel="stylesheet" href="styles.css"></noscript>
 <style>
 @keyframes stockPulse {
   0%,100%{ opacity:1; transform:scale(1); }
@@ -63,8 +70,98 @@
   <div class="loader-barra-wrap"><div class="loader-barra"></div></div>
   <div class="loader-texto">Cargando...</div>
 </div>
-<script src="config.js?v=3"></script>
+<script>
+  document.write('<script src="config.js?v=' + window.SARUX_BUILD_VERSION + '"><\/script>');
+</script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<!-- ── MANTENIMIENTO: overlay de pantalla completa ── -->
+<div id="mantenimientoOverlay" style="display:none;position:fixed;inset:0;z-index:999999;background:#060606;color:#fff;align-items:center;justify-content:center;flex-direction:column;text-align:center;padding:2rem;font-family:'Rajdhani',sans-serif">
+  <div style="font-size:3rem;margin-bottom:1rem">🔧</div>
+  <div id="mantTitulo" style="font-family:'Bebas Neue',sans-serif;font-size:1.6rem;letter-spacing:2px;margin-bottom:.8rem">ACTUALIZACIÓN EN CURSO</div>
+  <div id="mantMensaje" style="font-size:.95rem;color:#aaa;max-width:420px;line-height:1.6;margin-bottom:1.5rem">Estamos mejorando SARUX para ti. Vuelve en unos minutos.</div>
+  <div id="mantCountdownWrap" style="display:none">
+    <div style="font-family:'Space Mono',monospace;font-size:.6rem;letter-spacing:3px;color:#e8192c;margin-bottom:.4rem">TIEMPO ESTIMADO</div>
+    <div id="mantCountdown" style="font-family:'Bebas Neue',sans-serif;font-size:2.2rem;letter-spacing:3px;color:#fff">00:00</div>
+  </div>
+</div>
+<script>
+(function(){
+  // Chequeo de mantenimiento lo más temprano posible, antes de que cargue el resto de la página.
+  // Consulta directa a Supabase (no depende del caché de APP_DATA en main.js) para que sea instantáneo.
+  if(typeof window.SUPABASE_URL === 'undefined' || typeof window.SUPABASE_ANON_KEY === 'undefined') return;
+
+  function fetchMantenimiento(){
+    return fetch(window.SUPABASE_URL + '/rest/v1/site_config?id=eq.1&select=config_data', {
+      headers: {
+        'apikey': window.SUPABASE_ANON_KEY,
+        'Authorization': 'Bearer ' + window.SUPABASE_ANON_KEY
+      }
+    }).then(r => r.json()).then(rows => {
+      const cfg = (rows && rows[0] && rows[0].config_data && rows[0].config_data.MANTENIMIENTO_CFG) || null;
+      return cfg;
+    }).catch(() => null);
+  }
+
+  let _countdownInterval = null;
+  function mostrarMantenimiento(cfg){
+    const overlay = document.getElementById('mantenimientoOverlay');
+    document.getElementById('mantTitulo').textContent  = cfg.titulo  || '🔧 ACTUALIZACIÓN EN CURSO';
+    document.getElementById('mantMensaje').textContent = cfg.mensaje || 'Estamos mejorando SARUX para ti. Vuelve en unos minutos.';
+    overlay.style.display = 'flex';
+    document.documentElement.style.overflow = 'hidden';
+
+    const wrap = document.getElementById('mantCountdownWrap');
+    const countEl = document.getElementById('mantCountdown');
+    if(cfg.termina_en){
+      const fin = new Date(cfg.termina_en).getTime();
+      if(!isNaN(fin)){
+        wrap.style.display = 'block';
+        clearInterval(_countdownInterval);
+        _countdownInterval = setInterval(() => {
+          const restante = Math.max(0, fin - Date.now());
+          const min = Math.floor(restante / 60000);
+          const seg = Math.floor((restante % 60000) / 1000);
+          countEl.textContent = String(min).padStart(2,'0') + ':' + String(seg).padStart(2,'0');
+          if(restante <= 0){
+            clearInterval(_countdownInterval);
+            location.reload();
+          }
+        }, 1000);
+      }
+    } else {
+      wrap.style.display = 'none';
+    }
+  }
+
+  function revisarMantenimientoAhora(){
+    fetchMantenimiento().then(cfg => {
+      const overlay = document.getElementById('mantenimientoOverlay');
+      const visible = overlay.style.display === 'flex';
+      if(cfg && cfg.activo && !visible){
+        mostrarMantenimiento(cfg);
+      } else if((!cfg || !cfg.activo) && visible){
+        location.reload();
+      }
+    });
+  }
+
+  fetchMantenimiento().then(cfg => {
+    if(cfg && cfg.activo){
+      mostrarMantenimiento(cfg);
+    }
+  });
+
+  // Revisar cada 8s si el mantenimiento terminó (o si empezó uno nuevo) mientras la página está abierta
+  setInterval(revisarMantenimientoAhora, 8000);
+
+  // Revisar de inmediato al volver a foco (minimizar/abrir de nuevo, cambiar de app y regresar)
+  document.addEventListener('visibilitychange', () => {
+    if(document.visibilityState === 'visible') revisarMantenimientoAhora();
+  });
+  window.addEventListener('focus', revisarMantenimientoAhora);
+})();
+</script>
 
 <script type="application/ld+json">
 {"@context":"https://schema.org","@type":"LocalBusiness","name":"SARUX","description":"Diseño y sublimación de alta calidad en Puebla. Playeras, tazas, termos, cilindros, sudaderas y más productos personalizados.","url":"https://saruxcatalogo.pages.dev","telephone":"+52-222-925-0603","address":{"@type":"PostalAddress","addressLocality":"Puebla","addressRegion":"Puebla","addressCountry":"MX"},"geo":{"@type":"GeoCoordinates","latitude":"19.0414","longitude":"-98.2063"},"openingHours":"Mo-Sa 09:00-18:00","priceRange":"$","sameAs":["https://www.facebook.com/sarux","https://www.instagram.com/sarux.oficial","https://www.tiktok.com/@sarux.oficial"]}
@@ -498,17 +595,22 @@
     <li><a href="#" id="footerTt">TikTok</a></li>
   </ul>
   <div class="footer-copy" id="footerCopy"></div>
+</footer>
 
-  <!-- Banner de descarga de la app, solo visible en la versión web (footer) -->
-  <div id="pwaFooterBanner" style="display:none;align-items:center;gap:.8rem;max-width:600px;margin:1.5rem auto 0;background:#0a0000;border:1px solid var(--neon);border-radius:6px;padding:1rem 1.2rem">
+<!-- Banner de descarga de la app, solo visible en la versión web.
+     Fuera del <footer> a propósito: el footer usa display:flex con
+     justify-content:space-between, lo cual rompía el centrado de este
+     banner y lo empujaba hacia la derecha / fuera de pantalla en móvil. -->
+<div id="pwaFooterBannerWrap" style="display:none;width:100%;padding:0 1.5rem 2rem;box-sizing:border-box">
+  <div id="pwaFooterBanner" style="display:flex;align-items:center;gap:.8rem;max-width:600px;width:100%;margin:0 auto;background:#0a0000;border:1px solid var(--neon);border-radius:6px;padding:1rem 1.2rem;box-sizing:border-box">
     <img src="/icon-192.png" style="width:44px;height:44px;border-radius:8px;flex-shrink:0">
     <div style="flex:1;min-width:0;text-align:left">
-      <div id="pwaFooterBannerTitulo" style="font-family:var(--font-display);font-size:.9rem;letter-spacing:2px;color:var(--white);line-height:1.2">📲 DESCARGA LA APP</div>
-      <div id="pwaFooterBannerMsg" style="font-family:var(--font-mono);font-size:.6rem;color:var(--gray);margin-top:.2rem;line-height:1.4">Instala SARUX y obtén 10% de descuento en tu primera compra 🎁</div>
+      <div id="pwaFooterBannerTitulo" style="font-family:var(--font-display);font-size:.85rem;letter-spacing:1.5px;color:var(--white);line-height:1.3">📲 DESCARGA LA APP</div>
+      <div id="pwaFooterBannerMsg" style="font-family:var(--font-mono);font-size:.6rem;color:var(--gray);margin-top:.3rem;line-height:1.5">Instala SARUX y obtén 10% de descuento en tu primera compra 🎁</div>
     </div>
-    <button onclick="instalarPWADesdeFooter()" style="background:var(--neon);color:#000;border:none;font-family:var(--font-mono);font-size:.6rem;letter-spacing:2px;padding:.5rem .9rem;cursor:pointer;font-weight:700;white-space:nowrap;flex-shrink:0">INSTALAR</button>
+    <button onclick="instalarPWADesdeFooter()" style="background:var(--neon);color:#000;border:none;font-family:var(--font-mono);font-size:.6rem;letter-spacing:2px;padding:.5rem .9rem;cursor:pointer;font-weight:700;white-space:nowrap;flex-shrink:0;border-radius:3px">INSTALAR</button>
   </div>
-</footer>
+</div>
 
 <a id="floatWa" href="#" target="_blank" class="float-wa">📱</a>
 <button class="chat-btn" onclick="toggleChat()">🤖</button>
@@ -562,7 +664,9 @@
 </div>
 <!-- TOAST -->
 <div id="toastWrap"></div>
-<script src="main.js?v=3"></script>
+<script>
+  document.write('<script src="main.js?v=' + window.SARUX_BUILD_VERSION + '"><\/script>');
+</script>
 
 
 <!-- ═══════════════════════════════════════════════════ -->
@@ -737,12 +841,60 @@
     try{ localStorage.setItem(INSTALL_KEY, '1'); }catch(e){}
   }
 
-  // Registrar Service Worker
+  // Registrar Service Worker + forzar actualización inmediata cuando hay una versión nueva
   if('serviceWorker' in navigator){
     window.addEventListener('load', () => {
       navigator.serviceWorker.register('/sw.js')
-        .then(r => console.log('[SARUX SW] OK:', r.scope))
+        .then(reg => {
+          console.log('[SARUX SW] OK:', reg.scope);
+
+          // Revisa de inmediato si hay una versión más nueva disponible
+          reg.update().catch(()=>{});
+
+          // Si ya hay un SW nuevo esperando (de una visita anterior), activarlo ya
+          if(reg.waiting){
+            reg.waiting.postMessage('SKIP_WAITING');
+          }
+
+          // Cuando se detecta un SW nuevo instalándose, activarlo en cuanto esté listo
+          reg.addEventListener('updatefound', () => {
+            const nuevoSW = reg.installing;
+            if(!nuevoSW) return;
+            nuevoSW.addEventListener('statechange', () => {
+              if(nuevoSW.state === 'installed' && navigator.serviceWorker.controller){
+                nuevoSW.postMessage('SKIP_WAITING');
+              }
+            });
+          });
+
+          // Revisar cada 15s si hay una versión nueva (cubre quienes dejan la app/pestaña abierta)
+          setInterval(() => reg.update().catch(()=>{}), 15000);
+
+          // Revisar de inmediato cada vez que la app/pestaña vuelve a estar visible
+          // (ej: el usuario minimizó y volvió a abrir, o cambió de app y regresó)
+          document.addEventListener('visibilitychange', () => {
+            if(document.visibilityState === 'visible'){
+              reg.update().catch(()=>{});
+              if(reg.waiting) reg.waiting.postMessage('SKIP_WAITING');
+            }
+          });
+
+          // En iOS/Android, también cubrir el evento 'focus' de la ventana por si
+          // visibilitychange no dispara en algunos WebViews
+          window.addEventListener('focus', () => {
+            reg.update().catch(()=>{});
+            if(reg.waiting) reg.waiting.postMessage('SKIP_WAITING');
+          });
+        })
         .catch(e => console.warn('[SARUX SW] Error:', e));
+
+      // Cuando el SW activo cambia (nueva versión tomó control), recargar una sola vez
+      let _swRecargado = false;
+      navigator.serviceWorker.addEventListener('controllerchange', () => {
+        if(_swRecargado) return;
+        _swRecargado = true;
+        window.location.reload();
+      });
     });
   }
 
@@ -813,8 +965,8 @@
   // ── Banner de instalación al final de la página (footer), solo en web ──
   function mostrarBannerFooterPWA(){
     if(esStandalone || localStorage.getItem(INSTALL_KEY)) return;
-    const footerBanner = document.getElementById('pwaFooterBanner');
-    if(!footerBanner) return;
+    const footerWrap = document.getElementById('pwaFooterBannerWrap');
+    if(!footerWrap) return;
     const cfg = (typeof APP_DATA !== 'undefined' && APP_DATA.PWA_BANNER) || {};
     if(cfg.activo === false) return;
     const titulo = cfg.titulo || '📲 DESCARGA LA APP';
@@ -823,11 +975,11 @@
     const m = document.getElementById('pwaFooterBannerMsg');
     if(t) t.textContent = titulo;
     if(m) m.textContent = msg;
-    footerBanner.style.display = 'flex';
+    footerWrap.style.display = 'block';
   }
   function ocultarBannerFooterPWA(){
-    const footerBanner = document.getElementById('pwaFooterBanner');
-    if(footerBanner) footerBanner.style.display = 'none';
+    const footerWrap = document.getElementById('pwaFooterBannerWrap');
+    if(footerWrap) footerWrap.style.display = 'none';
   }
   window.instalarPWADesdeFooter = window.instalarPWA;
 
