@@ -3379,9 +3379,20 @@ async function verificarCuponCumpleanos(datos){
   // Crear cupón de cumpleaños
   const codigo = 'CUMPLE' + datos.correo.split('@')[0].toUpperCase().slice(0,6)
                            + hoy.getFullYear();
-  const expira = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate(), 23, 59, 59).toISOString();
+  const expira = new Date(hoy.getTime() + 7*24*60*60*1000).toISOString(); // 7 días de vigencia
 
-  const pctCumple = datos.cupon_cumple_pct || (APP_DATA.CUPONES_CFG && APP_DATA.CUPONES_CFG.cumpleanos_porcentaje) || 20;
+  // % según el nivel de fidelidad ACTUAL del cliente (en vivo, no depende de
+  // que el cupon_cumple_pct se haya guardado al momento de subir de nivel)
+  let pctCumple = datos.cupon_cumple_pct || (APP_DATA.CUPONES_CFG && APP_DATA.CUPONES_CFG.cumpleanos_porcentaje) || 20;
+  try {
+    const nivel = await obtenerNivelActualCliente(datos);
+    if(nivel){
+      const beneficios = Array.isArray(nivel.beneficios) ? nivel.beneficios : JSON.parse(nivel.beneficios || '[]');
+      const benCumple = beneficios.find(b => typeof b === 'object' && b.tipo === 'cupon_cumpleanos' && b.porcentaje);
+      if(benCumple) pctCumple = benCumple.porcentaje;
+    }
+  } catch(e){ /* si falla, se queda con el valor de respaldo */ }
+
   const { data: creado } = await sb.from('cupones_usuario').insert([{
     suscriptor_id: datos.id,
     correo:        datos.correo,
@@ -3416,7 +3427,7 @@ async function cargarCuponesUsuario(correo){
     return `<div style="background:var(--bg);border:1px solid rgba(232,25,44,.3);border-radius:3px;padding:.7rem;margin-bottom:.5rem">
       <span style="color:var(--neon);font-size:.8rem">${icono} ${c.codigo}</span>
       <span style="color:var(--white);margin-left:.5rem">${c.porcentaje}% OFF</span>
-      ${c.motivo === 'cumpleanos' ? '<br><span style="color:var(--gray);font-size:.65rem">¡Feliz cumpleaños! Solo válido hoy 🎉</span>' : ''}
+      ${c.motivo === 'cumpleanos' ? '<br><span style="color:var(--gray);font-size:.65rem">¡Feliz cumpleaños! Válido por 7 días 🎉</span>' : ''}
       ${expira}
     </div>`;
   }).join('');
