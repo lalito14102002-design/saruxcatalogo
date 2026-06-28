@@ -44,6 +44,47 @@ self.addEventListener('message', event => {
   if (event.data === 'SKIP_WAITING') self.skipWaiting();
 });
 
+// ── PUSH: recibir notificación del servidor y mostrarla ──────────────────
+// Esto es lo que permite que llegue el aviso aunque la app esté CERRADA.
+self.addEventListener('push', event => {
+  let datos = {};
+  try {
+    datos = event.data ? event.data.json() : {};
+  } catch (e) {
+    datos = { titulo: 'SARUX', mensaje: event.data ? event.data.text() : '' };
+  }
+
+  const titulo  = datos.titulo  || '🛍️ SARUX';
+  const opciones = {
+    body: datos.mensaje || 'Tienes una novedad en SARUX',
+    icon: datos.icono   || '/icon-192.png',
+    badge: '/icon-192.png',
+    vibrate: [200, 100, 200],
+    data: { url: datos.url || '/' },
+    tag: datos.tag || 'sarux-general' // notificaciones del mismo "tag" se reemplazan en vez de apilarse
+  };
+
+  event.waitUntil(self.registration.showNotification(titulo, opciones));
+});
+
+// ── Click en la notificación: abrir/enfocar la app en la URL indicada ────
+self.addEventListener('notificationclick', event => {
+  event.notification.close();
+  const url = (event.notification.data && event.notification.data.url) || '/';
+
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(clientsArr => {
+      for (const client of clientsArr) {
+        if (client.url.includes(self.location.origin) && 'focus' in client) {
+          client.navigate(url);
+          return client.focus();
+        }
+      }
+      return self.clients.openWindow(url);
+    })
+  );
+});
+
 // ── Fetch: estrategia por tipo de recurso ────────────────
 self.addEventListener('fetch', event => {
   const { request } = event;

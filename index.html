@@ -708,7 +708,8 @@
     <!-- PASO 3: Perfil del usuario logueado -->
     <div id="perfil-paso3" style="display:none">
       <div style="font-size:.6rem;letter-spacing:3px;color:var(--neon);font-family:var(--font-mono);margin-bottom:.5rem">MI PERFIL</div>
-      <div style="font-family:var(--font-display);font-size:1.2rem;letter-spacing:2px;color:var(--white);margin-bottom:1rem" id="perfil-bienvenida">HOLA 👋</div>
+      <div style="font-family:var(--font-display);font-size:1.2rem;letter-spacing:2px;color:var(--white);margin-bottom:.4rem" id="perfil-bienvenida">HOLA 👋</div>
+      <div id="perfil-uid-display" onclick="copiarUidPerfil()" style="display:none;align-items:center;gap:.4rem;width:fit-content;font-family:var(--font-mono);font-size:.65rem;letter-spacing:1px;color:var(--neon);background:rgba(232,25,44,.1);border:1px solid rgba(232,25,44,.35);padding:.35rem .6rem;border-radius:3px;margin-bottom:1rem;cursor:pointer" title="Toca para copiar"></div>
 
       <!-- CARTA DE FIDELIDAD -->
       <div id="perfil-fidelidad-card" style="margin-bottom:1rem;display:none">
@@ -761,7 +762,6 @@
 
       <div style="display:flex;flex-direction:column;gap:.7rem;margin-bottom:1rem">
         <div>
-          <div id="perfil-uid-display" style="font-family:var(--font-mono);font-size:.55rem;color:rgba(255,255,255,.25);letter-spacing:1px;margin-bottom:.8rem"></div>
           <div style="font-size:.55rem;letter-spacing:2px;color:var(--gray);font-family:var(--font-mono);margin-bottom:.3rem">NOMBRE</div>
           <input id="perfil-nombre-edit" type="text" placeholder="Tu nombre"
             style="width:100%;box-sizing:border-box;background:var(--bg);border:1px solid rgba(255,255,255,.1);color:var(--white);padding:.7rem;font-family:var(--font-mono);font-size:.75rem;border-radius:2px">
@@ -993,6 +993,72 @@
       }
     }catch(e){}
   }
+
+  // ════════════════════════════════════════════════════════════════
+  // PUSH NOTIFICATIONS REALES (llegan aunque la app esté cerrada)
+  // ════════════════════════════════════════════════════════════════
+  // Requiere: VAPID_PUBLIC_KEY en config.js, y la tabla 'push_suscripciones'
+  // en Supabase (ver instrucciones que te dejo en el mensaje).
+
+  // Convierte la llave pública VAPID (base64 URL-safe) al formato que pide el navegador
+  function _vapidKeyToUint8Array(base64String){
+    const padding = '='.repeat((4 - base64String.length % 4) % 4);
+    const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+    const rawData = window.atob(base64);
+    const outputArray = new Uint8Array(rawData.length);
+    for (let i = 0; i < rawData.length; ++i) outputArray[i] = rawData.charCodeAt(i);
+    return outputArray;
+  }
+
+  async function suscribirsePush(){
+    try{
+      if(!('serviceWorker' in navigator) || !('PushManager' in window)) return null;
+      if(typeof window.VAPID_PUBLIC_KEY === 'undefined' || !window.VAPID_PUBLIC_KEY) return null;
+
+      const permiso = await Notification.requestPermission();
+      if(permiso !== 'granted') return null;
+
+      const reg = await navigator.serviceWorker.ready;
+
+      let suscripcion = await reg.pushManager.getSubscription();
+      if(!suscripcion){
+        suscripcion = await reg.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: _vapidKeyToUint8Array(window.VAPID_PUBLIC_KEY)
+        });
+      }
+
+      // Guardar/actualizar la suscripción en Supabase, asociada al correo si hay sesión
+      const correo = (typeof localStorage !== 'undefined') ? localStorage.getItem('sarux_perfil_correo') : null;
+      const payload = {
+        endpoint: suscripcion.endpoint,
+        suscripcion_json: JSON.stringify(suscripcion),
+        correo: correo || null,
+        user_agent: navigator.userAgent.substring(0,200),
+        actualizado_en: new Date().toISOString()
+      };
+
+      if(typeof sb !== 'undefined'){
+        await sb.from('push_suscripciones').upsert(payload, { onConflict: 'endpoint' });
+      }
+      return suscripcion;
+    }catch(e){
+      console.warn('[SARUX Push] No se pudo suscribir:', e);
+      return null;
+    }
+  }
+  window.suscribirsePush = suscribirsePush;
+
+  // Si el usuario ya había dado permiso antes, re-confirmar la suscripción al cargar
+  // (por si el navegador la invalidó, o si inició sesión después de aceptar el permiso)
+  if('Notification' in window && Notification.permission === 'granted'){
+    window.addEventListener('load', () => setTimeout(suscribirsePush, 4000));
+  }
+
+  // Ofrecer activar push justo después de instalar la app (momento de mayor disposición)
+  window.addEventListener('appinstalled', () => {
+    setTimeout(suscribirsePush, 2000);
+  });
 })();
 </script>
 </body>

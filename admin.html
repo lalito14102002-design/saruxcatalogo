@@ -2577,7 +2577,7 @@ Casi listo...
           </div>
           <div style="flex:1;min-width:0">
             <div style="font-size:.75rem;color:var(--white);font-weight:600">${s.nombre||'Sin nombre'} ${esCumple?'<span style="color:#ff9800;font-size:.6rem">¡HOY ES SU CUMPLE!</span>':''}</div>
-            <div style="font-family:var(--font-mono);font-size:.58rem;color:var(--gray)">${s.correo}</div>
+            <div style="font-family:var(--font-mono);font-size:.58rem;color:var(--gray)">${s.correo} ${s.uid_sarux ? `<span style="color:var(--neon);margin-left:.4rem">🪪 ${s.uid_sarux}</span>` : '<span style="color:rgba(255,150,0,.6);margin-left:.4rem">Sin ID</span>'}</div>
             <div style="font-family:var(--font-mono);font-size:.52rem;color:rgba(255,255,255,.3);margin-top:.1rem">
               📅 ${fecha} &nbsp;|&nbsp; 🎂 ${cumple} &nbsp;|&nbsp; 👁️ ${s.visitas||0} visitas &nbsp;|&nbsp; 🛒 ${s.compras||0} compras
             </div>

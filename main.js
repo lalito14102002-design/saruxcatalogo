@@ -3158,6 +3158,23 @@ async function cargarPerfilConToken(correo, token){
   mostrarPaso3Perfil(data);
 }
 
+// ── Copiar ID de cliente desde el perfil ─────────────────────
+function copiarUidPerfil(){
+  const uidEl = document.getElementById('perfil-uid-display');
+  const uid = uidEl && uidEl.dataset.uid;
+  if(!uid) return;
+  const ok = () => {
+    const prev = uidEl.innerHTML;
+    uidEl.innerHTML = '✅ Copiado: <b>' + uid + '</b>';
+    setTimeout(() => { uidEl.innerHTML = prev; }, 1500);
+  };
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(uid).then(ok).catch(ok);
+  } else {
+    ok();
+  }
+}
+
 // ── PASO 3: Mostrar perfil ───────────────────────────────────
 async function mostrarPaso3Perfil(datos){
   document.getElementById('perfil-paso1').style.display = 'none';
@@ -3165,8 +3182,31 @@ async function mostrarPaso3Perfil(datos){
   document.getElementById('perfil-paso3').style.display = 'block';
   document.getElementById('perfil-bienvenida').textContent =
     'HOLA ' + (datos.nombre || datos.correo.split('@')[0]).toUpperCase() + ' 👋';
+
+  // Backfill: clientes registrados antes de que existiera el ID lo reciben ahora
+  if(!datos.uid_sarux && datos.correo){
+    const uidNuevo = 'S' + String(Math.floor(100000 + Math.random() * 900000));
+    const { data: upd, error: errUid } = await sb.from('suscriptores')
+      .update({ uid_sarux: uidNuevo })
+      .eq('correo', datos.correo)
+      .is('uid_sarux', null)
+      .select('uid_sarux')
+      .maybeSingle();
+    if(!errUid && upd && upd.uid_sarux){
+      datos.uid_sarux = upd.uid_sarux;
+    }
+  }
+
   const uidEl = document.getElementById('perfil-uid-display');
-  if(uidEl) uidEl.textContent = datos.uid_sarux ? 'ID: ' + datos.uid_sarux : '';
+  if(uidEl){
+    if(datos.uid_sarux){
+      uidEl.innerHTML = '🪪 ID: <b>' + datos.uid_sarux + '</b> <span style="opacity:.6;font-size:.85em">⧉</span>';
+      uidEl.dataset.uid = datos.uid_sarux;
+      uidEl.style.display = 'flex';
+    } else {
+      uidEl.style.display = 'none';
+    }
+  }
   document.getElementById('perfil-nombre-edit').value = datos.nombre  || '';
   document.getElementById('perfil-tel-edit').value    = datos.telefono || '';
   const cumpleInput = document.getElementById('perfil-cumple-edit');
