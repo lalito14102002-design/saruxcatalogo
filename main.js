@@ -1560,6 +1560,41 @@ function cuponYaUsadoEnEsteDispositivo(codigo){
   return getCuponesUsadosLocal().includes(codigo);
 }
 
+// ── Descuento permanente automático por nivel de fidelidad ───
+// Si el cliente tiene sesión iniciada y su nivel actual incluye un beneficio
+// tipo "descuento_permanente", se aplica solo al carrito (sin necesidad de
+// cupón). Si el cliente ya tiene un cupón manual aplicado, se conserva ese;
+// los descuentos no son acumulables (ver T&C de fidelidad).
+async function aplicarDescuentoPermanenteSiAplica(){
+  if(!_perfilActual || !_perfilActual.correo) return;
+  // Si ya hay un cupón manual (no permanente) aplicado, no lo tocamos
+  if(cuponAplicado && !cuponAplicado.esPermanente) return;
+
+  try {
+    const nivel = await obtenerNivelActualCliente(_perfilActual);
+    if(!nivel) { if(cuponAplicado && cuponAplicado.esPermanente){ cuponAplicado = null; renderCarrito(); } return; }
+
+    const beneficios = Array.isArray(nivel.beneficios) ? nivel.beneficios : JSON.parse(nivel.beneficios || '[]');
+    const benDescuento = beneficios.find(b => typeof b === 'object' && b.tipo === 'descuento_permanente' && b.porcentaje);
+
+    if(!benDescuento){
+      if(cuponAplicado && cuponAplicado.esPermanente){ cuponAplicado = null; renderCarrito(); }
+      return;
+    }
+
+    // Ya aplicado con el mismo porcentaje, no hacer nada
+    if(cuponAplicado && cuponAplicado.esPermanente && cuponAplicado.porcentaje === benDescuento.porcentaje) return;
+
+    cuponAplicado = {
+      codigo: 'NIVEL ' + nivel.nombre.toUpperCase(),
+      porcentaje: benDescuento.porcentaje,
+      aplica_a: 'todo',
+      esPermanente: true
+    };
+    renderCarrito();
+  } catch(e){ /* si falla, simplemente no se aplica descuento automático */ }
+}
+
 async function aplicarCuponCarrito(){
   const input = document.getElementById('carritoCuponInput');
   const msgEl = document.getElementById('carritoCuponMsg');
@@ -1694,6 +1729,7 @@ function quitarCuponCarrito(){
 // Incrementa el contador de usos en Supabase y marca como usado en este dispositivo
 async function registrarUsoCupon(){
   if(!cuponAplicado) return;
+  if(cuponAplicado.esPermanente) return; // descuento de nivel: no es un cupón consumible
   try {
     if(cuponAplicado.esPersonalizado){
       // Cupón personalizado/cumpleaños: marcar como usado en cupones_usuario
@@ -1874,7 +1910,7 @@ function toggleCarrito(){
   const overlay = document.getElementById('carritoOverlay');
   const open = panel.classList.toggle('open');
   overlay.classList.toggle('open', open);
-  if(open){ renderCarrito(); document.body.style.overflow='hidden'; }
+  if(open){ renderCarrito(); document.body.style.overflow='hidden'; aplicarDescuentoPermanenteSiAplica(); }
   else { document.body.style.overflow=''; }
 }
 
@@ -1934,6 +1970,8 @@ function renderCarrito(){
       aplicadoWrap.style.display = 'block';
       const label = cuponAplicado.esReferido
         ? `🎁 Descuento de bienvenida (-${cuponAplicado.porcentaje}% · -$${descuento.toLocaleString()})`
+        : cuponAplicado.esPermanente
+        ? `💎 Descuento ${cuponAplicado.codigo} (-${cuponAplicado.porcentaje}% · -$${descuento.toLocaleString()})`
         : `🎟️ ${cuponAplicado.codigo} aplicado (-${cuponAplicado.porcentaje}% · -$${descuento.toLocaleString()})`;
       aplicadoWrap.innerHTML = `<div class="carrito-cupon-aplicado">
         <span class="carrito-cupon-aplicado-info">${label}</span>
@@ -1975,7 +2013,8 @@ function pedirPorWhatsApp(){
 
   let resumenTotal;
   if(cuponAplicado && descuento > 0){
-    resumenTotal = `Subtotal: $${subtotal.toLocaleString()} MXN%0ACupón *${cuponAplicado.codigo}* (-${cuponAplicado.porcentaje}%25): -$${descuento.toLocaleString()} MXN%0A*TOTAL: $${total.toLocaleString()} MXN*`;
+    const etiqueta = cuponAplicado.esPermanente ? 'Descuento' : 'Cupón';
+    resumenTotal = `Subtotal: $${subtotal.toLocaleString()} MXN%0A${etiqueta} *${cuponAplicado.codigo}* (-${cuponAplicado.porcentaje}%25): -$${descuento.toLocaleString()} MXN%0A*TOTAL: $${total.toLocaleString()} MXN*`;
   } else {
     resumenTotal = `*TOTAL: $${total.toLocaleString()} MXN*`;
   }
@@ -3180,6 +3219,7 @@ async function mostrarPaso3Perfil(datos){
   document.getElementById('perfil-paso1').style.display = 'none';
   document.getElementById('perfil-paso2').style.display = 'none';
   document.getElementById('perfil-paso3').style.display = 'block';
+  try{ aplicarDescuentoPermanenteSiAplica(); }catch(e){}
   document.getElementById('perfil-bienvenida').textContent =
     'HOLA ' + (datos.nombre || datos.correo.split('@')[0]).toUpperCase() + ' 👋';
 
@@ -3339,7 +3379,7 @@ async function verificarCuponCumpleanos(datos){
                            + hoy.getFullYear();
   const expira = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate(), 23, 59, 59).toISOString();
 
-  const pctCumple = (APP_DATA.CUPONES_CFG && APP_DATA.CUPONES_CFG.cumpleanos_porcentaje) || 20;
+  const pctCumple = datos.cupon_cumple_pct || (APP_DATA.CUPONES_CFG && APP_DATA.CUPONES_CFG.cumpleanos_porcentaje) || 20;
   const { data: creado } = await sb.from('cupones_usuario').insert([{
     suscriptor_id: datos.id,
     correo:        datos.correo,
@@ -3395,7 +3435,7 @@ function cerrarSesionPerfil(){
   if(!token || !correo) return;
   try {
     const { data } = await sb.from('suscriptores')
-      .select('id, correo, nombre, cumpleanos, visitas').eq('correo', correo).eq('token_sesion', token).single();
+      .select('id, correo, nombre, cumpleanos, visitas, cupon_cumple_pct').eq('correo', correo).eq('token_sesion', token).single();
     if(data){
       await sb.from('suscriptores')
         .update({ visitas: (data.visitas||0) + 1 }).eq('id', data.id);
