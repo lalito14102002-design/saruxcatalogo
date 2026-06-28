@@ -320,8 +320,9 @@
       </div>
       <div class="admin-nav-group"><span class="admin-nav-label">📝 Contenido</span>
         <button class="admin-nav-btn" onclick="showSec('popup',this)">🎁 Popup</button>
-        <button class="admin-nav-btn" onclick="showSec('cupones',this);cargarCuponesCfgUI()">🎟️ Cupones</button>
+        <button class="admin-nav-btn" onclick="showSec('cupones-auto',this);cargarCuponesCfgUI()">🎁 Cupones Auto</button>
         <button class="admin-nav-btn" onclick="showSec('mantenimiento',this);cargarMantenimientoCfgUI()">🔧 Mantenimiento</button>
+        <button class="admin-nav-btn" onclick="showSec('push',this)">🔔 Push</button>
         <button class="admin-nav-btn" onclick="showSec('promos',this)">🔥 Promociones</button>
         <button class="admin-nav-btn" onclick="showSec('productos',this)">📦 Catálogo</button>
         <button class="admin-nav-btn" onclick="showSec('filtros',this)">🔍 Filtros</button>
@@ -820,7 +821,7 @@ Casi listo...
       </div>
 
       <div id="sec-popup" class="admin-section"><div class="admin-section-title">POPUP BIENVENIDA</div><div class="admin-card"><div class="admin-field"><label class="admin-toggle"><input type="checkbox" id="p-activo"><div class="toggle-track"></div><span>Mostrar popup al entrar</span></label></div><div class="admin-field"><label>Emoji</label><input class="admin-input" id="p-emoji"></div><div class="admin-field"><label>Título</label><input class="admin-input" id="p-titulo"></div><div class="admin-field"><label>Descripción</label><textarea class="admin-textarea" id="p-desc"></textarea></div><div class="admin-field"><label>Texto botón</label><input class="admin-input" id="p-boton"></div></div></div>
-      <div id="sec-cupones" class="admin-section">
+      <div id="sec-cupones-auto" class="admin-section">
         <div class="admin-section-title">🎟️ CUPONES AUTOMÁTICOS</div>
         <div class="admin-card">
           <div style="font-family:var(--font-mono);font-size:.6rem;color:var(--gray);letter-spacing:1px;line-height:1.8;margin-bottom:1rem">
@@ -845,6 +846,19 @@ Casi listo...
           <div class="admin-field"><label>Duración estimada (minutos) — déjalo en 0 para no mostrar cuenta regresiva</label><input class="admin-input" id="mant-minutos" type="number" min="0" max="240" value="0"></div>
           <button class="admin-btn-save" onclick="guardarMantenimientoCfg()">Guardar</button>
           <span id="mant-msg" style="font-family:var(--font-mono);font-size:.6rem;color:var(--neon);margin-left:.8rem"></span>
+        </div>
+      </div>
+      <div id="sec-push" class="admin-section">
+        <div class="admin-section-title">🔔 NOTIFICACIONES PUSH</div>
+        <div class="admin-card">
+          <div style="font-family:var(--font-mono);font-size:.6rem;color:var(--gray);letter-spacing:1px;line-height:1.8;margin-bottom:1rem">
+            Le llega a todos los que tengan notificaciones activadas, aunque tengan la app cerrada. Úsalo para avisar de productos nuevos, promos o cupones especiales.
+          </div>
+          <div class="admin-field"><label>Título</label><input class="admin-input" id="push-titulo" placeholder="🆕 ¡Nuevo en el catálogo!"></div>
+          <div class="admin-field"><label>Mensaje</label><textarea class="admin-textarea" id="push-mensaje" rows="2" placeholder="Llegaron diseños nuevos. Ven a verlos."></textarea></div>
+          <div class="admin-field"><label>Enlace al tocar la notificación (opcional)</label><input class="admin-input" id="push-url" placeholder="/#catalogo"></div>
+          <button class="admin-btn-save" onclick="enviarPushManual()">Enviar a todos ahora</button>
+          <span id="push-msg" style="font-family:var(--font-mono);font-size:.6rem;color:var(--neon);margin-left:.8rem"></span>
         </div>
       </div>
       <div id="sec-promos" class="admin-section"><div class="admin-section-title">PROMOCIONES</div><div id="admin-promos-list"></div><button class="admin-btn-add" onclick="addPromo()">+ Agregar promoción</button></div>
@@ -4164,6 +4178,52 @@ Casi listo...
     const { error } = await sb.from('site_config').upsert({ id: 1, config_data: APP_DATA, updated_at: new Date() });
     if(error){ if(msg) msg.textContent = '❌ Error al guardar'; return; }
     if(msg){ msg.textContent = APP_DATA.MANTENIMIENTO_CFG.activo ? '✅ Mantenimiento ACTIVADO' : '✅ Mantenimiento desactivado'; setTimeout(()=>{ msg.textContent=''; }, 3000); }
+  }
+  // ──────────────────────────────────────────────────────────
+
+  // ── Notificaciones push reales (llegan con la app cerrada) ──
+  // Llama a la Edge Function 'enviar-push' que debes desplegar en tu proyecto
+  // de Supabase (ver instrucciones aparte). Mientras no esté desplegada,
+  // este botón mostrará un error claro en vez de fallar en silencio.
+  async function enviarPushManual(){
+    const msg     = document.getElementById('push-msg');
+    const titulo  = document.getElementById('push-titulo').value.trim();
+    const mensaje = document.getElementById('push-mensaje').value.trim();
+    const url     = document.getElementById('push-url').value.trim() || '/';
+
+    if(!titulo || !mensaje){
+      msg.style.color = 'var(--neon)';
+      msg.textContent = '⚠️ Escribe título y mensaje';
+      return;
+    }
+
+    msg.style.color = 'var(--gray)';
+    msg.textContent = 'Enviando...';
+
+    try{
+      const resp = await fetch(window.SUPABASE_URL + '/functions/v1/enviar-push', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + window.SUPABASE_ANON_KEY
+        },
+        body: JSON.stringify({ titulo, mensaje, url })
+      });
+      const data = await resp.json();
+
+      if(!resp.ok){
+        msg.style.color = 'red';
+        msg.textContent = '❌ ' + (data.error || 'Error al enviar. ¿Ya desplegaste la función en Supabase?');
+        return;
+      }
+
+      msg.style.color = '#4caf50';
+      msg.textContent = `✅ Enviado a ${data.enviados} de ${data.total} dispositivos`;
+      setTimeout(()=>{ msg.textContent=''; }, 5000);
+    }catch(e){
+      msg.style.color = 'red';
+      msg.textContent = '❌ No se pudo conectar con la función de envío. Revisa que esté desplegada.';
+    }
   }
   // ──────────────────────────────────────────────────────────
 
