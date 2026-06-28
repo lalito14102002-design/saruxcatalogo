@@ -131,18 +131,30 @@
     document.getElementById('nivel-min-monto-wrap').style.display = esMonto ? 'block' : 'none';
   }
 
-  function agregarBeneficioForm(textoInit='', imagenInit=''){
+  function agregarBeneficioForm(textoInit='', imagenInit='', tipoInit='texto'){
     _beneficioCount++;
     const id = _beneficioCount;
     const lista = document.getElementById('nivel-beneficios-lista');
     const div = document.createElement('div');
     div.className = 'beneficio-row';
     div.dataset.imagenUrl = imagenInit;
+    div.dataset.tipo = tipoInit || 'texto';
     div.style.cssText = 'background:var(--card);border:1px solid var(--border);padding:.6rem;border-radius:3px;position:relative';
+
+    const tipoColors = { descuento_permanente:'#4caf50', cupon_unico:'#ff9800', cupon_cumpleanos:'#e91e63', premio_fisico:'#b9f2ff', texto:'var(--gray)' };
+    const tipoLabels = { descuento_permanente:'💰 Descuento permanente (%)', cupon_unico:'🎁 Cupón de un solo uso (%)', cupon_cumpleanos:'🎂 Cupón de cumpleaños (%)', premio_fisico:'📦 Premio físico', texto:'📝 Texto informativo' };
+
     div.innerHTML = `
-      <div style="display:flex;gap:.4rem;margin-bottom:.4rem;align-items:center">
-        <input type="text" class="ben-texto admin-input" placeholder="Descripción del beneficio" value="${textoInit.replace(/"/g,'&quot;')}" style="flex:1;margin:0">
+      <div style="display:flex;gap:.4rem;margin-bottom:.5rem;align-items:center">
+        <select class="ben-tipo admin-input" style="width:220px;margin:0;font-size:.6rem" onchange="onChangeBenTipo(this)">
+          ${Object.entries(tipoLabels).map(([v,l]) => `<option value="${v}" ${v===tipoInit?'selected':''}>${l}</option>`).join('')}
+        </select>
         <button onclick="this.closest('.beneficio-row').remove()" style="background:none;border:none;color:var(--gray);font-size:1rem;cursor:pointer;flex-shrink:0">✕</button>
+      </div>
+      <input type="text" class="ben-texto admin-input" placeholder="Descripción (ej: 5% de descuento en toda compra)" value="${textoInit.replace(/"/g,'&quot;')}" style="margin-bottom:.4rem">
+      <div class="ben-pct-wrap" style="display:${['descuento_permanente','cupon_unico','cupon_cumpleanos'].includes(tipoInit)?'flex':'none'};align-items:center;gap:.4rem;margin-bottom:.4rem">
+        <input type="number" class="ben-pct admin-input" min="1" max="100" placeholder="%" style="width:80px;margin:0">
+        <span style="font-family:var(--font-mono);font-size:.6rem;color:var(--gray)">% de descuento</span>
       </div>
       ${imagenInit ? `<img src="${imagenInit}" style="width:100%;max-height:100px;object-fit:cover;border-radius:3px;margin-bottom:.3rem" id="ben-img-prev-${id}">` : `<div id="ben-img-prev-${id}"></div>`}
       <div style="display:flex;gap:.4rem;align-items:center">
@@ -154,6 +166,13 @@
       </div>
     `;
     lista.appendChild(div);
+  }
+
+  function onChangeBenTipo(sel){
+    const row = sel.closest('.beneficio-row');
+    row.dataset.tipo = sel.value;
+    const pctWrap = row.querySelector('.ben-pct-wrap');
+    pctWrap.style.display = ['descuento_permanente','cupon_unico','cupon_cumpleanos'].includes(sel.value) ? 'flex' : 'none';
   }
 
   async function subirImagenBeneficio(input, id, row){
@@ -5001,10 +5020,16 @@ async function cargarNivelesAdmin(){
   _nivelesOrdenCache = data.map(x=>x.id);
   lista.innerHTML = data.map((n,i) => {
     const beneficios = Array.isArray(n.beneficios) ? n.beneficios : JSON.parse(n.beneficios||'[]');
+    const tipoIcons = { descuento_permanente:'💰', cupon_unico:'🎁', cupon_cumpleanos:'🎂', premio_fisico:'📦', texto:'📝' };
+    const tipoColors = { descuento_permanente:'#4caf50', cupon_unico:'#ff9800', cupon_cumpleanos:'#e91e63', premio_fisico:'#b9f2ff', texto:'var(--gray)' };
     const benefHtml = beneficios.map(b => {
       const texto = typeof b === 'string' ? b : b.texto;
+      const tipo  = typeof b === 'object' ? (b.tipo || 'texto') : 'texto';
+      const pct   = typeof b === 'object' && b.porcentaje ? ` <span style="color:${tipoColors[tipo]||'var(--gray)'};font-weight:bold">(${b.porcentaje}%)</span>` : '';
       const img   = typeof b === 'object' && b.imagen ? `<img src="${b.imagen}" style="width:100%;max-height:80px;object-fit:cover;border-radius:3px;margin-top:.3rem">` : '';
-      return `<div style="border-bottom:1px solid rgba(255,255,255,.05);padding:.3rem 0">✅ ${texto}${img}</div>`;
+      const icono = tipoIcons[tipo] || '✅';
+      const color = tipoColors[tipo] || 'var(--gray)';
+      return `<div style="border-bottom:1px solid rgba(255,255,255,.05);padding:.3rem 0"><span style="color:${color}">${icono}</span> ${texto}${pct}${img}</div>`;
     }).join('');
     return `<div style="background:var(--card2);border:1px solid var(--border);border-left:3px solid ${n.color};padding:.8rem;margin-bottom:.6rem;border-radius:3px">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.4rem">
@@ -5037,8 +5062,11 @@ async function guardarNivelAdmin(){
   const beneficios = Array.from(filas).map(row => {
     const texto = row.querySelector('.ben-texto').value.trim();
     const imagen = row.dataset.imagenUrl || '';
-    return imagen ? { texto, imagen } : texto;
-  }).filter(b => (typeof b === 'string' ? b : b.texto));
+    const tipo = row.dataset.tipo || 'texto';
+    const pctEl = row.querySelector('.ben-pct');
+    const porcentaje = pctEl ? (parseFloat(pctEl.value) || null) : null;
+    return { texto, imagen, tipo, porcentaje };
+  }).filter(b => b.texto);
   msg.textContent = 'Guardando...';
 
   let error;
@@ -5113,7 +5141,16 @@ async function editarNivelAdmin(id){
   b.forEach(ben => {
     const texto = typeof ben === 'string' ? ben : ben.texto;
     const img   = typeof ben === 'object' ? ben.imagen || '' : '';
-    agregarBeneficioForm(texto, img);
+    const tipo  = typeof ben === 'object' ? ben.tipo || 'texto' : 'texto';
+    const row   = agregarBeneficioForm(texto, img, tipo);
+    // Cargar porcentaje si aplica
+    if(typeof ben === 'object' && ben.porcentaje){
+      const lastRow = document.querySelector('#nivel-beneficios-lista .beneficio-row:last-child');
+      if(lastRow){
+        const pctEl = lastRow.querySelector('.ben-pct');
+        if(pctEl) pctEl.value = ben.porcentaje;
+      }
+    }
   });
   document.getElementById('admin-nivel-form-titulo').textContent = '✏️ EDITANDO NIVEL: ' + data.nombre.toUpperCase();
   document.getElementById('admin-nivel-msg').textContent = '';
@@ -5150,22 +5187,101 @@ async function registrarCompraUsuario(){
   const esDoble = document.getElementById('det-compra-doble').checked;
   const incremento = esDoble ? 2 : 1;
   msg.textContent = 'Registrando...';
-  const nuevasCompras = (s.compras || 0) + incremento;
+
+  const comprasAntes = s.compras || 0;
+  const nuevasCompras = comprasAntes + incremento;
   const nuevoMonto = (s.monto_total || 0) + monto;
+
+  // Detectar nivel ANTES y DESPUÉS para saber si subió
+  const { data: nivelesData } = await sb.from('fidelidad_niveles').select('*').order('orden',{ascending:true});
+  const niveles = nivelesData || [];
+
+  function calcularNivel(compras, monto){
+    let nivelActual = null;
+    for(let n of niveles){
+      const requisito = n.tipo_requisito === 'monto' ? monto : compras;
+      const minimo    = n.tipo_requisito === 'monto' ? (n.min_monto||0) : (n.min_compras||0);
+      if(requisito >= minimo) nivelActual = n;
+    }
+    return nivelActual;
+  }
+
+  const nivelAntes  = calcularNivel(comprasAntes, s.monto_total || 0);
+  const nivelDespues = calcularNivel(nuevasCompras, nuevoMonto);
+
   const { error } = await sb.from('suscriptores')
     .update({ compras: nuevasCompras, monto_total: nuevoMonto })
     .eq('id', s.id);
   if(error){ msg.textContent = '❌ Error: ' + error.message; return; }
+
   _usuarioDetalleActual.compras = nuevasCompras;
   _usuarioDetalleActual.monto_total = nuevoMonto;
-  // Actualizar en cache
   const idx = _suscriptoresCache.findIndex(x => x.id === s.id);
   if(idx >= 0){ _suscriptoresCache[idx].compras = nuevasCompras; _suscriptoresCache[idx].monto_total = nuevoMonto; }
-  msg.textContent = esDoble
-    ? `✅ ¡Compra registrada con puntos dobles! Total: ${nuevasCompras} puntos`
-    : `✅ ¡Compra registrada! Total: ${nuevasCompras} compra${nuevasCompras!==1?'s':''}`;
+
+  // ── ¿Subió de nivel? ─────────────────────────────────────
+  const nombreAntes   = nivelAntes  ? nivelAntes.nombre  : null;
+  const nombreDespues = nivelDespues ? nivelDespues.nombre : null;
+  const subioNivel    = nombreDespues && nombreDespues !== nombreAntes;
+
+  if(subioNivel && nivelDespues){
+    msg.textContent = `⬆️ ¡Subió al nivel ${nivelDespues.emoji||''} ${nivelDespues.nombre}! Aplicando beneficios...`;
+    await aplicarBeneficiosNivel(s, nivelDespues);
+  }
+
+  msg.textContent = subioNivel
+    ? `✅ Compra registrada. ¡${s.nombre||'El cliente'} subió a ${nivelDespues.emoji||''} ${nivelDespues.nombre}! Beneficios aplicados automáticamente.`
+    : (esDoble
+      ? `✅ ¡Compra registrada con puntos dobles! Total: ${nuevasCompras} puntos`
+      : `✅ ¡Compra registrada! Total: ${nuevasCompras} compra${nuevasCompras!==1?'s':''}`);
+
   document.getElementById('det-compras').textContent = nuevasCompras;
   document.getElementById('det-compra-monto').value = '';
   document.getElementById('det-compra-doble').checked = false;
+}
+
+// ── Aplicar beneficios automáticos al subir de nivel ─────
+async function aplicarBeneficiosNivel(cliente, nivel){
+  const beneficios = Array.isArray(nivel.beneficios)
+    ? nivel.beneficios
+    : JSON.parse(nivel.beneficios || '[]');
+
+  const ahora = new Date();
+  const cuponesPendientes = [];
+
+  for(const ben of beneficios){
+    const tipo = typeof ben === 'object' ? (ben.tipo || 'texto') : 'texto';
+    const texto = typeof ben === 'object' ? ben.texto : ben;
+    const pct   = typeof ben === 'object' ? (ben.porcentaje || null) : null;
+
+    if(tipo === 'cupon_unico' && pct && cliente.correo){
+      // Generar cupón de un solo uso automático
+      const codigo = nivel.nombre.toUpperCase().replace(/\s/g,'').slice(0,4)
+        + cliente.nombre.toUpperCase().replace(/\s/g,'').slice(0,4)
+        + Math.floor(100+Math.random()*900);
+      const expira = new Date(ahora);
+      expira.setMonth(expira.getMonth() + 3); // válido 3 meses
+      await sb.from('cupones_usuario').insert([{
+        correo: cliente.correo,
+        codigo,
+        porcentaje: pct,
+        motivo: `Premio nivel ${nivel.nombre}: ${texto}`,
+        expira: expira.toISOString(),
+        usado: false
+      }]);
+    }
+
+    if(tipo === 'cupon_cumpleanos' && pct && cliente.correo){
+      // Registrar % de descuento de cumpleaños en el perfil
+      // Se guarda en suscriptores para que el sistema de cumpleaños lo use
+      await sb.from('suscriptores').update({
+        cupon_cumple_pct: pct,
+        cupon_cumple_nivel: nivel.nombre
+      }).eq('id', cliente.id);
+    }
+
+    // descuento_permanente y premio_fisico: solo se muestran en el perfil,
+    // no generan cupón automático (el descuento permanente se aplica al validar en checkout)
+  }
 }
 </script>
