@@ -1558,12 +1558,11 @@ Casi listo...
             <span style="font-family:var(--font-mono);font-size:.7rem;color:var(--gray)">% de descuento</span>
           </div>
 
-          <div class="admin-field-label">¿DÓNDE APLICA?</div>
+          <div class="admin-field-label">📦 ¿EN QUÉ PRODUCTO APLICA?</div>
           <select id="cup-aplica-a" class="admin-input" style="margin-bottom:.8rem" onchange="toggleCupAplicaA()">
             <option value="todo">Todo el catálogo</option>
             <option value="categorias">Solo ciertas categorías (ej: Tazas, Playeras)</option>
             <option value="tipos">Solo ciertos tipos de producto (ej: Taza 11oz, Manga Larga)</option>
-            <option value="niveles">Solo para ciertos niveles de fidelidad (ej: exclusivo Oro y Diamante)</option>
           </select>
 
           <div id="cup-categorias-wrap" style="display:none;margin-bottom:.8rem">
@@ -1576,9 +1575,15 @@ Casi listo...
             <div id="cup-tipos-checks" style="display:flex;flex-wrap:wrap;gap:.5rem;background:rgba(255,255,255,.03);padding:.7rem;border:1px solid var(--border)"></div>
           </div>
 
+          <div class="admin-field-label" style="margin-top:.2rem">👤 ¿QUIÉN PUEDE USARLO?</div>
+          <select id="cup-publico" class="admin-input" style="margin-bottom:.8rem" onchange="toggleCupPublico()">
+            <option value="todos">Todo el público</option>
+            <option value="niveles">Solo ciertos niveles de fidelidad</option>
+          </select>
+
           <div id="cup-niveles-wrap" style="display:none;margin-bottom:.8rem">
-            <div class="admin-field-label">SELECCIONA LOS NIVELES DE FIDELIDAD QUE PUEDEN USAR ESTE CUPÓN</div>
-            <div style="font-family:var(--font-mono);font-size:.55rem;color:var(--gray);margin-bottom:.5rem">Si agregas un nivel nuevo más adelante, vuelve a este cupón para incluirlo aquí también — no se agrega solo.</div>
+            <div class="admin-field-label">SELECCIONA LOS NIVELES QUE PUEDEN USAR ESTE CUPÓN</div>
+            <div style="font-family:var(--font-mono);font-size:.55rem;color:var(--gray);margin-bottom:.5rem">Los niveles se cargan automáticamente — si agregas uno nuevo en Fidelidad, aparecerá aquí solo.</div>
             <div id="cup-niveles-checks" style="display:flex;flex-wrap:wrap;gap:.5rem;background:rgba(255,255,255,.03);padding:.7rem;border:1px solid var(--border)"></div>
           </div>
 
@@ -2820,14 +2825,15 @@ Casi listo...
 
   function toggleCupAplicaA(){
     const val = document.getElementById('cup-aplica-a').value;
-    const wrapCat = document.getElementById('cup-categorias-wrap');
-    const wrapTip = document.getElementById('cup-tipos-wrap');
-    const wrapNiv = document.getElementById('cup-niveles-wrap');
-    wrapCat.style.display = val === 'categorias' ? 'block' : 'none';
-    wrapTip.style.display = val === 'tipos' ? 'block' : 'none';
-    wrapNiv.style.display = val === 'niveles' ? 'block' : 'none';
+    document.getElementById('cup-categorias-wrap').style.display = val === 'categorias' ? 'block' : 'none';
+    document.getElementById('cup-tipos-wrap').style.display = val === 'tipos' ? 'block' : 'none';
     if(val === 'categorias') renderCupCategoriasChecks();
     if(val === 'tipos') renderCupTiposChecks();
+  }
+
+  function toggleCupPublico(){
+    const val = document.getElementById('cup-publico').value;
+    document.getElementById('cup-niveles-wrap').style.display = val === 'niveles' ? 'block' : 'none';
     if(val === 'niveles') renderCupNivelesChecks();
   }
 
@@ -2900,6 +2906,7 @@ Casi listo...
     document.getElementById('cup-codigo').value = '';
     document.getElementById('cup-porcentaje').value = '10';
     document.getElementById('cup-aplica-a').value = 'todo';
+    document.getElementById('cup-publico').value = 'todos';
     document.getElementById('cup-categorias-wrap').style.display = 'none';
     document.getElementById('cup-tipos-wrap').style.display = 'none';
     document.getElementById('cup-niveles-wrap').style.display = 'none';
@@ -2914,6 +2921,7 @@ Casi listo...
     const codigo = document.getElementById('cup-codigo').value.trim().toUpperCase();
     const porcentaje = parseFloat(document.getElementById('cup-porcentaje').value);
     const aplicaA = document.getElementById('cup-aplica-a').value;
+    const publico = document.getElementById('cup-publico').value;
     const limiteRaw = document.getElementById('cup-limite').value.trim();
     const limite = limiteRaw ? parseInt(limiteRaw) : null;
     const expiraRaw = document.getElementById('cup-expira').value;
@@ -2930,14 +2938,14 @@ Casi listo...
     if(aplicaA === 'categorias' && !categorias.length){ msg.style.color='var(--neon)'; msg.textContent='⚠️ Selecciona al menos una categoría'; return; }
     const tipos = aplicaA === 'tipos' ? getCupTiposSeleccionados() : [];
     if(aplicaA === 'tipos' && !tipos.length){ msg.style.color='var(--neon)'; msg.textContent='⚠️ Selecciona al menos un tipo de producto'; return; }
-    const niveles = aplicaA === 'niveles' ? getCupNivelesSeleccionados() : [];
-    if(aplicaA === 'niveles' && !niveles.length){ msg.style.color='var(--neon)'; msg.textContent='⚠️ Selecciona al menos un nivel de fidelidad'; return; }
+    const niveles = publico === 'niveles' ? getCupNivelesSeleccionados() : [];
+    if(publico === 'niveles' && !niveles.length){ msg.style.color='var(--neon)'; msg.textContent='⚠️ Selecciona al menos un nivel de fidelidad'; return; }
 
     msg.style.color='var(--gray)'; msg.textContent='Guardando...';
 
     try {
       const payload = {
-        codigo, porcentaje, aplica_a: aplicaA, categorias, tipos_producto: tipos, niveles_fidelidad: niveles,
+        codigo, porcentaje, aplica_a: aplicaA, categorias, tipos_producto: tipos, publico: publico, niveles_fidelidad: niveles,
         limite_usos: limite, fecha_expira: expira, activo, puntos_doble: puntosDoble
       };
 
@@ -2988,9 +2996,10 @@ Casi listo...
         else { estadoLabel='ACTIVO'; estadoColor='#4caf50'; }
 
         const aplicaLabel = c.aplica_a === 'todo' ? 'Todo el catálogo'
-          : c.aplica_a === 'niveles' ? `Exclusivo nivel: ${(c.niveles_fidelidad||[]).join(', ')}`
-          : c.aplica_a === 'tipos' ? `Solo tipos: ${(c.tipos_producto||[]).join(', ')}`
-          : `Solo: ${(c.categorias||[]).join(', ')}`;
+          : c.aplica_a === 'tipos' ? `Tipos: ${(c.tipos_producto||[]).join(', ')}`
+          : `Categorías: ${(c.categorias||[]).join(', ')}`;
+        const publicoLabel = (!c.publico || c.publico === 'todos') ? 'Todo el público'
+          : `Solo niveles: ${(c.niveles_fidelidad||[]).join(', ')}`;
         const usosLabel = c.limite_usos !== null ? `${c.usos_actuales} / ${c.limite_usos} usos` : `${c.usos_actuales} usos (ilimitado)`;
         const expiraLabel = c.fecha_expira ? new Date(c.fecha_expira).toLocaleDateString('es-MX') : 'Sin expiración';
 
@@ -3004,6 +3013,7 @@ Casi listo...
           </div>
           <div style="font-size:.72rem;color:var(--gray);line-height:1.8;margin-bottom:.6rem">
             📦 ${aplicaLabel}<br>
+            👤 ${publicoLabel}<br>
             🎯 ${usosLabel}<br>
             📅 ${expiraLabel}
           </div>
@@ -3024,29 +3034,32 @@ Casi listo...
     document.getElementById('cup-edit-id').value = data.id;
     document.getElementById('cup-codigo').value = data.codigo||'';
     document.getElementById('cup-porcentaje').value = data.porcentaje||10;
-    document.getElementById('cup-aplica-a').value = data.aplica_a||'todo';
+    document.getElementById('cup-aplica-a').value = (data.aplica_a === 'niveles') ? 'todo' : (data.aplica_a||'todo');
+    document.getElementById('cup-publico').value = (data.publico || (data.aplica_a === 'niveles' ? 'niveles' : 'todos'));
     document.getElementById('cup-limite').value = data.limite_usos !== null ? data.limite_usos : '';
     document.getElementById('cup-expira').value = data.fecha_expira ? data.fecha_expira.slice(0,10) : '';
     document.getElementById('cup-activo').checked = data.activo !== false;
     document.getElementById('cup-puntos-doble').checked = !!data.puntos_doble;
-    if(data.aplica_a === 'categorias'){
+    // Producto
+    const aplicaV = document.getElementById('cup-aplica-a').value;
+    if(aplicaV === 'categorias'){
       document.getElementById('cup-categorias-wrap').style.display = 'block';
       document.getElementById('cup-tipos-wrap').style.display = 'none';
-      document.getElementById('cup-niveles-wrap').style.display = 'none';
       renderCupCategoriasChecks(data.categorias||[]);
-    } else if(data.aplica_a === 'tipos'){
+    } else if(aplicaV === 'tipos'){
       document.getElementById('cup-categorias-wrap').style.display = 'none';
       document.getElementById('cup-tipos-wrap').style.display = 'block';
-      document.getElementById('cup-niveles-wrap').style.display = 'none';
       renderCupTiposChecks(data.tipos_producto||[]);
-    } else if(data.aplica_a === 'niveles'){
-      document.getElementById('cup-categorias-wrap').style.display = 'none';
-      document.getElementById('cup-tipos-wrap').style.display = 'none';
-      document.getElementById('cup-niveles-wrap').style.display = 'block';
-      renderCupNivelesChecks(data.niveles_fidelidad||[]);
     } else {
       document.getElementById('cup-categorias-wrap').style.display = 'none';
       document.getElementById('cup-tipos-wrap').style.display = 'none';
+    }
+    // Público
+    const publicoV = document.getElementById('cup-publico').value;
+    if(publicoV === 'niveles'){
+      document.getElementById('cup-niveles-wrap').style.display = 'block';
+      renderCupNivelesChecks(data.niveles_fidelidad||[]);
+    } else {
       document.getElementById('cup-niveles-wrap').style.display = 'none';
     }
     document.getElementById('cup-msg').textContent = '';
