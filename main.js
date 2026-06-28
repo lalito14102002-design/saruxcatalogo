@@ -8,6 +8,20 @@ const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 // bloquean o ignoran silenciosamente window.open(url,'_blank'), dejando los botones
 // sin respuesta. Esta función detecta ese caso y hace fallback a location.href,
 // que el sistema operativo intercepta correctamente para abrir WhatsApp/Instagram.
+
+// Detecta si la página se está ejecutando como app instalada (PWA), no como
+// pestaña normal del navegador. Se usa, por ejemplo, para exigir que el cupón
+// de bienvenida solo se otorgue a quien instaló la app Y se registró.
+function esAppInstalada(){
+  try{
+    return (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches)
+      || window.navigator.standalone === true
+      || localStorage.getItem('sarux_pwa_instalada') === '1';
+  }catch(e){
+    return false;
+  }
+}
+
 function abrirEnlaceExterno(url){
   if(!url) return;
   try{
@@ -3098,11 +3112,23 @@ async function verificarCodigoPerfil(){
   try{ localStorage.setItem(SUS_KEY, '1'); }catch(e){}
   _perfilActual = { ...data, token_sesion: tokenSesion };
 
-  // Si es primera vez → dar cupón de bienvenida
-  if(esPrimeraVez){
+  // Revisamos el cupón de bienvenida en cada inicio de sesión (no solo la
+  // primera vez), porque otorgarCuponBienvenida ya evita duplicados por su
+  // cuenta. Así, si la persona se registró primero y instala la app después
+  // (o al revés), en cuanto cumpla ambas condiciones recibe su cupón —
+  // sin importar el orden en que pasen esas dos cosas.
+  if(esAppInstalada()){
     try{
       const cupon = await otorgarCuponBienvenida(data);
-      mostrarPopupCupon('bienvenida', cupon, data.nombre);
+      if(cupon && cupon.recienCreado){
+        mostrarPopupCupon('bienvenida', cupon, data.nombre);
+      }
+    }catch(e){}
+  } else if(esPrimeraVez){
+    // No tiene la app instalada todavía: le avisamos del incentivo,
+    // solo la primera vez, para no ser repetitivos en cada visita.
+    try{
+      showToast('📲 Instala la app SARUX para obtener tu cupón de bienvenida del 10%', 5000);
     }catch(e){}
   }
 
@@ -3221,7 +3247,7 @@ async function otorgarCuponBienvenida(datos){
     .eq('motivo', 'bienvenida')
     .single();
 
-  if(existente) return existente;
+  if(existente) return { ...existente, recienCreado: false };
 
   const pctBienvenida = (APP_DATA.CUPONES_CFG && APP_DATA.CUPONES_CFG.bienvenida_porcentaje) || 10;
   const codigo = 'BIENVENIDO' + Math.floor(1000 + Math.random() * 9000);
@@ -3234,7 +3260,7 @@ async function otorgarCuponBienvenida(datos){
     motivo:        'bienvenida'
   }]).select().single();
 
-  return creado || { codigo, porcentaje: pctBienvenida };
+  return creado ? { ...creado, recienCreado: true } : { codigo, porcentaje: pctBienvenida, recienCreado: true };
 }
 
 // ── Cupón automático de cumpleaños ───────────────────────────
@@ -3333,6 +3359,79 @@ function cerrarSesionPerfil(){
 
 
 // ═══════════════════════════════════════════════════════════════
+// PUSH NOTIFICATIONS REALES — llegan aunque la app esté CERRADA
+// ═══════════════════════════════════════════════════════════════
+// Requiere: 1) llave pública VAPID configurada abajo,
+//           2) tabla 'push_suscripciones' en Supabase,
+//           3) la Edge Function 'enviar-push' desplegada en Supabase.
+// Mientras esos 3 puntos no estén listos, este bloque simplemente
+// no hace nada (falla en silencio) y el resto de la página sigue normal.
+
+// Pega aquí tu llave pública VAPID (la generas con el comando que te dejamos
+// en las instrucciones). Mientras esté vacía, no se pedirá suscripción push.
+const VAPID_PUBLIC_KEY = '';
+
+function _urlBase64ToUint8Array(base64String){
+  const padding = '='.repeat((4 - base64String.length % 4) % 4);
+  const base64  = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const rawData = window.atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+  for(let i = 0; i < rawData.length; ++i) outputArray[i] = rawData.charCodeAt(i);
+  return outputArray;
+}
+
+// Da de alta (o actualiza) la suscripción push del dispositivo actual en Supabase,
+// ligada al correo del perfil si hay sesión iniciada (para poder notificar por cumpleaños/cupones
+// personales), o sin correo si es un visitante anónimo (para avisos generales de catálogo).
+async function suscribirsePush(){
+  try{
+    if(!VAPID_PUBLIC_KEY) return false; // aún no configurada, no hacer nada
+    if(!('serviceWorker' in navigator) || !('PushManager' in window)) return false;
+    if(Notification.permission !== 'granted') return false;
+
+    const reg = await navigator.serviceWorker.ready;
+    let sub = await reg.pushManager.getSubscription();
+    if(!sub){
+      sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: _urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
+      });
+    }
+
+    const correo = localStorage.getItem(PERFIL_CORREO) || null;
+
+    await sb.from('push_suscripciones').upsert({
+      endpoint: sub.endpoint,
+      correo,
+      suscripcion_json: JSON.stringify(sub.toJSON()),
+      user_agent: navigator.userAgent.substring(0,200),
+      actualizado_en: new Date().toISOString()
+    }, { onConflict: 'endpoint' });
+
+    return true;
+  }catch(e){
+    console.warn('[SARUX Push] No se pudo suscribir:', e);
+    return false;
+  }
+}
+
+// Cancela las notificaciones en este dispositivo. Por seguridad, la tabla no
+// permite borrar filas desde el navegador (solo la Edge Function puede), así
+// que aquí simplemente se cancela la suscripción del navegador — el endpoint
+// quedará "muerto" en Supabase y la función de envío lo limpiará sola la
+// próxima vez que intente notificar y reciba un error 404/410.
+async function desuscribirsePush(){
+  try{
+    if(!('serviceWorker' in navigator)) return;
+    const reg = await navigator.serviceWorker.ready;
+    const sub = await reg.pushManager.getSubscription();
+    if(sub) await sub.unsubscribe();
+  }catch(e){}
+}
+window.suscribirsePush   = suscribirsePush;
+window.desuscribirsePush = desuscribirsePush;
+
+// ═══════════════════════════════════════════════════════════════
 // SISTEMA DE NOTIFICACIONES DEL NAVEGADOR — SARUX
 // ═══════════════════════════════════════════════════════════════
 
@@ -3372,8 +3471,13 @@ async function pedirPermisoSiLogueado(){
           '🔔 SARUX — Notificaciones activadas',
           'Te avisaremos cuando tengas cupones o novedades.',
         );
+        // Activar también las notificaciones push reales (llegan con la app cerrada)
+        try{ if(typeof window.suscribirsePush === 'function') await window.suscribirsePush(); }catch(e){}
       }
     }, 5000);
+  } else if(Notification.permission === 'granted'){
+    // Ya tenía permiso de antes: asegurar que la suscripción push siga activa y ligada a este correo
+    try{ if(typeof window.suscribirsePush === 'function') await window.suscribirsePush(); }catch(e){}
   }
 }
 
@@ -3410,9 +3514,36 @@ async function revisarCuponesNuevos(){
   localStorage.setItem(visto_key, JSON.stringify(vistos));
 }
 
+// Pedir permiso a CUALQUIER visitante (con o sin cuenta) para avisos generales
+// como "nuevo producto en el catálogo" o "cupón de regalo para todos".
+// Se pide una sola vez por dispositivo; si ya se le preguntó, no se vuelve a insistir.
+async function pedirPermisoGeneral(){
+  if(!('Notification' in window)) return;
+  if(Notification.permission === 'granted'){
+    try{ if(typeof window.suscribirsePush === 'function') await window.suscribirsePush(); }catch(e){}
+    return;
+  }
+  if(Notification.permission !== 'default') return; // ya dijo que no, no insistir
+  const yaPreguntado = localStorage.getItem('sarux_push_preguntado');
+  if(yaPreguntado) return;
+
+  setTimeout(async () => {
+    localStorage.setItem('sarux_push_preguntado', '1');
+    const granted = await pedirPermisoNotificaciones();
+    if(granted){
+      mostrarNotificacionNavegador(
+        '🔔 SARUX — Notificaciones activadas',
+        'Te avisaremos de nuevos productos y cupones de regalo.'
+      );
+      try{ if(typeof window.suscribirsePush === 'function') await window.suscribirsePush(); }catch(e){}
+    }
+  }, 6000); // un poco después del popup de bienvenida, para no saturar al visitante
+}
+
 // Inicializar al cargar la página
 window.addEventListener('load', () => {
   pedirPermisoSiLogueado();
+  pedirPermisoGeneral();
   setTimeout(revisarCuponesNuevos, 3000);
 });
 
