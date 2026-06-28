@@ -3271,6 +3271,8 @@ async function mostrarPaso3Perfil(datos){
   try { await verificarCuponCumpleanos(datos); } catch(e){}
   // Cargar cupones del usuario
   try { await cargarCuponesUsuario(datos.correo); } catch(e){}
+  // Cargar premios físicos pendientes/entregados recientes
+  try { await cargarPremiosFisicosUsuario(datos.correo); } catch(e){}
   // Mostrar carta de fidelidad
   try { await mostrarCartaFidelidad(datos); } catch(e){
     // Si falla, mostrar tarjeta básica sin nivel
@@ -3358,7 +3360,7 @@ async function otorgarCuponBienvenida(datos){
 async function verificarCuponCumpleanos(datos){
   if(!datos.cumpleanos) return null;
   const hoy   = new Date();
-  const cumple = new Date(datos.cumpleanos);
+  const cumple = new Date(datos.cumpleanos + 'T12:00:00');
   const esCumple = (hoy.getMonth() === cumple.getMonth() &&
                     hoy.getDate()  === cumple.getDate());
   if(!esCumple) return null;
@@ -3416,6 +3418,37 @@ async function cargarCuponesUsuario(correo){
       <span style="color:var(--white);margin-left:.5rem">${c.porcentaje}% OFF</span>
       ${c.motivo === 'cumpleanos' ? '<br><span style="color:var(--gray);font-size:.65rem">¡Feliz cumpleaños! Solo válido hoy 🎉</span>' : ''}
       ${expira}
+    </div>`;
+  }).join('');
+}
+
+// ── Premios físicos del usuario (pendientes / entregados recientes) ──
+async function cargarPremiosFisicosUsuario(correo){
+  const wrap = document.getElementById('perfil-premios-wrap');
+  const lista = document.getElementById('perfil-premios-lista');
+  if(!wrap || !lista) return;
+  // Mostrar pendientes + entregados de los últimos 30 días (para que vean el aviso de "ya lo usaste")
+  const hace30 = new Date(Date.now() - 30*24*60*60*1000).toISOString();
+  const { data, error } = await sb.from('premios_fisicos_usuario')
+    .select('*')
+    .eq('correo', correo)
+    .or(`entregado.eq.false,entregado_at.gte.${hace30}`)
+    .order('created_at', { ascending: false });
+
+  if(error || !data || data.length === 0){
+    wrap.style.display = 'none';
+    lista.innerHTML = '';
+    return;
+  }
+
+  wrap.style.display = 'block';
+  lista.innerHTML = data.map(p => {
+    const estado = p.entregado
+      ? '<span style="color:#4caf50">✅ Ya te lo entregamos</span>'
+      : '<span style="color:#ff9800">⏳ Pendiente de entrega — pásalo a recoger o pregunta por WhatsApp</span>';
+    return `<div style="background:var(--bg);border:1px solid rgba(185,242,255,.3);border-radius:3px;padding:.7rem;margin-bottom:.5rem">
+      <span style="color:#b9f2ff;font-size:.8rem">📦 ${p.texto}</span>
+      <br><span style="font-size:.65rem">${estado}</span>
     </div>`;
   }).join('');
 }

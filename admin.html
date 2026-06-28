@@ -2627,7 +2627,34 @@ Casi listo...
       }).join('');
     }
 
+    // Cargar premios físicos pendientes/entregados del usuario
+    const { data: premios } = await sb.from('premios_fisicos_usuario').select('*').eq('correo', s.correo).order('created_at',{ascending:false});
+    const wrapP = document.getElementById('det-premios-wrap');
+    const listaP = document.getElementById('det-premios-lista');
+    if(premios && premios.length){
+      wrapP.style.display = 'block';
+      listaP.innerHTML = premios.map(p => {
+        const estado = p.entregado
+          ? '<span style="color:#4caf50">✅ ENTREGADO</span>'
+          : '<span style="color:#ff9800">⏳ PENDIENTE</span>';
+        return `<div style="display:flex;justify-content:space-between;align-items:center;gap:.5rem;padding:.4rem 0;border-bottom:1px solid rgba(255,255,255,.05);font-family:var(--font-mono);font-size:.6rem">
+          <span style="color:var(--white);flex:1">${p.texto}</span>
+          <span style="color:var(--gray)">${p.nivel||''}</span>
+          ${estado}
+          ${!p.entregado ? `<button onclick="marcarPremioEntregado('${p.id}')" style="background:none;border:1px solid rgba(255,255,255,.2);color:var(--gray);font-size:.5rem;padding:.2rem .4rem;cursor:pointer">✓ Marcar entregado</button>` : ''}
+        </div>`;
+      }).join('');
+    } else {
+      wrapP.style.display = 'none';
+      listaP.innerHTML = '';
+    }
+
     document.getElementById('detalleUsuarioOverlay').style.display = 'flex';
+  }
+
+  async function marcarPremioEntregado(id){
+    await sb.from('premios_fisicos_usuario').update({ entregado: true, entregado_at: new Date().toISOString() }).eq('id', id);
+    if(_usuarioDetalleActual) abrirDetalleUsuario(_usuarioDetalleActual.id);
   }
 
   async function regalarCuponPersonalizado(){
@@ -4882,6 +4909,12 @@ function actualizarStockHint(val){
       </div>
     </div>
 
+    <!-- Premios físicos pendientes de entregar -->
+    <div id="det-premios-wrap" style="background:rgba(185,242,255,.06);border:1px solid rgba(185,242,255,.25);padding:1rem;border-radius:3px;margin-bottom:1rem;display:none">
+      <div style="font-size:.55rem;letter-spacing:2px;color:#b9f2ff;font-family:var(--font-mono);margin-bottom:.6rem">📦 PREMIOS FÍSICOS</div>
+      <div id="det-premios-lista"></div>
+    </div>
+
     <!-- Cupones activos -->
     <div style="background:var(--card);border:1px solid var(--border);padding:1rem;border-radius:3px;margin-bottom:1rem">
       <div style="font-size:.55rem;letter-spacing:2px;color:var(--neon);font-family:var(--font-mono);margin-bottom:.6rem">🎁 CUPONES DEL USUARIO</div>
@@ -5280,8 +5313,19 @@ async function aplicarBeneficiosNivel(cliente, nivel){
       }).eq('id', cliente.id);
     }
 
-    // descuento_permanente y premio_fisico: solo se muestran en el perfil,
-    // no generan cupón automático (el descuento permanente se aplica al validar en checkout)
+    if(tipo === 'premio_fisico' && texto && cliente.correo){
+      // Registrar premio físico pendiente de entregar — aparece en el detalle
+      // del cliente en el admin hasta que se marque como entregado manualmente
+      await sb.from('premios_fisicos_usuario').insert([{
+        correo: cliente.correo,
+        suscriptor_id: cliente.id,
+        nivel: nivel.nombre,
+        texto: texto
+      }]);
+    }
+
+    // descuento_permanente: solo se muestra en el perfil y se aplica
+    // automáticamente en el carrito (ver aplicarDescuentoPermanenteSiAplica en main.js)
   }
 }
 </script>
