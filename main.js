@@ -105,7 +105,8 @@ const DEFAULTS = {
     termina_en: null
   },
   FIDELIDAD_PRECIO:30,
-  FIDELIDAD_TERMINOS:"TÉRMINOS Y CONDICIONES — TARJETA DE FIDELIDAD SARUX\n\nAdquisición y Reposición de la Tarjeta\n1. La tarjeta de fidelidad Sarux tiene un costo de $30 MXN.\n2. Es obligatorio presentar la tarjeta física en cada compra para acumular y hacer válidos los beneficios. Sin tarjeta no se registra la compra.\n3. En caso de pérdida o daño, la reposición tiene un costo de $50 MXN.\n4. La tarjeta es personal e intransferible.\n5. Cada cliente puede tener únicamente una cuenta activa vinculada a su correo electrónico.\n\nAcumulación de Compras\n6. Las compras se registran únicamente al presentar la tarjeta física al momento del pedido. No se aplican compras anteriores de forma retroactiva.\n7. Los pedidos realizados sin tarjeta o como invitado no acumulan compras.\n8. Las compras canceladas o con devolución no cuentan para acumular.\n9. Los errores en el registro de compras deben reportarse en un máximo de 7 días posteriores al pedido.\n\nVigencia\n10. Los puntos acumulados tienen una vigencia de 6 meses a partir de la entrega de la tarjeta. Al vencer este plazo, el contador regresa a cero.\n11. Los beneficios de cada nivel aplican únicamente mientras el cliente mantenga el nivel activo.\n\nBeneficios y Descuentos\n12. Los descuentos no son acumulables entre sí ni con otras promociones, salvo aviso expreso de Sarux.\n13. El cupón de cumpleaños tiene validez de 30 días a partir de la fecha de cumpleaños y aplica solo durante ese mes.\n14. La fecha de cumpleaños solo puede modificarse una vez y debe coincidir con una identificación oficial.\n15. Los beneficios no tienen valor en efectivo ni pueden canjearse por dinero.\n16. El nivel alcanzado no garantiza disponibilidad de productos exclusivos si están agotados.\n17. La atención prioritaria por WhatsApp del nivel Diamante tiene un horario de respuesta de 24 horas hábiles.\n\nProtección contra Mal Uso\n18. Queda prohibido crear cuentas falsas o múltiples para acumular compras artificialmente.\n19. En caso de detectar fraude o mal uso, Sarux cancelará la cuenta sin previo aviso.\n20. Sarux se reserva el derecho de verificar la identidad del cliente antes de aplicar cualquier beneficio.\n\nDatos Personales\n21. Los datos registrados se usan exclusivamente para la gestión del programa de fidelidad. Sarux no los comparte con terceros.\n22. Sarux no se hace responsable si el cliente no recibe notificaciones por tener el correo incorrecto registrado.\n\nModificaciones al Programa\n23. Sarux puede modificar, suspender o cancelar el programa en cualquier momento, notificando con anticipación por redes sociales o sitio web."
+  FIDELIDAD_PREMIOS_INICIO:null,
+  FIDELIDAD_TERMINOS:"TÉRMINOS Y CONDICIONES — TARJETA DE FIDELIDAD SARUX\n\nAdquisición y Reposición de la Tarjeta\n1. La tarjeta de fidelidad Sarux tiene un costo de $30 MXN.\n2. Es obligatorio presentar la tarjeta física en cada compra para acumular y hacer válidos los beneficios. Sin tarjeta no se registra la compra.\n3. En caso de pérdida o daño, la reposición tiene un costo de $50 MXN.\n4. La tarjeta es personal e intransferible.\n5. Cada cliente puede tener únicamente una cuenta activa vinculada a su correo electrónico.\n\nAcumulación de Compras\n6. Las compras se registran únicamente al presentar la tarjeta física al momento del pedido. No se aplican compras anteriores de forma retroactiva.\n7. Los pedidos realizados sin tarjeta o como invitado no acumulan compras.\n8. Las compras canceladas o con devolución no cuentan para acumular.\n9. Los errores en el registro de compras deben reportarse en un máximo de 7 días posteriores al pedido.\n\nVigencia\n10. Los puntos acumulados tienen una vigencia de 6 meses a partir de la entrega de la tarjeta. Al vencer este plazo, el contador regresa a cero.\n11. Los beneficios de cada nivel aplican únicamente mientras el cliente mantenga el nivel activo.\n12. Los premios y beneficios del programa de fidelidad se revisan y pueden actualizarse cada 6 meses. La vigencia de los premios actuales se indica en el reverso de la tarjeta de fidelidad de cada cliente.\n\nBeneficios y Descuentos\n13. Los descuentos no son acumulables entre sí ni con otras promociones, salvo aviso expreso de Sarux.\n14. El cupón de cumpleaños tiene validez de 30 días a partir de la fecha de cumpleaños y aplica solo durante ese mes.\n15. La fecha de cumpleaños solo puede modificarse una vez y debe coincidir con una identificación oficial.\n16. Los beneficios no tienen valor en efectivo ni pueden canjearse por dinero.\n17. El nivel alcanzado no garantiza disponibilidad de productos exclusivos si están agotados.\n18. La atención prioritaria por WhatsApp del nivel Diamante tiene un horario de respuesta de 24 horas hábiles.\n\nProtección contra Mal Uso\n19. Queda prohibido crear cuentas falsas o múltiples para acumular compras artificialmente.\n20. En caso de detectar fraude o mal uso, Sarux cancelará la cuenta sin previo aviso.\n21. Sarux se reserva el derecho de verificar la identidad del cliente antes de aplicar cualquier beneficio.\n\nDatos Personales\n22. Los datos registrados se usan exclusivamente para la gestión del programa de fidelidad. Sarux no los comparte con terceros.\n23. Sarux no se hace responsable si el cliente no recibe notificaciones por tener el correo incorrecto registrado.\n\nModificaciones al Programa\n24. Sarux puede modificar, suspender o cancelar el programa en cualquier momento, notificando con anticipación por redes sociales o sitio web."
 };
 
 // Variables globales
@@ -1654,6 +1655,16 @@ async function aplicarCuponCarrito(){
       if(!aplica){
         msgEl.className = 'carrito-cupon-msg error';
         msgEl.textContent = '❌ Este código solo aplica a: ' + (data.tipos_producto||[]).join(', ');
+        return;
+      }
+    }
+    if(data.aplica_a === 'niveles'){
+      const nivelCliente = await obtenerNivelActualCliente(_perfilActual);
+      const nombreNivelCliente = nivelCliente ? nivelCliente.nombre.toUpperCase() : null;
+      const nivelesPermitidos = (data.niveles_fidelidad||[]).map(n => n.toUpperCase());
+      if(!nombreNivelCliente || !nivelesPermitidos.includes(nombreNivelCliente)){
+        msgEl.className = 'carrito-cupon-msg error';
+        msgEl.textContent = '❌ Este código es exclusivo para nivel: ' + (data.niveles_fidelidad||[]).join(', ');
         return;
       }
     }
@@ -3582,6 +3593,30 @@ async function cargarNivelesFidelidad(){
     .select('*').order('orden', { ascending: true });
   _nivelesCache = data || [];
   return _nivelesCache;
+}
+
+// Calcula el nivel de fidelidad actual de un cliente (mismo criterio que
+// usa la tarjeta de su perfil), para poder validar cupones exclusivos por nivel.
+// Devuelve el objeto del nivel (con .nombre) o null si aún no alcanza ninguno.
+async function obtenerNivelActualCliente(datos){
+  let niveles = [];
+  try {
+    niveles = _nivelesCache.length ? _nivelesCache : await cargarNivelesFidelidad();
+  } catch(e){ return null; }
+  if(!niveles.length) return null;
+
+  const compras = datos.compras || 0;
+  const montoTotal = datos.monto_total || 0;
+  const valorNivel = (n) => n.tipo_requisito === 'monto' ? n.min_monto : n.min_compras;
+  const valorCliente = (n) => n.tipo_requisito === 'monto' ? montoTotal : compras;
+
+  let nivelActual = null;
+  for(let i = 0; i < niveles.length; i++){
+    if(valorCliente(niveles[i]) >= valorNivel(niveles[i])){
+      nivelActual = niveles[i];
+    }
+  }
+  return nivelActual;
 }
 
 async function mostrarCartaFidelidad(datos){
