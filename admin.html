@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <title>SARUX — Panel de Administración</title>
-<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Space+Mono:wght@400;700&family=Rajdhani:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Oswald:wght@400;500;600;700&family=Anton&family=Righteous&family=Bungee&family=Russo+One&family=Space+Mono:wght@400;700&family=Share+Tech+Mono&family=IBM+Plex+Mono:wght@400;500;600&family=Rajdhani:wght@300;400;500;600;700&family=Exo+2:wght@300;400;500;600;700&family=Titillium+Web:wght@300;400;600;700&family=Kanit:wght@300;400;500;600;700&family=Barlow:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
   /* VARIABLES */
   :root {
@@ -1529,6 +1529,17 @@ Casi listo...
           </div>
         </div>
 
+        <!-- Sincronización masiva de beneficios (premios físicos / % cumpleaños) -->
+        <div style="background:rgba(185,242,255,.06);border:1px solid rgba(185,242,255,.25);padding:1rem;border-radius:3px;margin-bottom:1rem">
+          <div style="font-size:.55rem;letter-spacing:2px;color:#b9f2ff;font-family:var(--font-mono);margin-bottom:.5rem">🔄 SINCRONIZACIÓN MASIVA DE BENEFICIOS</div>
+          <div style="font-size:.6rem;color:var(--gray);margin-bottom:.7rem;line-height:1.5">
+            Revisa a TODOS los clientes y le asigna a cada uno los premios físicos y el % de cupón de cumpleaños que le corresponden según su nivel actual.
+            Útil una sola vez (o cuando edites beneficios de un nivel) para poner al día a clientes que ya estaban en su nivel desde antes. No duplica premios ya registrados.
+          </div>
+          <button class="admin-btn" onclick="sincronizarBeneficiosTodos()" style="width:100%;justify-content:center">🔄 Sincronizar TODOS los clientes</button>
+          <div id="sync-masivo-msg" style="font-family:var(--font-mono);font-size:.6rem;color:var(--neon);margin-top:.6rem;min-height:.9rem"></div>
+        </div>
+
         <!-- Lista de niveles existentes -->
         <div class="admin-card-title" style="margin-bottom:.8rem">📋 NIVELES ACTUALES</div>
         <div id="admin-niveles-lista">
@@ -2654,6 +2665,70 @@ Casi listo...
   async function marcarPremioEntregado(id){
     await sb.from('premios_fisicos_usuario').update({ entregado: true, entregado_at: new Date().toISOString() }).eq('id', id);
     if(_usuarioDetalleActual) abrirDetalleUsuario(_usuarioDetalleActual.id);
+  }
+
+  // ── Sincronizar beneficios de TODOS los clientes de un jalón ──────────
+  // Misma lógica que sincronizarBeneficiosNivelActual() pero recorriendo
+  // a todos los suscriptores. Pensado para correrse una vez (o cada vez que
+  // se editan los beneficios de un nivel) para poner al día a clientes que
+  // ya estaban en su nivel desde antes de que existiera esta función.
+  async function sincronizarBeneficiosTodos(){
+    const msg = document.getElementById('sync-masivo-msg');
+    msg.textContent = 'Cargando niveles y clientes...';
+
+    const { data: nivelesData } = await sb.from('fidelidad_niveles').select('*').order('orden',{ascending:true});
+    const niveles = nivelesData || [];
+    if(!niveles.length){ msg.textContent = '⚠️ No hay niveles de fidelidad configurados.'; return; }
+
+    const { data: clientes, error: errCli } = await sb.from('suscriptores').select('id, correo, compras, monto_total');
+    if(errCli || !clientes){ msg.textContent = '❌ Error cargando clientes.'; return; }
+
+    let revisados = 0, premiosNuevos = 0, cuponesActualizados = 0;
+
+    for(const s of clientes){
+      revisados++;
+      msg.textContent = `Procesando ${revisados}/${clientes.length}...`;
+
+      const compras = s.compras || 0;
+      const monto = s.monto_total || 0;
+      let nivelActual = null;
+      for(const n of niveles){
+        const requisito = n.tipo_requisito === 'monto' ? monto : compras;
+        const minimo = n.tipo_requisito === 'monto' ? (n.min_monto||0) : (n.min_compras||0);
+        if(requisito >= minimo) nivelActual = n;
+      }
+      if(!nivelActual) continue; // este cliente no alcanza ningún nivel todavía
+
+      const beneficios = Array.isArray(nivelActual.beneficios) ? nivelActual.beneficios : JSON.parse(nivelActual.beneficios || '[]');
+      if(!beneficios.length) continue;
+
+      const tienePremioFisico = beneficios.some(b => typeof b === 'object' && b.tipo === 'premio_fisico' && b.texto);
+      const benCumple = beneficios.find(b => typeof b === 'object' && b.tipo === 'cupon_cumpleanos' && b.porcentaje);
+
+      let textosExistentes = [];
+      if(tienePremioFisico){
+        const { data: existentes } = await sb.from('premios_fisicos_usuario').select('texto').eq('correo', s.correo).eq('nivel', nivelActual.nombre);
+        textosExistentes = (existentes||[]).map(e => e.texto);
+      }
+
+      for(const ben of beneficios){
+        const tipo  = typeof ben === 'object' ? (ben.tipo || 'texto') : 'texto';
+        const texto = typeof ben === 'object' ? ben.texto : ben;
+        const pct   = typeof ben === 'object' ? (ben.porcentaje || null) : null;
+
+        if(tipo === 'premio_fisico' && texto && !textosExistentes.includes(texto)){
+          await sb.from('premios_fisicos_usuario').insert([{ correo: s.correo, suscriptor_id: s.id, nivel: nivelActual.nombre, texto }]);
+          premiosNuevos++;
+        }
+      }
+
+      if(benCumple){
+        await sb.from('suscriptores').update({ cupon_cumple_pct: benCumple.porcentaje, cupon_cumple_nivel: nivelActual.nombre }).eq('id', s.id);
+        cuponesActualizados++;
+      }
+    }
+
+    msg.innerHTML = `✅ Listo. ${revisados} clientes revisados · ${premiosNuevos} premio(s) físico(s) nuevo(s) registrado(s) · ${cuponesActualizados} % de cumpleaños actualizado(s).`;
   }
 
   // ── Sincronizar beneficios del nivel actual (para clientes que ya estaban
