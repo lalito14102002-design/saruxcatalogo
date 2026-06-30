@@ -265,6 +265,8 @@ function renderPage(){
   mv.innerHTML=getMasVendidosAutomaticos().map(({p,catNombre,catEmoji})=>mkCard(p,catNombre,catEmoji)).join('');
 
   renderTabs();renderMayoreo();
+  // Cargar catálogos de temporada (aparecen solos si hoy cae en sus fechas)
+  cargarYMostrarTemporadas().catch(()=>{});
 
   const lg=document.getElementById('launchGrid');
   lg.setAttribute('data-cols',GRID_CONFIG.lanzamientos);
@@ -3463,6 +3465,154 @@ async function cargarPremiosFisicosUsuario(correo){
     </div>`;
   }).join('');
 }
+
+// ══════════════════════════════════════════════════════════════════════════════
+// TEMPORADAS — Catálogos por fechas (automáticos)
+// Aparecen solos cuando la fecha cae dentro del rango, desaparecen solos al terminar.
+// ══════════════════════════════════════════════════════════════════════════════
+
+let _temporadasActivas = []; // todas las activas hoy
+let _tempPanelCatIdx = 0;    // índice de la "categoría" (temporada) en el panel
+
+async function cargarYMostrarTemporadas(){
+  const sec = document.getElementById('sec-temporada');
+  if(!sec) return;
+
+  // Calcular fecha de hoy en formato YYYY-MM-DD local (sin offset UTC)
+  const hoy = new Date();
+  const yyyy = hoy.getFullYear();
+  const mm = String(hoy.getMonth()+1).padStart(2,'0');
+  const dd = String(hoy.getDate()).padStart(2,'0');
+  const hoyStr = `${yyyy}-${mm}-${dd}`;
+
+  // Traer temporadas activas cuyo rango incluye hoy
+  const { data: temps, error } = await sb
+    .from('temporadas')
+    .select('*')
+    .eq('activa', true)
+    .lte('fecha_inicio', hoyStr)
+    .gte('fecha_fin', hoyStr)
+    .order('fecha_inicio', { ascending: true });
+
+  if(error || !temps || !temps.length){ sec.style.display='none'; return; }
+
+  // Para cada temporada activa, traer sus productos
+  const conProds = await Promise.all(temps.map(async t => {
+    const { data: prods } = await sb
+      .from('temporada_productos')
+      .select('*')
+      .eq('temporada_id', t.id)
+      .order('created_at', { ascending: true });
+    return { ...t, productos: prods || [] };
+  }));
+
+  // Solo mostrar temporadas que tengan al menos 1 producto
+  _temporadasActivas = conProds.filter(t => t.productos.length > 0);
+  if(!_temporadasActivas.length){ sec.style.display='none'; return; }
+
+  sec.style.display = 'block';
+
+  // Si hay varias temporadas activas al mismo tiempo (ej. Halloween + Día de Muertos),
+  // se muestran todas como "portadas" — cada temporada = una portada de categoría
+  const primera = _temporadasActivas[0];
+
+  // Título y datos del banner (usar la primera si son varias)
+  document.getElementById('temp-titulo').textContent = _temporadasActivas.length === 1
+    ? `${primera.emoji||'🎄'} ${primera.nombre.toUpperCase()}`
+    : '🗓️ TEMPORADAS ESPECIALES';
+  document.getElementById('temp-label').textContent = 'EDICIÓN ESPECIAL · TIEMPO LIMITADO';
+
+  if(_temporadasActivas.length === 1){
+    const finDate = new Date(primera.fecha_fin+'T12:00:00');
+    const diffMs = finDate - hoy;
+    const diffDias = Math.max(0, Math.ceil(diffMs / (1000*60*60*24)));
+    document.getElementById('temp-fechas').textContent = diffDias <= 7
+      ? `⏰ Termina en ${diffDias} día${diffDias!==1?'s':''}`
+      : `Disponible hasta el ${finDate.toLocaleDateString('es-MX',{day:'2-digit',month:'long',year:'numeric'})}`;
+    document.getElementById('temp-banner-txt').textContent = primera.banner_texto || '';
+    // Aplicar color de acento de la temporada como tinte en la sección
+    if(primera.color_acento) sec.style.setProperty('--temp-acento', primera.color_acento);
+  } else {
+    document.getElementById('temp-fechas').textContent = `${_temporadasActivas.length} colecciones disponibles ahora`;
+    document.getElementById('temp-banner-txt').textContent = '';
+  }
+
+  // Renderizar las portadas (una por temporada)
+  renderTempPortadas();
+}
+
+function renderTempPortadas(){
+  const grid = document.getElementById('temp-portadas-grid');
+  if(!grid) return;
+  grid.innerHTML = _temporadasActivas.map((t, i) => {
+    const totalProds = t.productos.length;
+    const mediaEl = t.imagen_portada
+      ? `<img src="${t.imagen_portada}" alt="${t.nombre}" class="cat-portada-img" loading="lazy">`
+      : `<div class="cat-portada-emoji">${t.emoji||'🎄'}</div>`;
+    return `<div class="cat-portada-card" onclick="abrirTempPanel(${i})">
+      ${mediaEl}
+      <div class="cat-portada-overlay"></div>
+      <div class="cat-portada-info">
+        <div class="cat-portada-name">${t.nombre}</div>
+        ${totalProds ? `<div class="cat-portada-count">${totalProds} producto${totalProds!==1?'s':''}</div>` : ''}
+      </div>
+      <div class="cat-portada-arrow">›</div>
+    </div>`;
+  }).join('');
+}
+
+function abrirTempPanel(idx){
+  _tempPanelCatIdx = idx;
+  const t = _temporadasActivas[idx];
+  if(!t) return;
+  document.getElementById('tempPanelTitle').textContent = `${t.emoji||'🎄'} ${t.nombre}`;
+  document.getElementById('tempPanelBackLabel').textContent = 'Temporada';
+  renderTempPanelGrid();
+  document.getElementById('tempCatPanel').classList.add('open');
+  document.body.style.overflow = 'hidden';
+  history.pushState({ saruxTempPanel: true }, '', window.location.href);
+}
+
+function cerrarTempPanel(){
+  document.getElementById('tempCatPanel').classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+function renderTempPanelGrid(){
+  const t = _temporadasActivas[_tempPanelCatIdx];
+  if(!t) return;
+  const prods = t.productos || [];
+  const countEl = document.getElementById('tempPanelCount');
+  if(countEl) countEl.textContent = prods.length ? `${prods.length} producto${prods.length!==1?'s':''}` : '';
+  const grid = document.getElementById('tempPanelGrid');
+  grid.setAttribute('data-cols', GRID_CONFIG.productos || 2);
+  if(!prods.length){
+    grid.innerHTML = `<div style="grid-column:1/-1;padding:2rem;text-align:center;color:var(--gray);font-size:.8rem">Sin productos en esta temporada todavía.</div>`;
+    return;
+  }
+  grid.innerHTML = mkSkeletons(Math.min(prods.length,6));
+  requestAnimationFrame(()=>{
+    grid.innerHTML = prods.map(p => mkCard(p, t.nombre, t.emoji||'🎄')).join('');
+    initLazyImages();
+  });
+}
+
+// Manejar botón "atrás" del navegador para el panel de temporada
+window.addEventListener('popstate', function(e){
+  if(document.getElementById('tempCatPanel').classList.contains('open')){
+    cerrarTempPanel();
+  }
+});
+
+// Sincronizar badge del carrito en el panel de temporada
+const _origActualizarCarritoBadge = typeof actualizarCarritoBadge === 'function' ? actualizarCarritoBadge : null;
+function actualizarTempCarritoBadge(){
+  const badge = document.getElementById('tempCarritoBadge');
+  if(badge) badge.textContent = carrito.reduce((s,i)=>s+(i.qty||1),0);
+}
+
+// ── Inicialización ────────────────────────────────────────────────────────────
+// Se llama desde el flujo principal de carga del sitio (ver abajo)
 
 // ── Cerrar sesión ─────────────────────────────────────────────
 function cerrarSesionPerfil(){

@@ -345,6 +345,7 @@
         <button class="admin-nav-btn" onclick="showSec('promos',this)">🔥 Promociones</button>
         <button class="admin-nav-btn" onclick="showSec('productos',this)">📦 Catálogo</button>
         <button class="admin-nav-btn" onclick="showSec('filtros',this)">🔍 Filtros</button>
+        <button class="admin-nav-btn" onclick="showSec('temporadas',this);cargarTemporadasAdmin()">🎄 Temporadas</button>
         <button class="admin-nav-btn" onclick="showSec('vendidos',this)">⭐ Más vendidos</button>
         <button class="admin-nav-btn" onclick="showSec('mayoreo',this)">🎊 Mayoreo</button>
         <button class="admin-nav-btn" onclick="showSec('resenas',this)">💬 Reseñas</button>
@@ -931,6 +932,137 @@ Casi listo...
           <button class="admin-btn-add" onclick="sincronizarFiltrosDesdeProductos()">📥 Importar filtros desde mis productos</button>
         </div>
       </div>
+
+      <!-- ══════════════════════════════════════════════════════════════════ -->
+      <!-- SECCIÓN: TEMPORADAS                                                 -->
+      <!-- ══════════════════════════════════════════════════════════════════ -->
+      <div id="sec-temporadas" class="admin-section">
+        <div class="admin-section-title">🎄 CATÁLOGOS DE TEMPORADA</div>
+
+        <!-- Lista de temporadas -->
+        <div class="admin-card" style="margin-bottom:1rem">
+          <div class="admin-card-title">📋 MIS TEMPORADAS</div>
+          <div style="font-size:.6rem;color:var(--gray);margin-bottom:.8rem;line-height:1.5">
+            Crea una temporada (ej. Navidad, Halloween, 14 de Febrero). Los productos que agregues aparecen en el sitio solo cuando esté dentro de las fechas — sin que hagas nada. Al terminar, desaparecen solos.
+          </div>
+          <button class="admin-btn-add" onclick="abrirFormTemporada(null)" style="margin-bottom:1rem">➕ Nueva temporada</button>
+          <div id="temporadas-lista"><div style="font-family:var(--font-mono);font-size:.6rem;color:var(--gray)">Cargando...</div></div>
+        </div>
+
+        <!-- Formulario crear/editar temporada -->
+        <div id="temp-form-wrap" class="admin-card" style="display:none;margin-bottom:1rem">
+          <div class="admin-card-title" id="temp-form-titulo">➕ NUEVA TEMPORADA</div>
+          <input type="hidden" id="temp-edit-id">
+
+          <div style="display:grid;grid-template-columns:1fr 80px;gap:.6rem;margin-bottom:.6rem">
+            <div>
+              <div class="admin-label">NOMBRE DE LA TEMPORADA</div>
+              <input class="admin-input" id="temp-nombre" placeholder="Ej: Navidad 2025">
+            </div>
+            <div>
+              <div class="admin-label">EMOJI</div>
+              <input class="admin-input" id="temp-emoji" placeholder="🎄" style="text-align:center;font-size:1.2rem">
+            </div>
+          </div>
+
+          <div style="display:grid;grid-template-columns:1fr 1fr 120px;gap:.6rem;margin-bottom:.6rem">
+            <div>
+              <div class="admin-label">FECHA INICIO</div>
+              <input class="admin-input" id="temp-inicio" type="date">
+            </div>
+            <div>
+              <div class="admin-label">FECHA FIN</div>
+              <input class="admin-input" id="temp-fin" type="date">
+            </div>
+            <div>
+              <div class="admin-label">COLOR ACENTO</div>
+              <input class="admin-input" id="temp-color" type="color" value="#e8192c" style="height:38px;padding:.2rem">
+            </div>
+          </div>
+
+          <div style="margin-bottom:.8rem">
+            <div class="admin-label">TEXTO DEL BANNER (opcional)</div>
+            <input class="admin-input" id="temp-banner" placeholder="Ej: ✨ Edición especial navideña — solo por tiempo limitado">
+          </div>
+
+          <div style="margin-bottom:.8rem">
+            <div class="admin-label">IMAGEN DE PORTADA (URL — opcional, si no hay se usa el emoji)</div>
+            <input class="admin-input" id="temp-imagen-portada" placeholder="https://..." oninput="
+              const v=this.value.trim();
+              const wrap=document.getElementById('temp-portada-preview');
+              const img=document.getElementById('temp-portada-img');
+              if(v){wrap.style.display='block';img.src=v;}else{wrap.style.display='none';}
+            ">
+            <div id="temp-portada-preview" style="margin-top:.5rem;display:none">
+              <img id="temp-portada-img" src="" style="width:100%;max-height:160px;object-fit:cover;border-radius:3px;border:1px solid rgba(255,255,255,.1)" onerror="this.parentElement.style.display='none'">
+            </div>
+          </div>
+
+          <div style="display:flex;gap:.6rem">
+            <button class="admin-btn" onclick="guardarTemporada()" style="flex:1;justify-content:center">💾 Guardar temporada</button>
+            <button class="admin-btn-sm" onclick="cerrarFormTemporada()">✕ Cancelar</button>
+          </div>
+          <div id="temp-form-msg" style="font-family:var(--font-mono);font-size:.6rem;margin-top:.5rem;min-height:.9rem"></div>
+        </div>
+
+        <!-- Productos de la temporada seleccionada -->
+        <div id="temp-prods-wrap" class="admin-card" style="display:none">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.8rem;flex-wrap:wrap;gap:.5rem">
+            <div class="admin-card-title" id="temp-prods-titulo" style="margin:0">📦 PRODUCTOS</div>
+            <button class="admin-btn-add" onclick="abrirFormProdTemp(null)">➕ Agregar producto</button>
+          </div>
+          <div id="temp-prods-lista"><div style="font-family:var(--font-mono);font-size:.6rem;color:var(--gray)">Selecciona una temporada para ver sus productos.</div></div>
+
+          <!-- Formulario de producto de temporada -->
+          <div id="temp-prod-form-wrap" style="display:none;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.1);padding:1rem;border-radius:3px;margin-top:1rem">
+            <div class="admin-card-title" id="temp-prod-form-titulo" style="font-size:.6rem;margin-bottom:.8rem">➕ NUEVO PRODUCTO</div>
+            <input type="hidden" id="temp-prod-edit-id">
+
+            <div style="margin-bottom:.5rem">
+              <div class="admin-label">NOMBRE DEL PRODUCTO</div>
+              <input class="admin-input" id="tp-nombre" placeholder="Ej: Taza Navideña Personalizada">
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem;margin-bottom:.5rem">
+              <div>
+                <div class="admin-label">PRECIO (MXN)</div>
+                <input class="admin-input" id="tp-precio" type="number" placeholder="150">
+              </div>
+              <div>
+                <div class="admin-label">STOCK</div>
+                <input class="admin-input" id="tp-stock" type="number" placeholder="0 = sin límite">
+              </div>
+            </div>
+            <div style="margin-bottom:.5rem">
+              <div class="admin-label">DESCRIPCIÓN</div>
+              <input class="admin-input" id="tp-desc" placeholder="Descripción breve del producto">
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem;margin-bottom:.5rem">
+              <div>
+                <div class="admin-label">COLORES (separados por coma)</div>
+                <input class="admin-input" id="tp-colores" placeholder="Negro, Blanco, Rojo">
+              </div>
+              <div>
+                <div class="admin-label">TALLAS (separadas por coma)</div>
+                <input class="admin-input" id="tp-tallas" placeholder="S, M, L, XL">
+              </div>
+            </div>
+            <div style="margin-bottom:.8rem">
+              <div class="admin-label">TIPO / CATEGORÍA</div>
+              <input class="admin-input" id="tp-tipo" placeholder="Ej: Tazas, Playeras, Termos">
+            </div>
+            <div style="margin-bottom:.8rem">
+              <div class="admin-label">URL DE IMAGEN (pega la URL de la imagen subida)</div>
+              <input class="admin-input" id="tp-imagen" placeholder="https://...">
+            </div>
+            <div style="display:flex;gap:.5rem">
+              <button class="admin-btn" onclick="guardarProdTemp()" style="flex:1;justify-content:center">💾 Guardar producto</button>
+              <button class="admin-btn-sm" onclick="cerrarFormProdTemp()">✕</button>
+            </div>
+            <div id="tp-msg" style="font-family:var(--font-mono);font-size:.6rem;margin-top:.4rem;min-height:.9rem"></div>
+          </div>
+        </div>
+      </div>
+
       <div id="sec-vendidos" class="admin-section">
         <div class="admin-section-title">⭐ MÁS VENDIDOS</div>
         <div style="background:rgba(232,25,44,.06);border:1px solid rgba(232,25,44,.25);padding:1.2rem;margin-bottom:1rem">
@@ -5460,4 +5592,231 @@ async function aplicarBeneficiosNivel(cliente, nivel){
     // automáticamente en el carrito (ver aplicarDescuentoPermanenteSiAplica en main.js)
   }
 }
+
+// ══════════════════════════════════════════════════════════════════════════════
+// TEMPORADAS — Catálogos por fechas (Navidad, Halloween, 14 Feb, etc.)
+// ══════════════════════════════════════════════════════════════════════════════
+
+let _tempActualId = null; // temporada cuyos productos estamos viendo
+
+// ── Lista principal de temporadas ─────────────────────────────────────────────
+async function cargarTemporadasAdmin(){
+  const lista = document.getElementById('temporadas-lista');
+  lista.innerHTML = '<div style="font-family:var(--font-mono);font-size:.6rem;color:var(--gray)">Cargando...</div>';
+  const { data, error } = await sb.from('temporadas').select('*').order('fecha_inicio',{ascending:true});
+  if(error || !data || !data.length){
+    lista.innerHTML = '<div style="font-family:var(--font-mono);font-size:.6rem;color:var(--gray)">Sin temporadas aún. ¡Crea la primera!</div>';
+    return;
+  }
+  const hoy = new Date(); hoy.setHours(12,0,0,0);
+  lista.innerHTML = data.map(t => {
+    const ini = new Date(t.fecha_inicio+'T12:00:00');
+    const fin = new Date(t.fecha_fin+'T12:00:00');
+    const activa = t.activa && hoy >= ini && hoy <= fin;
+    const proxima = t.activa && hoy < ini;
+    const pasada = !activa && !proxima;
+    const estadoBadge = activa
+      ? '<span style="background:rgba(76,175,80,.2);color:#4caf50;font-size:.5rem;padding:.2rem .4rem;border-radius:2px;font-family:var(--font-mono)">🟢 ACTIVA AHORA</span>'
+      : proxima
+      ? '<span style="background:rgba(255,193,7,.2);color:#ffc107;font-size:.5rem;padding:.2rem .4rem;border-radius:2px;font-family:var(--font-mono)">⏳ PRÓXIMA</span>'
+      : '<span style="background:rgba(255,255,255,.05);color:var(--gray);font-size:.5rem;padding:.2rem .4rem;border-radius:2px;font-family:var(--font-mono)">⚪ TERMINADA</span>';
+    return `<div style="background:var(--bg);border:1px solid ${activa?t.color_acento||'#e8192c':'rgba(255,255,255,.08)'};border-radius:3px;padding:.8rem;margin-bottom:.6rem">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:.5rem;margin-bottom:.5rem">
+        <div>
+          <span style="font-size:1.2rem">${t.emoji||'🎄'}</span>
+          <span style="font-family:var(--font-display);font-size:.9rem;color:var(--white);letter-spacing:1px;margin-left:.3rem">${t.nombre}</span>
+          <div style="display:inline-block;margin-left:.5rem">${estadoBadge}</div>
+        </div>
+        <div style="display:flex;gap:.4rem;flex-shrink:0">
+          <button onclick="abrirFormTemporada('${t.id}')" style="background:none;border:1px solid rgba(255,255,255,.15);color:var(--gray);font-size:.55rem;padding:.25rem .5rem;cursor:pointer;font-family:var(--font-mono)">✏️ Editar</button>
+          <button onclick="eliminarTemporada('${t.id}','${t.nombre.replace(/'/g,"&#39;")}')" style="background:none;border:1px solid rgba(232,25,44,.3);color:var(--neon);font-size:.55rem;padding:.25rem .5rem;cursor:pointer;font-family:var(--font-mono)">🗑️</button>
+        </div>
+      </div>
+      <div style="font-family:var(--font-mono);font-size:.58rem;color:var(--gray);margin-bottom:.5rem">
+        📅 ${ini.toLocaleDateString('es-MX',{day:'2-digit',month:'short',year:'numeric'})} → ${fin.toLocaleDateString('es-MX',{day:'2-digit',month:'short',year:'numeric'})}
+      </div>
+      <button onclick="verProductosTemp('${t.id}','${t.nombre.replace(/'/g,"&#39;")}','${t.emoji||"🎄"}')" 
+        style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12);color:var(--white);font-family:var(--font-mono);font-size:.58rem;letter-spacing:1px;padding:.35rem .7rem;cursor:pointer;width:100%">
+        📦 VER / GESTIONAR PRODUCTOS
+      </button>
+    </div>`;
+  }).join('');
+}
+
+// ── Abrir/cerrar formulario de temporada ─────────────────────────────────────
+async function abrirFormTemporada(id){
+  document.getElementById('temp-prod-form-wrap').style.display = 'none';
+  const wrap = document.getElementById('temp-form-wrap');
+  wrap.style.display = 'block';
+  document.getElementById('temp-form-msg').textContent = '';
+  if(!id){
+    document.getElementById('temp-form-titulo').textContent = '➕ NUEVA TEMPORADA';
+    document.getElementById('temp-edit-id').value = '';
+    document.getElementById('temp-nombre').value = '';
+    document.getElementById('temp-emoji').value = '';
+    document.getElementById('temp-inicio').value = '';
+    document.getElementById('temp-fin').value = '';
+    document.getElementById('temp-color').value = '#e8192c';
+    document.getElementById('temp-banner').value = '';
+    document.getElementById('temp-imagen-portada').value = '';
+    document.getElementById('temp-portada-preview').style.display = 'none';
+  } else {
+    const { data } = await sb.from('temporadas').select('*').eq('id',id).single();
+    if(!data) return;
+    document.getElementById('temp-form-titulo').textContent = '✏️ EDITAR TEMPORADA';
+    document.getElementById('temp-edit-id').value = data.id;
+    document.getElementById('temp-nombre').value = data.nombre || '';
+    document.getElementById('temp-emoji').value = data.emoji || '';
+    document.getElementById('temp-inicio').value = data.fecha_inicio || '';
+    document.getElementById('temp-fin').value = data.fecha_fin || '';
+    document.getElementById('temp-color').value = data.color_acento || '#e8192c';
+    document.getElementById('temp-banner').value = data.banner_texto || '';
+    const imgPortada = data.imagen_portada || '';
+    document.getElementById('temp-imagen-portada').value = imgPortada;
+    const prevWrap = document.getElementById('temp-portada-preview');
+    const prevImg = document.getElementById('temp-portada-img');
+    if(imgPortada){ prevWrap.style.display='block'; prevImg.src=imgPortada; } else { prevWrap.style.display='none'; }
+  }
+  wrap.scrollIntoView({behavior:'smooth',block:'start'});
+}
+
+function cerrarFormTemporada(){
+  document.getElementById('temp-form-wrap').style.display = 'none';
+}
+
+async function guardarTemporada(){
+  const msg = document.getElementById('temp-form-msg');
+  const id = document.getElementById('temp-edit-id').value;
+  const nombre = document.getElementById('temp-nombre').value.trim();
+  const emoji = document.getElementById('temp-emoji').value.trim() || '🎄';
+  const inicio = document.getElementById('temp-inicio').value;
+  const fin = document.getElementById('temp-fin').value;
+  const color = document.getElementById('temp-color').value;
+  const banner = document.getElementById('temp-banner').value.trim();
+  if(!nombre || !inicio || !fin){ msg.style.color='#ff4444'; msg.textContent = '⚠️ Nombre y fechas son obligatorios.'; return; }
+  if(inicio > fin){ msg.style.color='#ff4444'; msg.textContent = '⚠️ La fecha de inicio no puede ser mayor que la de fin.'; return; }
+  msg.style.color='var(--neon)'; msg.textContent = 'Guardando...';
+  const payload = { nombre, emoji, fecha_inicio:inicio, fecha_fin:fin, color_acento:color, banner_texto:banner, imagen_portada: document.getElementById('temp-imagen-portada').value.trim(), activa:true };
+  let err;
+  if(id){
+    ({ error:err } = await sb.from('temporadas').update(payload).eq('id',id));
+  } else {
+    ({ error:err } = await sb.from('temporadas').insert([payload]));
+  }
+  if(err){ msg.style.color='#ff4444'; msg.textContent = '❌ Error al guardar: '+err.message; return; }
+  msg.style.color='#4caf50'; msg.textContent = '✅ Guardado correctamente.';
+  setTimeout(()=>{ cerrarFormTemporada(); cargarTemporadasAdmin(); }, 800);
+}
+
+async function eliminarTemporada(id, nombre){
+  if(!confirm(`¿Eliminar la temporada "${nombre}" y TODOS sus productos?\nEsta acción no se puede deshacer.`)) return;
+  await sb.from('temporada_productos').delete().eq('temporada_id', id);
+  await sb.from('temporadas').delete().eq('id', id);
+  if(_tempActualId === id){ _tempActualId = null; document.getElementById('temp-prods-wrap').style.display='none'; }
+  cargarTemporadasAdmin();
+}
+
+// ── Ver/gestionar productos de una temporada ──────────────────────────────────
+async function verProductosTemp(id, nombre, emoji){
+  _tempActualId = id;
+  document.getElementById('temp-prods-wrap').style.display = 'block';
+  document.getElementById('temp-prods-titulo').textContent = `${emoji} PRODUCTOS — ${nombre}`;
+  document.getElementById('temp-prod-form-wrap').style.display = 'none';
+  document.getElementById('temp-prods-wrap').scrollIntoView({behavior:'smooth',block:'start'});
+  await recargarProdTemp();
+}
+
+async function recargarProdTemp(){
+  const lista = document.getElementById('temp-prods-lista');
+  if(!_tempActualId){ lista.innerHTML=''; return; }
+  lista.innerHTML = '<div style="font-family:var(--font-mono);font-size:.6rem;color:var(--gray)">Cargando...</div>';
+  const { data, error } = await sb.from('temporada_productos').select('*').eq('temporada_id',_tempActualId).order('created_at',{ascending:true});
+  if(error){ lista.innerHTML='<div style="color:#ff4444;font-size:.6rem">Error al cargar.</div>'; return; }
+  if(!data || !data.length){
+    lista.innerHTML = '<div style="font-family:var(--font-mono);font-size:.6rem;color:var(--gray);padding:.5rem 0">Sin productos. Agrega el primero con el botón de arriba.</div>';
+    return;
+  }
+  lista.innerHTML = data.map(p => `
+    <div style="display:flex;gap:.7rem;align-items:center;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:3px;padding:.6rem;margin-bottom:.4rem">
+      ${p.imagen ? `<img src="${p.imagen}" style="width:48px;height:48px;object-fit:cover;border-radius:2px;flex-shrink:0" onerror="this.style.display='none'">` : '<div style="width:48px;height:48px;background:rgba(255,255,255,.05);display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex-shrink:0">📦</div>'}
+      <div style="flex:1;min-width:0">
+        <div style="font-size:.75rem;color:var(--white);font-weight:600">${p.nombre}</div>
+        <div style="font-family:var(--font-mono);font-size:.58rem;color:var(--neon)">$${(p.precio||0).toLocaleString()} MXN</div>
+        ${p.tipo ? `<div style="font-size:.55rem;color:var(--gray)">${p.tipo}</div>` : ''}
+      </div>
+      <div style="display:flex;gap:.4rem;flex-shrink:0">
+        <button onclick="abrirFormProdTemp('${p.id}')" style="background:none;border:1px solid rgba(255,255,255,.15);color:var(--gray);font-size:.55rem;padding:.25rem .5rem;cursor:pointer">✏️</button>
+        <button onclick="eliminarProdTemp('${p.id}')" style="background:none;border:1px solid rgba(232,25,44,.3);color:var(--neon);font-size:.55rem;padding:.25rem .5rem;cursor:pointer">🗑️</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+// ── Formulario de producto de temporada ──────────────────────────────────────
+async function abrirFormProdTemp(id){
+  const wrap = document.getElementById('temp-prod-form-wrap');
+  wrap.style.display = 'block';
+  document.getElementById('tp-msg').textContent = '';
+  if(!id){
+    document.getElementById('temp-prod-form-titulo').textContent = '➕ NUEVO PRODUCTO';
+    ['temp-prod-edit-id','tp-nombre','tp-precio','tp-stock','tp-desc','tp-colores','tp-tallas','tp-tipo','tp-imagen'].forEach(fid=>{ document.getElementById(fid).value=''; });
+  } else {
+    const { data } = await sb.from('temporada_productos').select('*').eq('id',id).single();
+    if(!data) return;
+    document.getElementById('temp-prod-form-titulo').textContent = '✏️ EDITAR PRODUCTO';
+    document.getElementById('temp-prod-edit-id').value = data.id;
+    document.getElementById('tp-nombre').value = data.nombre || '';
+    document.getElementById('tp-precio').value = data.precio || '';
+    document.getElementById('tp-stock').value = data.stock ?? '';
+    document.getElementById('tp-desc').value = data.descripcion || '';
+    document.getElementById('tp-colores').value = (data.colores||[]).join(', ');
+    document.getElementById('tp-tallas').value = (data.tallas||[]).join(', ');
+    document.getElementById('tp-tipo').value = data.tipo || '';
+    document.getElementById('tp-imagen').value = data.imagen || '';
+  }
+  wrap.scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+
+function cerrarFormProdTemp(){
+  document.getElementById('temp-prod-form-wrap').style.display = 'none';
+}
+
+async function guardarProdTemp(){
+  const msg = document.getElementById('tp-msg');
+  const id = document.getElementById('temp-prod-edit-id').value;
+  const nombre = document.getElementById('tp-nombre').value.trim();
+  const precio = parseFloat(document.getElementById('tp-precio').value) || 0;
+  if(!nombre || !precio){ msg.style.color='#ff4444'; msg.textContent='⚠️ Nombre y precio son obligatorios.'; return; }
+  if(!_tempActualId){ msg.style.color='#ff4444'; msg.textContent='⚠️ Sin temporada seleccionada.'; return; }
+  msg.style.color='var(--neon)'; msg.textContent='Guardando...';
+  const rawCol = document.getElementById('tp-colores').value;
+  const rawTal = document.getElementById('tp-tallas').value;
+  const payload = {
+    temporada_id: _tempActualId,
+    nombre,
+    precio,
+    stock: parseInt(document.getElementById('tp-stock').value)||0,
+    descripcion: document.getElementById('tp-desc').value.trim(),
+    colores: rawCol ? rawCol.split(',').map(s=>s.trim()).filter(Boolean) : [],
+    tallas: rawTal ? rawTal.split(',').map(s=>s.trim()).filter(Boolean) : [],
+    tipo: document.getElementById('tp-tipo').value.trim(),
+    imagen: document.getElementById('tp-imagen').value.trim()
+  };
+  let err;
+  if(id){
+    ({ error:err } = await sb.from('temporada_productos').update(payload).eq('id',id));
+  } else {
+    ({ error:err } = await sb.from('temporada_productos').insert([payload]));
+  }
+  if(err){ msg.style.color='#ff4444'; msg.textContent='❌ Error: '+err.message; return; }
+  msg.style.color='#4caf50'; msg.textContent='✅ Producto guardado.';
+  setTimeout(()=>{ cerrarFormProdTemp(); recargarProdTemp(); }, 700);
+}
+
+async function eliminarProdTemp(id){
+  if(!confirm('¿Eliminar este producto de la temporada?')) return;
+  await sb.from('temporada_productos').delete().eq('id',id);
+  recargarProdTemp();
+}
+
 </script>
