@@ -4065,6 +4065,15 @@ function renderRoadmapFidelidad(niveles, nivelActual){
 
 
 
+function toggleRoadmapNiveles(){
+  const el = document.getElementById('perfil-niveles-roadmap');
+  if(!el) return;
+  el.style.display = el.style.display === 'block' ? 'none' : 'block';
+}
+window.toggleRoadmapNiveles = toggleRoadmapNiveles;
+
+window.toggleRoadmapNiveles = toggleRoadmapNiveles;
+
 // ── Botones de fidelidad: listeners robustos para móvil y PWA ───
 function _bindBotonFidelidad(id, fn){
   var btn = document.getElementById(id);
@@ -4084,3 +4093,68 @@ document.addEventListener('DOMContentLoaded', function(){
   _bindBotonFidelidad('btn-terminos-fidelidad', function(){ abrirTerminosFidelidad(); });
   _bindBotonFidelidad('btn-solicitar-tarjeta', function(){ solicitarTarjetaFisica(); });
 });
+
+// ══════════════════════════════════════════════════════════════════════════════
+// EXPOSICIÓN GLOBAL — Todas las funciones usadas en onclick del HTML
+// Necesario porque main.js se carga dinámicamente y en móvil/PWA los onclick
+// inline no encuentran funciones que no estén explícitamente en window.
+// ══════════════════════════════════════════════════════════════════════════════
+(function exponerFunciones(){
+  var fns = [
+    'abrirFrModal','abrirFrModalDesdeProducto','abrirLightbox',
+    'agregarDesdeModal','aplicarCuponCarrito','cambiarCantModal',
+    'cerrarCatPanel','cerrarFrModal','cerrarLightbox','cerrarModal',
+    'cerrarPaqueteModal','cerrarPersonajes','cerrarPromoModal',
+    'cerrarSusPopup','cerrarTempPanel','chatReply','clearCatPanelSearch',
+    'compartirCategoria','compartirImagenActiva','compartirSeccion',
+    'enviarChat','enviarFavoritosWA','enviarSuscripcion',
+    'limpiarBusqueda','onCatSearchClear','pedirPorWhatsApp',
+    'subirFotoCliente','toggleCarrito','toggleChat','toggleFavoritos',
+    'vaciarCarrito','vaciarFavoritos',
+    // Carrito / productos
+    'agregarAlCarrito','quitarDelCarrito','vaciarCarrito',
+    'agregarAlCarritoById','quitarCuponCarrito',
+    'renderCarrito','abrirCatPanel','cerrarCatPanel',
+    // Favoritos
+    'toggleFavorito','agregarFavAlCarrito',
+    // Reseñas / foto
+    'abrirReseñaModal','cerrarReseñaModal',
+    // Chat
+    'toggleChat','enviarChat','chatReply',
+    // Búsqueda
+    'buscarEnCatalogo','limpiarBusqueda',
+    // Lightbox
+    'abrirLightbox','cerrarLightbox','navLightbox','compartirImagenActiva',
+    // Personajes
+    'abrirPersonajes','cerrarPersonajes',
+    // Modal producto
+    'cerrarModal','agregarDesdeModal','cambiarCantModal',
+    // Promo/paquete
+    'cerrarPromoModal','cerrarPaqueteModal',
+    // Suscripción
+    'enviarSuscripcion','cerrarSusPopup',
+    // Formulario reseña
+    'abrirFrModal','cerrarFrModal','abrirFrModalDesdeProducto','subirFotoCliente',
+    // Carrito cupón
+    'aplicarCuponCarrito','quitarCuponCarrito',
+    // Compartir
+    'compartirSeccion','compartirCategoria',
+    // Temporada
+    'abrirTempPanel','cerrarTempPanel',
+    // Perfil (ya estaban pero por seguridad)
+    'abrirPerfilModal','cerrarPerfilModal','solicitarCodigoPerfil',
+    'verificarCodigoPerfil','mostrarPaso1Perfil','copiarUidPerfil',
+    'guardarPerfil','cerrarSesionPerfil','toggleRoadmapNiveles',
+    'abrirTerminosFidelidad','cerrarTerminosFidelidad','solicitarTarjetaFisica',
+    'cerrarCuponPopup'
+  ];
+  fns.forEach(function(nombre){
+    try{
+      if(typeof window[nombre] === 'undefined'){
+        // Buscar en el scope actual via eval seguro
+        var fn = eval('typeof ' + nombre + ' === "function" ? ' + nombre + ' : null');
+        if(fn) window[nombre] = fn;
+      }
+    }catch(e){}
+  });
+})();
