@@ -4092,6 +4092,23 @@ function _bindBotonFidelidad(id, fn){
 document.addEventListener('DOMContentLoaded', function(){
   _bindBotonFidelidad('btn-terminos-fidelidad', function(){ abrirTerminosFidelidad(); });
   _bindBotonFidelidad('btn-solicitar-tarjeta', function(){ solicitarTarjetaFisica(); });
+  _bindBotonFidelidad('btn-ver-niveles', function(){
+    var el = document.getElementById('perfil-niveles-roadmap');
+    if(!el) return;
+    // Si el roadmap está vacío, llenarlo antes de mostrarlo
+    if(!el.innerHTML.trim()){
+      sb.from('fidelidad_niveles').select('*').order('orden',{ascending:true}).then(function(res){
+        if(res.data && res.data.length){
+          renderRoadmapFidelidad(res.data, null);
+        } else {
+          el.innerHTML = '<div style="font-family:var(--font-mono);font-size:.6rem;color:var(--gray)">Aún no hay niveles configurados.</div>';
+        }
+        el.style.display = 'block';
+      });
+    } else {
+      el.style.display = el.style.display === 'block' ? 'none' : 'block';
+    }
+  });
 });
 
 // ══════════════════════════════════════════════════════════════════════════════
