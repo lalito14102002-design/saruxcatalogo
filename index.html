@@ -448,36 +448,26 @@
 <!-- MAYOREO -->
 <section class="mayoreo-section" id="mayoreo"></section>
 
-<!-- CATÁLOGO DE TEMPORADA (se muestra solo si hay una temporada activa) -->
-<section id="sec-temporada" style="display:none;padding:2rem 0">
-  <div style="text-align:center;margin-bottom:1.5rem;padding:0 1rem">
-    <div id="temp-label" style="font-family:var(--font-mono);font-size:.6rem;letter-spacing:3px;color:var(--neon);margin-bottom:.4rem">EDICIÓN ESPECIAL</div>
-    <h2 id="temp-titulo" style="font-family:var(--font-display);font-size:2.2rem;letter-spacing:3px;color:var(--white);margin:0 0 .5rem"></h2>
-    <div id="temp-fechas" style="font-family:var(--font-mono);font-size:.58rem;color:var(--gray);margin-bottom:.8rem"></div>
-    <div id="temp-banner-txt" style="font-size:.8rem;color:var(--light);max-width:480px;margin:0 auto"></div>
-  </div>
+<!-- CATÁLOGO DE TEMPORADA (datos ocultos, solo el panel se necesita accesible) -->
+<section id="sec-temporada" style="display:none"></section>
 
-  <!-- Grid de categorías de la temporada (misma UI que catálogo normal) -->
-  <div id="temp-portadas-grid" class="cat-portadas-grid" style="padding:0 1rem"></div>
-
-  <!-- Panel fullscreen de categoría de temporada (mismo patrón que catPanel) -->
-  <div id="tempCatPanel" class="cat-panel-overlay">
-    <div class="cat-panel-inner">
-      <div class="cat-panel-header">
-        <button class="cat-panel-back" onclick="cerrarTempPanel()">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
-          <span id="tempPanelBackLabel">Temporada</span>
-        </button>
-        <div class="cat-panel-title" id="tempPanelTitle"></div>
-        <button onclick="toggleCarrito()" style="background:none;border:1px solid rgba(232,25,44,.3);color:var(--light);font-family:var(--font-mono);font-size:.6rem;letter-spacing:1px;padding:.45rem .8rem;cursor:pointer;display:flex;align-items:center;gap:.4rem">🛒 <span id="tempCarritoBadge">0</span></button>
-      </div>
-      <div class="cat-panel-body">
-        <div class="catalogo-count" id="tempPanelCount" style="padding:.5rem 0 1rem"></div>
-        <div class="product-grid" id="tempPanelGrid"></div>
-      </div>
+<!-- Panel fullscreen de temporada (a nivel raíz para que no quede oculto) -->
+<div id="tempCatPanel" class="cat-panel-overlay">
+  <div class="cat-panel-inner">
+    <div class="cat-panel-header">
+      <button class="cat-panel-back" onclick="cerrarTempPanel()">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+        <span id="tempPanelBackLabel">Temporada</span>
+      </button>
+      <div class="cat-panel-title" id="tempPanelTitle"></div>
+      <button onclick="toggleCarrito()" style="background:none;border:1px solid rgba(232,25,44,.3);color:var(--light);font-family:var(--font-mono);font-size:.6rem;letter-spacing:1px;padding:.45rem .8rem;cursor:pointer;display:flex;align-items:center;gap:.4rem">🛒 <span id="tempCarritoBadge">0</span></button>
+    </div>
+    <div class="cat-panel-body">
+      <div class="catalogo-count" id="tempPanelCount" style="padding:.5rem 0 1rem"></div>
+      <div class="product-grid" id="tempPanelGrid"></div>
     </div>
   </div>
-</section>
+</div>
 
 <!-- LANZAMIENTOS -->
 <section>
