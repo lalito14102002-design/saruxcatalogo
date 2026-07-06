@@ -986,16 +986,17 @@ Casi listo...
           </div>
 
           <div style="margin-bottom:.8rem">
-            <div class="admin-label">IMAGEN DE PORTADA (URL — opcional, si no hay se usa el emoji)</div>
-            <input class="admin-input" id="temp-imagen-portada" placeholder="https://..." oninput="
-              const v=this.value.trim();
-              const wrap=document.getElementById('temp-portada-preview');
-              const img=document.getElementById('temp-portada-img');
-              if(v){wrap.style.display='block';img.src=v;}else{wrap.style.display='none';}
-            ">
-            <div id="temp-portada-preview" style="margin-top:.5rem;display:none">
-              <img id="temp-portada-img" src="" style="width:100%;max-height:160px;object-fit:cover;border-radius:3px;border:1px solid rgba(255,255,255,.1)" onerror="this.parentElement.style.display='none'">
+            <div class="admin-label">IMAGEN DE PORTADA (opcional — si no hay se usa el emoji)</div>
+            <div class="admin-img-upload" style="margin-bottom:.4rem">
+              <input type="file" accept="image/*" onchange="uploadTempPortadaImg(this)">
+              <p>📷 Toca para subir imagen de portada</p>
+              <img id="temp-portada-img" style="display:none;width:100%;max-height:160px;object-fit:cover;border-radius:3px;margin-top:.4rem" onerror="this.style.display='none'">
             </div>
+            <input class="admin-input" id="temp-imagen-portada" placeholder="URL (se llena automático al subir)" style="font-size:.55rem;opacity:.6" oninput="
+              const v=this.value.trim();
+              const img=document.getElementById('temp-portada-img');
+              if(v){img.style.display='block';img.src=v;}else{img.style.display='none';}
+            ">
           </div>
 
           <div style="display:flex;gap:.6rem">
@@ -1009,7 +1010,13 @@ Casi listo...
         <div id="temp-prods-wrap" class="admin-card" style="display:none">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.8rem;flex-wrap:wrap;gap:.5rem">
             <div class="admin-card-title" id="temp-prods-titulo" style="margin:0">📦 PRODUCTOS</div>
-            <button class="admin-btn-add" onclick="abrirFormProdTemp(null)">➕ Agregar producto</button>
+            <div style="display:flex;gap:.5rem;flex-wrap:wrap">
+              <button class="admin-btn-add" onclick="abrirFormProdTemp(null)">➕ Agregar producto</button>
+              <label class="admin-btn-add" style="cursor:pointer;background:rgba(232,25,44,.15);border-color:rgba(232,25,44,.4)">
+                📤 Subir varias imágenes
+                <input type="file" multiple accept="image/*" style="display:none" onchange="uploadMasivoTempProds(this)">
+              </label>
+            </div>
           </div>
           <div id="temp-prods-lista"><div style="font-family:var(--font-mono);font-size:.6rem;color:var(--gray)">Selecciona una temporada para ver sus productos.</div></div>
 
@@ -1051,8 +1058,13 @@ Casi listo...
               <input class="admin-input" id="tp-tipo" placeholder="Ej: Tazas, Playeras, Termos">
             </div>
             <div style="margin-bottom:.8rem">
-              <div class="admin-label">URL DE IMAGEN (pega la URL de la imagen subida)</div>
-              <input class="admin-input" id="tp-imagen" placeholder="https://...">
+              <div class="admin-label">IMAGEN DEL PRODUCTO</div>
+              <div class="admin-img-upload" style="margin-bottom:.4rem">
+                <input type="file" accept="image/*" onchange="uploadTempProdImg(this)">
+                <p>📷 Toca para subir imagen</p>
+                <img id="tp-img-preview" class="admin-img-preview" style="display:none;width:100%;max-height:140px;object-fit:cover;border-radius:3px;margin-top:.4rem">
+              </div>
+              <input class="admin-input" id="tp-imagen" placeholder="URL de imagen (se llena automático al subir)" style="font-size:.55rem;opacity:.6">
             </div>
             <div style="display:flex;gap:.5rem">
               <button class="admin-btn" onclick="guardarProdTemp()" style="flex:1;justify-content:center">💾 Guardar producto</button>
@@ -2797,6 +2809,58 @@ Casi listo...
   async function marcarPremioEntregado(id){
     await sb.from('premios_fisicos_usuario').update({ entregado: true, entregado_at: new Date().toISOString() }).eq('id', id);
     if(_usuarioDetalleActual) abrirDetalleUsuario(_usuarioDetalleActual.id);
+  }
+
+  async function uploadMasivoTempProds(input){
+    if(!_tempActualId){ alert('Selecciona una temporada primero.'); return; }
+    const files = Array.from(input.files);
+    if(!files.length) return;
+    const msg = document.getElementById('temp-prods-lista');
+    let subidos = 0;
+    for(const file of files){
+      try{
+        const url = await uploadToStorage(file, 'temporadas');
+        const nombre = file.name.replace(/\.[^.]+$/, '').replace(/[-_]/g,' ');
+        const nombreFinal = nombre.charAt(0).toUpperCase() + nombre.slice(1);
+        await sb.from('temporada_productos').insert([{
+          temporada_id: _tempActualId,
+          nombre: nombreFinal,
+          precio: 0,
+          stock: 0,
+          descripcion: '',
+          colores: [],
+          tallas: [],
+          tipo: '',
+          imagen: url
+        }]);
+        subidos++;
+      } catch(e){ console.error('Error subiendo '+file.name, e); }
+    }
+    await recargarProdTemp();
+    alert(`✅ ${subidos} de ${files.length} producto(s) subidos. Edítalos para completar nombre, precio y talla.`);
+    input.value = '';
+  }
+
+  async function uploadTempPortadaImg(input){
+    const file = input.files[0];
+    if(!file) return;
+    try{
+      const url = await uploadToStorage(file, 'temporadas');
+      document.getElementById('temp-imagen-portada').value = url;
+      const img = document.getElementById('temp-portada-img');
+      img.src = url; img.style.display = 'block';
+    }catch(e){ alert('Error al subir imagen: '+e.message); }
+  }
+
+  async function uploadTempProdImg(input){
+    const file = input.files[0];
+    if(!file) return;
+    try{
+      const url = await uploadToStorage(file, 'temporadas');
+      document.getElementById('tp-imagen').value = url;
+      const prev = document.getElementById('tp-img-preview');
+      prev.src = url; prev.style.display = 'block';
+    }catch(e){ alert('Error al subir imagen: '+e.message); }
   }
 
   // ── Sincronizar beneficios de TODOS los clientes de un jalón ──────────
@@ -5773,6 +5837,8 @@ async function abrirFormProdTemp(id){
     document.getElementById('tp-tallas').value = (data.tallas||[]).join(', ');
     document.getElementById('tp-tipo').value = data.tipo || '';
     document.getElementById('tp-imagen').value = data.imagen || '';
+    const prev = document.getElementById('tp-img-preview');
+    if(data.imagen){ prev.src=data.imagen; prev.style.display='block'; } else { prev.style.display='none'; }
   }
   wrap.scrollIntoView({behavior:'smooth',block:'nearest'});
 }

@@ -359,7 +359,9 @@ function renderPortadas(){
   const cf=getCatsFilt();
   const grid=document.getElementById('catPortadasGrid');
   if(!grid) return;
-  grid.innerHTML=cf.map((c,i)=>{
+
+  // Tarjetas de categorías normales
+  const tarjetasNormales = cf.map((c,i)=>{
     const total=(c.productos||[]).length;
     const mediaEl=c.imagen_portada
       ?`<img src="${c.imagen_portada}" alt="${c.nombre}" class="cat-portada-img" loading="lazy">`
@@ -374,6 +376,30 @@ function renderPortadas(){
       <div class="cat-portada-arrow">›</div>
     </div>`;
   }).join('');
+
+  // Tarjetas de temporadas activas (igual que categorías pero con badge)
+  const tarjetasTemp = (_temporadasActivas||[]).map((t,i)=>{
+    const total = (t.productos||[]).length;
+    const mediaEl = t.imagen_portada
+      ? `<img src="${t.imagen_portada}" alt="${t.nombre}" class="cat-portada-img" loading="lazy">`
+      : `<div class="cat-portada-emoji">${t.emoji||'🎄'}</div>`;
+    // Calcular días restantes
+    const fin = new Date(t.fecha_fin+'T12:00:00');
+    const dias = Math.max(0, Math.ceil((fin - new Date()) / (1000*60*60*24)));
+    const badgeTxt = dias <= 3 ? `🔥 Últimos ${dias} día${dias!==1?'s':''}` : `⏳ Tiempo limitado`;
+    return `<div class="cat-portada-card" onclick="abrirTempPanel(${i})" style="position:relative">
+      ${mediaEl}
+      <div class="cat-portada-overlay"></div>
+      <div style="position:absolute;top:.5rem;left:.5rem;background:${t.color_acento||'#e8192c'};color:#fff;font-family:var(--font-mono);font-size:.45rem;letter-spacing:1.5px;padding:.25rem .5rem;border-radius:2px;z-index:3;text-transform:uppercase">${badgeTxt}</div>
+      <div class="cat-portada-info">
+        <div class="cat-portada-name">${t.nombre}</div>
+        ${total?`<div class="cat-portada-count">${total} producto${total!==1?'s':''}</div>`:''}
+      </div>
+      <div class="cat-portada-arrow">›</div>
+    </div>`;
+  }).join('');
+
+  grid.innerHTML = tarjetasTemp + tarjetasNormales;
 }
 
 // ─── PANEL FULLSCREEN DE CATEGORÍA ─────────────────────────────────────────
@@ -3475,9 +3501,6 @@ let _temporadasActivas = []; // todas las activas hoy
 let _tempPanelCatIdx = 0;    // índice de la "categoría" (temporada) en el panel
 
 async function cargarYMostrarTemporadas(){
-  const sec = document.getElementById('sec-temporada');
-  if(!sec) return;
-
   // Calcular fecha de hoy en formato YYYY-MM-DD local (sin offset UTC)
   const hoy = new Date();
   const yyyy = hoy.getFullYear();
@@ -3508,37 +3531,13 @@ async function cargarYMostrarTemporadas(){
 
   // Solo mostrar temporadas que tengan al menos 1 producto
   _temporadasActivas = conProds.filter(t => t.productos.length > 0);
-  if(!_temporadasActivas.length){ sec.style.display='none'; return; }
 
-  sec.style.display = 'block';
+  // Ocultar sección separada — las temporadas van dentro del catálogo principal
+  const sec = document.getElementById('sec-temporada');
+  if(sec) sec.style.display = 'none';
 
-  // Si hay varias temporadas activas al mismo tiempo (ej. Halloween + Día de Muertos),
-  // se muestran todas como "portadas" — cada temporada = una portada de categoría
-  const primera = _temporadasActivas[0];
-
-  // Título y datos del banner (usar la primera si son varias)
-  document.getElementById('temp-titulo').textContent = _temporadasActivas.length === 1
-    ? `${primera.emoji||'🎄'} ${primera.nombre.toUpperCase()}`
-    : '🗓️ TEMPORADAS ESPECIALES';
-  document.getElementById('temp-label').textContent = 'EDICIÓN ESPECIAL · TIEMPO LIMITADO';
-
-  if(_temporadasActivas.length === 1){
-    const finDate = new Date(primera.fecha_fin+'T12:00:00');
-    const diffMs = finDate - hoy;
-    const diffDias = Math.max(0, Math.ceil(diffMs / (1000*60*60*24)));
-    document.getElementById('temp-fechas').textContent = diffDias <= 7
-      ? `⏰ Termina en ${diffDias} día${diffDias!==1?'s':''}`
-      : `Disponible hasta el ${finDate.toLocaleDateString('es-MX',{day:'2-digit',month:'long',year:'numeric'})}`;
-    document.getElementById('temp-banner-txt').textContent = primera.banner_texto || '';
-    // Aplicar color de acento de la temporada como tinte en la sección
-    if(primera.color_acento) sec.style.setProperty('--temp-acento', primera.color_acento);
-  } else {
-    document.getElementById('temp-fechas').textContent = `${_temporadasActivas.length} colecciones disponibles ahora`;
-    document.getElementById('temp-banner-txt').textContent = '';
-  }
-
-  // Renderizar las portadas (una por temporada)
-  renderTempPortadas();
+  // Volver a renderizar las portadas para que aparezcan las temporadas arriba
+  renderPortadas();
 }
 
 function renderTempPortadas(){
