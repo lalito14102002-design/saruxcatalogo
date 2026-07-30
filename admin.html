@@ -863,7 +863,7 @@ Casi listo...
           <div class="admin-field"><label>% Descuento de cumpleaños</label><input class="admin-input" id="cup-cumple-pct" type="number" min="0" max="100"></div>
           <div class="admin-field"><label>Mensaje del popup de cumpleaños (usa {nombre} para insertar el nombre del cliente)</label><textarea class="admin-textarea" id="cup-cumple-msg" rows="3"></textarea></div>
           <button class="admin-btn-save" onclick="guardarCuponesCfg()">Guardar</button>
-          <span id="cup-msg" style="font-family:var(--font-mono);font-size:.6rem;color:var(--neon);margin-left:.8rem"></span>
+          <span id="cupcfg-msg" style="font-family:var(--font-mono);font-size:.6rem;color:var(--neon);margin-left:.8rem"></span>
         </div>
       </div>
       <div id="sec-mantenimiento" class="admin-section">
@@ -4590,7 +4590,7 @@ Casi listo...
   }
 
   async function guardarCuponesCfg(){
-    const msg = document.getElementById('cup-msg');
+    const msg = document.getElementById('cupcfg-msg');
     APP_DATA.CUPONES_CFG = {
       bienvenida_porcentaje: Number(document.getElementById('cup-bienvenida-pct').value) || 10,
       cumpleanos_porcentaje: Number(document.getElementById('cup-cumple-pct').value) || 20,
