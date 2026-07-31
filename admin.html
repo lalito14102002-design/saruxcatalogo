@@ -3474,7 +3474,71 @@ Casi listo...
 
   function handleDeRed(url){
     if(!url) return '';
-    return url.replace(/\/+$/,'').split('/').pop().replace(/^@/,'');
+    let u = url.trim();
+    u = u.split('?')[0].split('#')[0]; // quita parámetros de tracking (?igsh=, ?utm_, etc.)
+    u = u.replace(/\/+$/,'');
+    return u.split('/').pop().replace(/^@/,'');
+  }
+
+  // Dibuja un icono pequeño (aprox. al logo oficial de cada red) dentro de un
+  // cuadro de lado "s" con esquina superior izquierda en (x,y).
+  function roundRectPath(ctx,x,y,w,h,r){
+    ctx.beginPath();
+    ctx.moveTo(x+r,y);
+    ctx.arcTo(x+w,y,x+w,y+h,r);
+    ctx.arcTo(x+w,y+h,x,y+h,r);
+    ctx.arcTo(x,y+h,x,y,r);
+    ctx.arcTo(x,y,x+w,y,r);
+    ctx.closePath();
+  }
+  function drawSocialIcon(ctx, type, x, y, s){
+    ctx.save();
+    if(type === 'instagram'){
+      const r = s*0.28;
+      const grad = ctx.createLinearGradient(x, y+s, x+s, y);
+      grad.addColorStop(0, '#fdf497');
+      grad.addColorStop(0.25, '#fd5949');
+      grad.addColorStop(0.5, '#d6249f');
+      grad.addColorStop(1, '#285AEB');
+      roundRectPath(ctx, x, y, s, s, r);
+      ctx.fillStyle = grad;
+      ctx.fill();
+      ctx.strokeStyle = '#fff';
+      ctx.lineWidth = s*0.09;
+      ctx.beginPath();
+      ctx.arc(x+s/2, y+s/2, s*0.24, 0, Math.PI*2);
+      ctx.stroke();
+      ctx.fillStyle = '#fff';
+      ctx.beginPath();
+      ctx.arc(x+s*0.76, y+s*0.24, s*0.055, 0, Math.PI*2);
+      ctx.fill();
+    } else if(type === 'facebook'){
+      ctx.fillStyle = '#1877F2';
+      ctx.beginPath();
+      ctx.arc(x+s/2, y+s/2, s/2, 0, Math.PI*2);
+      ctx.fill();
+      ctx.fillStyle = '#fff';
+      ctx.font = '700 ' + Math.round(s*0.62) + 'px Arial';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('f', x+s/2 + s*0.03, y+s/2 + s*0.05);
+    } else if(type === 'tiktok'){
+      const r = s*0.24;
+      roundRectPath(ctx, x, y, s, s, r);
+      ctx.fillStyle = '#010101';
+      ctx.fill();
+      const noteX = x+s*0.58, topY = y+s*0.22, stemH = s*0.4, headR = s*0.145;
+      ctx.fillStyle = '#25F4EE';
+      ctx.fillRect(noteX-s*0.10, topY-s*0.01, s*0.10, stemH);
+      ctx.beginPath(); ctx.arc(noteX-s*0.05, topY+stemH+s*0.02, headR, 0, Math.PI*2); ctx.fill();
+      ctx.fillStyle = '#FE2C55';
+      ctx.fillRect(noteX-s*0.02, topY+s*0.03, s*0.10, stemH);
+      ctx.beginPath(); ctx.arc(noteX+s*0.03, topY+stemH+s*0.05, headR, 0, Math.PI*2); ctx.fill();
+      ctx.fillStyle = '#fff';
+      ctx.fillRect(noteX-s*0.06, topY+s*0.01, s*0.10, stemH);
+      ctx.beginPath(); ctx.arc(noteX-s*0.01, topY+stemH+s*0.03, headR, 0, Math.PI*2); ctx.fill();
+    }
+    ctx.restore();
   }
 
   async function generarImagenCupon(id){
@@ -3589,27 +3653,46 @@ Casi listo...
     if(qrImg){
       const qrSize = 210;
       ctx.drawImage(qrImg, 540 - qrSize/2, cursorY, qrSize, qrSize);
-      cursorY += qrSize + 16;
+      cursorY += qrSize + 22;
     }
 
     const wa = (NEGOCIO.whatsapp||'').replace(/\D/g,'');
     const waFmt = wa.length >= 10 ? wa.slice(-10).replace(/(\d{3})(\d{3})(\d{4})/,'$1 $2 $3') : wa;
-    const ig = handleDeRed(NEGOCIO.instagram);
-    const tt = NEGOCIO.tiktok_user || handleDeRed(NEGOCIO.tiktok);
-    const fb = handleDeRed(NEGOCIO.facebook);
+    const ig = handleDeRed(NEGOCIO.instagram) || 'sarux.oficial';
+    const tt = NEGOCIO.tiktok_user || handleDeRed(NEGOCIO.tiktok) || 'sarux.o';
+    const fbRaw = handleDeRed(NEGOCIO.facebook);
+    // Los links "compartir" de Facebook (facebook.com/share/XXXXX) dejan un ID
+    // random en vez del nombre de usuario real; si detectamos eso, usamos "sarux".
+    const fb = (fbRaw && !/^[a-zA-Z0-9]{8,}$/.test(fbRaw)) ? fbRaw : 'sarux';
 
-    ctx.font = '700 18px Arial';
-    ctx.fillStyle = 'rgba(255,255,255,.85)';
+    ctx.font = '700 20px Arial';
+    ctx.fillStyle = '#ffffff';
+    ctx.textAlign = 'center';
     if(waFmt) ctx.fillText('📱 WhatsApp: ' + waFmt, 540, cursorY);
-    cursorY += 22;
+    cursorY += 42;
 
-    ctx.font = '400 16px Arial';
-    ctx.fillStyle = 'rgba(255,255,255,.6)';
-    const redes = [];
-    if(ig) redes.push('📸 @' + ig);
-    if(tt) redes.push('🎵 ' + (tt.startsWith('@')?tt:'@'+tt));
-    if(fb) redes.push('📘 ' + fb);
-    if(redes.length) ctx.fillText(redes.join('   ·   '), 540, cursorY);
+    const redesData = [];
+    if(ig) redesData.push({ type:'instagram', text:'@'+ig });
+    if(tt) redesData.push({ type:'tiktok', text: tt.startsWith('@') ? tt : '@'+tt });
+    if(fb) redesData.push({ type:'facebook', text:'@'+fb });
+
+    if(redesData.length){
+      const iconSize = 26, gapIconTxt = 8, gapItems = 30;
+      ctx.font = '600 19px Arial';
+      const widths = redesData.map(r => iconSize + gapIconTxt + ctx.measureText(r.text).width);
+      const totalW = widths.reduce((a,b) => a+b, 0) + gapItems*(redesData.length-1);
+      let startX = 540 - totalW/2;
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'middle';
+      redesData.forEach((r,i) => {
+        drawSocialIcon(ctx, r.type, startX, cursorY - iconSize/2, iconSize);
+        ctx.fillStyle = 'rgba(255,255,255,.9)';
+        ctx.fillText(r.text, startX + iconSize + gapIconTxt, cursorY+1);
+        startX += widths[i] + gapItems;
+      });
+      ctx.textBaseline = 'alphabetic';
+      ctx.textAlign = 'center';
+    }
 
     // Descargar
     canvas.toBlob(blob => {
