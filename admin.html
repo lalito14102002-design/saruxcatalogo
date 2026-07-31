@@ -3461,12 +3461,29 @@ Casi listo...
   }
 
   // Generar imagen de publicidad del cupón (PNG descargable, lista para redes)
+  function cargarImgCanvas(src){
+    return new Promise((resolve) => {
+      if(!src || src.length < 4){ resolve(null); return; }
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = () => resolve(img);
+      img.onerror = () => resolve(null);
+      img.src = src;
+    });
+  }
+
+  function handleDeRed(url){
+    if(!url) return '';
+    return url.replace(/\/+$/,'').split('/').pop().replace(/^@/,'');
+  }
+
   async function generarImagenCupon(id){
     const { data: c, error } = await sb.from('cupones').select('*').eq('id',id).single();
     if(error||!c){ showNotif('❌ Error al cargar el cupón'); return; }
 
+    const CW = 1080, CH = 1080;
     const canvas = document.createElement('canvas');
-    canvas.width = 1080; canvas.height = 1080;
+    canvas.width = CW; canvas.height = CH;
     const ctx = canvas.getContext('2d');
 
     // Fondo degradado negro→rojo oscuro
@@ -3474,99 +3491,136 @@ Casi listo...
     grad.addColorStop(0, '#1a0005');
     grad.addColorStop(1, '#000000');
     ctx.fillStyle = grad;
-    ctx.fillRect(0,0,1080,1080);
+    ctx.fillRect(0,0,CW,CH);
 
     // Marco decorativo
     ctx.strokeStyle = 'rgba(232,25,44,.5)';
     ctx.lineWidth = 3;
     ctx.strokeRect(40,40,1000,1000);
 
-    // Función para dibujar el resto luego de cargar el logo
-    const dibujarContenido = () => {
-      // Texto: "OFERTA ESPECIAL"
-      ctx.textAlign = 'center';
-      ctx.fillStyle = '#e8192c';
-      ctx.font = '700 32px monospace';
-      ctx.fillText('★ OFERTA ESPECIAL ★', 540, 320);
+    const [logoImg, qrImg] = await Promise.all([
+      cargarImgCanvas(getLogoSrc()),
+      cargarImgCanvas('qr-sarux.png')
+    ]);
 
-      // Porcentaje gigante
-      ctx.fillStyle = '#ffffff';
-      ctx.font = '900 220px Arial';
-      ctx.fillText(c.porcentaje + '%', 540, 580);
+    ctx.textAlign = 'center';
 
-      ctx.fillStyle = '#e8192c';
-      ctx.font = '700 48px Arial';
-      ctx.fillText('DE DESCUENTO', 540, 650);
-
-      // Código del cupón en caja
-      ctx.fillStyle = '#e8192c';
-      ctx.fillRect(240, 720, 600, 110);
-      ctx.fillStyle = '#000000';
-      ctx.font = '900 56px monospace';
-      ctx.fillText(c.codigo, 540, 795);
-
-      // Texto inferior
-      ctx.fillStyle = 'rgba(255,255,255,.6)';
-      ctx.font = '400 26px Arial';
-      let infoLine = 'Usa este código en tu compra';
-      if(c.limite_usos){
-        infoLine = `¡Solo ${c.limite_usos} cupones disponibles!`;
-      }
-      ctx.fillText(infoLine, 540, 880);
-
-      if(c.fecha_expira){
-        const fecha = new Date(c.fecha_expira).toLocaleDateString('es-MX',{day:'numeric',month:'long',year:'numeric'});
-        ctx.fillStyle = 'rgba(255,255,255,.4)';
-        ctx.font = '400 22px Arial';
-        ctx.fillText('Válido hasta el ' + fecha, 540, 920);
-      }
-
-      ctx.fillStyle = 'rgba(255,255,255,.3)';
-      ctx.font = '400 20px monospace';
-      ctx.fillText('WhatsApp · Instagram · Facebook · TikTok', 540, 990);
-
-      // Descargar
-      canvas.toBlob(blob => {
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `cupon-${c.codigo}.png`;
-        a.click();
-        URL.revokeObjectURL(url);
-        showNotif('✅ Imagen descargada — listo para subir a redes');
-      }, 'image/png');
-    };
-
-    // Intentar cargar el logo
-    const logoUrl = getLogoSrc();
-    if(logoUrl && logoUrl.length > 10){
-      const img = new Image();
-      img.crossOrigin = 'anonymous';
-      img.onload = () => {
-        // Dibujar logo centrado arriba, máx 300px ancho, 160px alto
-        const maxW = 300, maxH = 160;
-        let w = img.width, h = img.height;
-        const ratio = Math.min(maxW/w, maxH/h);
-        w = w*ratio; h = h*ratio;
-        ctx.drawImage(img, 540 - w/2, 100, w, h);
-        dibujarContenido();
-      };
-      img.onerror = () => {
-        // Sin logo: poner solo texto SARUX
-        ctx.textAlign = 'center';
-        ctx.fillStyle = '#ffffff';
-        ctx.font = '900 64px Arial';
-        ctx.fillText('SARUX', 540, 200);
-        dibujarContenido();
-      };
-      img.src = logoUrl;
+    // Logo (o texto SARUX si no hay) — tamaño doble
+    let logoH = 175; // valor de respaldo si no carga el logo
+    if(logoImg){
+      const maxW = 680, maxH = 350;
+      let w = logoImg.width, h = logoImg.height;
+      const ratio = Math.min(maxW/w, maxH/h);
+      w = w*ratio; h = h*ratio;
+      logoH = h;
+      ctx.drawImage(logoImg, 540 - w/2, 40, w, h);
     } else {
-      ctx.textAlign = 'center';
       ctx.fillStyle = '#ffffff';
       ctx.font = '900 64px Arial';
-      ctx.fillText('SARUX', 540, 200);
-      dibujarContenido();
+      ctx.fillText('SARUX', 540, 170);
     }
+
+    // "OFERTA ESPECIAL"
+    const ofertaY = 40 + logoH + 28;
+    ctx.fillStyle = '#e8192c';
+    ctx.font = '700 26px monospace';
+    ctx.fillText('★ OFERTA ESPECIAL ★', 540, ofertaY);
+
+    // Porcentaje gigante
+    const percentY = ofertaY + 105;
+    ctx.fillStyle = '#ffffff';
+    ctx.font = '900 115px Arial';
+    ctx.fillText(c.porcentaje + '%', 540, percentY);
+
+    const deDescY = percentY + 45;
+    ctx.fillStyle = '#e8192c';
+    ctx.font = '700 34px Arial';
+    ctx.fillText('DE DESCUENTO', 540, deDescY);
+
+    // Código del cupón en caja
+    const boxTop = deDescY + 22, boxH = 72;
+    ctx.fillStyle = '#e8192c';
+    ctx.fillRect(250, boxTop, 580, boxH);
+    ctx.fillStyle = '#000000';
+    ctx.font = '900 38px monospace';
+    ctx.fillText(c.codigo, 540, boxTop + boxH - 16);
+
+    // ── Bloque dinámico de restricciones + info de uso ──
+    let cursorY = boxTop + boxH + 28;
+    const lineH = 24;
+
+    // Solo se muestra si el cupón NO aplica a todo el catálogo / todo el público
+    const restricciones = [];
+    if(c.aplica_a === 'tipos' && (c.tipos_producto||[]).length){
+      restricciones.push('🎯 Solo para: ' + c.tipos_producto.join(', '));
+    } else if(c.aplica_a === 'categorias' && (c.categorias||[]).length){
+      restricciones.push('🎯 Categorías: ' + c.categorias.join(', '));
+    }
+    if(c.publico === 'niveles' && (c.niveles_fidelidad||[]).length){
+      restricciones.push('💎 Solo nivel: ' + c.niveles_fidelidad.join(', '));
+    }
+
+    ctx.font = '700 19px Arial';
+    ctx.fillStyle = '#ffffff';
+    restricciones.forEach(txt => {
+      ctx.fillText(txt, 540, cursorY);
+      cursorY += lineH;
+    });
+
+    ctx.font = '400 20px Arial';
+    ctx.fillStyle = 'rgba(255,255,255,.6)';
+    let infoLine = 'Usa este código en tu compra';
+    if(c.limite_usos){
+      infoLine = `¡Solo ${c.limite_usos} cupones disponibles!`;
+    }
+    ctx.fillText(infoLine, 540, cursorY);
+    cursorY += lineH;
+
+    if(c.fecha_expira){
+      const fecha = new Date(c.fecha_expira).toLocaleDateString('es-MX',{day:'numeric',month:'long',year:'numeric'});
+      ctx.fillStyle = 'rgba(255,255,255,.4)';
+      ctx.font = '400 17px Arial';
+      ctx.fillText('Válido hasta el ' + fecha, 540, cursorY);
+      cursorY += 22;
+    }
+
+    // ── Bloque de redes reales + QR (tamaño doble) ──
+    cursorY += 10;
+    if(qrImg){
+      const qrSize = 210;
+      ctx.drawImage(qrImg, 540 - qrSize/2, cursorY, qrSize, qrSize);
+      cursorY += qrSize + 16;
+    }
+
+    const wa = (NEGOCIO.whatsapp||'').replace(/\D/g,'');
+    const waFmt = wa.length >= 10 ? wa.slice(-10).replace(/(\d{3})(\d{3})(\d{4})/,'$1 $2 $3') : wa;
+    const ig = handleDeRed(NEGOCIO.instagram);
+    const tt = NEGOCIO.tiktok_user || handleDeRed(NEGOCIO.tiktok);
+    const fb = handleDeRed(NEGOCIO.facebook);
+
+    ctx.font = '700 18px Arial';
+    ctx.fillStyle = 'rgba(255,255,255,.85)';
+    if(waFmt) ctx.fillText('📱 WhatsApp: ' + waFmt, 540, cursorY);
+    cursorY += 22;
+
+    ctx.font = '400 16px Arial';
+    ctx.fillStyle = 'rgba(255,255,255,.6)';
+    const redes = [];
+    if(ig) redes.push('📸 @' + ig);
+    if(tt) redes.push('🎵 ' + (tt.startsWith('@')?tt:'@'+tt));
+    if(fb) redes.push('📘 ' + fb);
+    if(redes.length) ctx.fillText(redes.join('   ·   '), 540, cursorY);
+
+    // Descargar
+    canvas.toBlob(blob => {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `cupon-${c.codigo}.png`;
+      a.click();
+      URL.revokeObjectURL(url);
+      showNotif('✅ Imagen descargada — listo para subir a redes');
+    }, 'image/png');
   }
 
   // ═══════════════════════════════════════════════
