@@ -853,6 +853,17 @@
   </div>
 </div>
 
+<!-- ── PWA: Modal de instrucciones manuales (iPhone/Safari y navegadores sin botón automático) ── -->
+<div id="pwaInstruccionesOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:999999;align-items:center;justify-content:center;padding:1rem">
+  <div style="background:#0a0000;border:1px solid rgba(232,25,44,.4);border-radius:8px;width:100%;max-width:360px;position:relative;padding:1.6rem;text-align:center">
+    <button onclick="cerrarInstruccionesPWA()" style="position:absolute;top:.6rem;right:.8rem;background:none;border:none;color:var(--gray);font-size:1.2rem;cursor:pointer">✕</button>
+    <img src="/icon-192.png" style="width:56px;height:56px;border-radius:12px;margin-bottom:.9rem">
+    <div style="font-family:var(--font-display);font-size:1rem;letter-spacing:2px;color:var(--white);margin-bottom:1.1rem">INSTALA LA APP</div>
+    <div id="pwaInstruccionesTexto" style="font-family:var(--font-mono);font-size:.72rem;color:var(--gray);line-height:2;text-align:left"></div>
+    <button onclick="cerrarInstruccionesPWA()" style="width:100%;background:var(--neon);color:#000;border:none;padding:.7rem;font-family:var(--font-mono);font-size:.6rem;letter-spacing:2px;cursor:pointer;font-weight:700;margin-top:1.3rem;border-radius:3px">ENTENDIDO</button>
+  </div>
+</div>
+
 <script>
 (function(){
   let _deferredPrompt = null;
@@ -866,6 +877,20 @@
   if(esStandalone){
     try{ localStorage.setItem(INSTALL_KEY, '1'); }catch(e){}
   }
+
+  // ── Detección de navegador/plataforma ──
+  // El evento 'beforeinstallprompt' (botón automático de instalar) SOLO existe
+  // en Chrome/Edge/Samsung Internet. Safari (iPhone y Mac) y Firefox JAMÁS lo
+  // disparan — es una limitación del navegador, no algo que se pueda "arreglar"
+  // para que aparezca el prompt nativo ahí. Por eso el banner nunca aparecía
+  // en iPhone: se quedaba esperando un evento que nunca llega.
+  // Solución: en esos navegadores mostramos el mismo banner igual, pero al
+  // tocar "INSTALAR" se abren instrucciones manuales en vez del prompt nativo.
+  const ua = navigator.userAgent || '';
+  const esIOS = /iPad|iPhone|iPod/.test(ua)
+    || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1); // iPad moderno se reporta como Mac
+  const esSafari = /Safari/.test(ua) && !/Chrome|Chromium|CriOS|FxiOS|EdgiOS|OPiOS|OPR/.test(ua);
+  const sinPromptNativo = esIOS || esSafari; // iPhone, iPad y Safari de escritorio
 
   // Registrar Service Worker + forzar actualización inmediata cuando hay una versión nueva
   if('serviceWorker' in navigator){
@@ -936,6 +961,26 @@
     mostrarBannerFooterPWA();
   });
 
+  // iPhone/iPad/Safari: 'beforeinstallprompt' nunca va a llegar, así que no
+  // esperamos — mostramos el banner directo (el botón abrirá instrucciones).
+  if(!esStandalone && !localStorage.getItem(INSTALL_KEY) && sinPromptNativo){
+    setTimeout(() => mostrarBannerPWA(), 3000);
+    mostrarBannerFooterPWA();
+  }
+
+  // Respaldo: cualquier otro navegador (Firefox, navegadores "in-app" de
+  // Instagram/Facebook, etc.) donde tampoco llegue el evento tras unos
+  // segundos — se muestra igual con instrucciones genéricas, para que
+  // el banner SIEMPRE aparezca sin importar el navegador.
+  if(!esStandalone && !localStorage.getItem(INSTALL_KEY) && !sinPromptNativo){
+    setTimeout(() => {
+      if(!_deferredPrompt){
+        mostrarBannerPWA();
+        mostrarBannerFooterPWA();
+      }
+    }, 4000);
+  }
+
   window.addEventListener('appinstalled', () => {
     localStorage.setItem(INSTALL_KEY, '1');
     document.getElementById('pwaBanner').style.display = 'none';
@@ -963,23 +1008,53 @@
   }
 
   window.instalarPWA = async function(){
-    if(!_deferredPrompt) return;
-    _deferredPrompt.prompt();
-    const { outcome } = await _deferredPrompt.userChoice;
-    if(outcome === 'accepted'){
-      localStorage.setItem(INSTALL_KEY, '1');
-      registrarInstalacionPWA();
-      try{
-        if(typeof _perfilActual !== 'undefined' && _perfilActual && _perfilActual.correo){
-          if(typeof otorgarCuponPWA === 'function'){
-            otorgarCuponPWA(_perfilActual.correo, _perfilActual.id);
+    // Si el navegador soporta el prompt automático (Chrome/Edge/Samsung en Android o Windows), úsalo.
+    if(_deferredPrompt){
+      _deferredPrompt.prompt();
+      const { outcome } = await _deferredPrompt.userChoice;
+      if(outcome === 'accepted'){
+        localStorage.setItem(INSTALL_KEY, '1');
+        registrarInstalacionPWA();
+        try{
+          if(typeof _perfilActual !== 'undefined' && _perfilActual && _perfilActual.correo){
+            if(typeof otorgarCuponPWA === 'function'){
+              otorgarCuponPWA(_perfilActual.correo, _perfilActual.id);
+            }
           }
-        }
-      }catch(e){}
+        }catch(e){}
+      }
+      _deferredPrompt = null;
+      document.getElementById('pwaBanner').style.display = 'none';
+      ocultarBannerFooterPWA();
+      return;
     }
-    _deferredPrompt = null;
+    // Sin prompt automático (iPhone/Safari u otro navegador): mostrar instrucciones manuales.
+    mostrarInstruccionesPWA();
+  };
+
+  window.mostrarInstruccionesPWA = function(){
+    const texto = esIOS
+      ? '1️⃣ Toca el ícono de <b>Compartir</b> 📤 (abajo, o arriba junto a la barra de direcciones)<br><br>'
+        + '2️⃣ Desliza y elige <b>"Agregar a pantalla de inicio"</b> ➕<br><br>'
+        + '3️⃣ Toca <b>"Agregar"</b> arriba a la derecha<br><br>'
+        + '¡Listo! El ícono de SARUX quedará en tu pantalla 🎉'
+      : esSafari
+      ? '1️⃣ Ve al menú <b>Archivo</b> (o el ícono de Compartir)<br><br>'
+        + '2️⃣ Elige <b>"Agregar al Dock"</b> o <b>"Agregar a pantalla de inicio"</b><br><br>'
+        + '3️⃣ Confirma<br><br>'
+        + '¡Listo! El ícono de SARUX quedará disponible 🎉'
+      : '1️⃣ Toca el menú de tu navegador (⋮ arriba a la derecha)<br><br>'
+        + '2️⃣ Busca la opción <b>"Instalar app"</b> o <b>"Agregar a pantalla de inicio"</b><br><br>'
+        + '3️⃣ Confirma la instalación<br><br>'
+        + '¡Listo! El ícono de SARUX quedará en tu pantalla 🎉';
+    document.getElementById('pwaInstruccionesTexto').innerHTML = texto;
+    document.getElementById('pwaInstruccionesOverlay').style.display = 'flex';
     document.getElementById('pwaBanner').style.display = 'none';
     ocultarBannerFooterPWA();
+  };
+
+  window.cerrarInstruccionesPWA = function(){
+    document.getElementById('pwaInstruccionesOverlay').style.display = 'none';
   };
 
   window.cerrarBannerPWA = function(){
