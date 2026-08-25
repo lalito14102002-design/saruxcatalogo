@@ -1024,8 +1024,8 @@ Casi listo...
             <div class="admin-card-title" id="temp-prods-titulo" style="margin:0">📦 PRODUCTOS</div>
             <div style="display:flex;gap:.5rem;flex-wrap:wrap">
               <button class="admin-btn-add" onclick="abrirFormProdTemp(null)">➕ Agregar producto</button>
-              <label class="admin-btn-add" style="cursor:pointer;background:rgba(232,25,44,.15);border-color:rgba(232,25,44,.4)">
-                📤 Subir varias imágenes
+              <label class="admin-btn-add" style="cursor:pointer;background:rgba(232,25,44,.15);border-color:rgba(232,25,44,.4)" title="Súbelas todas de un jalón: se agregan como diseños de UN solo producto con un precio, tallas y colores compartidos">
+                📤 Subir varias imágenes (mismo producto)
                 <input type="file" multiple accept="image/*" style="display:none" onchange="uploadMasivoTempProds(this)">
               </label>
             </div>
@@ -1077,6 +1077,14 @@ Casi listo...
                 <img id="tp-img-preview" class="admin-img-preview" style="display:none;width:100%;max-height:140px;object-fit:cover;border-radius:3px;margin-top:.4rem">
               </div>
               <input class="admin-input" id="tp-imagen" placeholder="URL de imagen (se llena automático al subir)" style="font-size:.55rem;opacity:.6">
+            </div>
+            <div style="margin-bottom:.8rem">
+              <div class="admin-label">DISEÑOS ADICIONALES <span style="color:var(--gray);font-weight:400">(mismo precio, tallas y colores — solo cambia la imagen)</span></div>
+              <div id="tp-disenos-list"></div>
+              <div style="display:flex;gap:.5rem">
+                <button class="admin-btn-sm" onclick="addDisenoTemp()" style="width:auto;flex:1">+ Agregar diseño</button>
+                <label class="admin-btn-sm" style="width:auto;flex:1;cursor:pointer;text-align:center;background:rgba(232,25,44,.15);border-color:rgba(232,25,44,.4)">📤 Varias imágenes<input type="file" multiple accept="image/*" style="display:none" onchange="uploadMasivoDisenosTemp(this)"></label>
+              </div>
             </div>
             <div style="display:flex;gap:.5rem">
               <button class="admin-btn" onclick="guardarProdTemp()" style="flex:1;justify-content:center">💾 Guardar producto</button>
@@ -2823,34 +2831,66 @@ Casi listo...
     if(_usuarioDetalleActual) abrirDetalleUsuario(_usuarioDetalleActual.id);
   }
 
+  // Sube varias imágenes de UN SOLO jalón y las agrega como "diseños" de UN
+  // solo producto (mismo precio, tallas y colores para todas). Si el
+  // formulario de producto no está abierto, lo abre como producto nuevo.
   async function uploadMasivoTempProds(input){
     if(!_tempActualId){ alert('Selecciona una temporada primero.'); return; }
     const files = Array.from(input.files);
     if(!files.length) return;
-    const msg = document.getElementById('temp-prods-lista');
+    const wrap = document.getElementById('temp-prod-form-wrap');
+    if(wrap.style.display === 'none'){ await abrirFormProdTemp(null); }
     let subidos = 0;
     for(const file of files){
       try{
         const url = await uploadToStorage(file, 'temporadas');
         const nombre = file.name.replace(/\.[^.]+$/, '').replace(/[-_]/g,' ');
         const nombreFinal = nombre.charAt(0).toUpperCase() + nombre.slice(1);
-        await sb.from('temporada_productos').insert([{
-          temporada_id: _tempActualId,
-          nombre: nombreFinal,
-          precio: 0,
-          stock: 0,
-          descripcion: '',
-          colores: [],
-          tallas: [],
-          tipo: '',
-          imagen: url
-        }]);
+        _tpDisenosTemp.push({ nombre: nombreFinal, imagen: url });
+        if(!document.getElementById('tp-imagen').value){
+          document.getElementById('tp-imagen').value = url;
+          const prev = document.getElementById('tp-img-preview');
+          prev.src = url; prev.style.display = 'block';
+        }
         subidos++;
       } catch(e){ console.error('Error subiendo '+file.name, e); }
     }
-    await recargarProdTemp();
-    alert(`✅ ${subidos} de ${files.length} producto(s) subidos. Edítalos para completar nombre, precio y talla.`);
+    renderDisenosTempAdmin();
+    alert(`✅ ${subidos} de ${files.length} imagen(es) agregadas como diseños. Pon el nombre, precio, tallas y colores UNA sola vez y guarda — aplican para todas.`);
     input.value = '';
+  }
+
+  // ── Diseños adicionales del producto de temporada (misma idea que en el catálogo normal) ──
+  let _tpDisenosTemp = [];
+  function renderDisenosTempAdmin(){
+    const w = document.getElementById('tp-disenos-list'); if(!w) return;
+    w.innerHTML = _tpDisenosTemp.map((d,i) => `<div class="diseno-admin-row">${d.imagen?`<img src="${d.imagen}">`:'<div style="width:40px;height:40px;background:#222">🖼️</div>'}<input class="admin-input" value="${d.nombre||''}" placeholder="Nombre diseño" oninput="_tpDisenosTemp[${i}].nombre=this.value"><label style="padding:.2rem .5rem;background:#1a1a1a;cursor:pointer">📷<input type="file" style="display:none" onchange="uploadDisenoImgTemp(this,${i})"></label><button class="admin-btn-sm danger" onclick="_tpDisenosTemp.splice(${i},1);renderDisenosTempAdmin()">🗑️</button></div>`).join('');
+  }
+  function addDisenoTemp(){ _tpDisenosTemp.push({nombre:'',imagen:''}); renderDisenosTempAdmin(); }
+  async function uploadDisenoImgTemp(input, idx) {
+    const f = input.files[0]; if(!f) return;
+    try{
+      const url = await uploadToStorage(f, 'temporadas');
+      _tpDisenosTemp[idx].imagen = url;
+      renderDisenosTempAdmin();
+    } catch(e){ showNotif('Error: '+e.message); }
+  }
+  async function uploadMasivoDisenosTemp(input) {
+    const files = Array.from(input.files);
+    if(!files.length) return;
+    showNotif(`Subiendo ${files.length} imagen(es)...`);
+    let subidos = 0;
+    for(const file of files) {
+      try {
+        const url = await uploadToStorage(file, 'temporadas');
+        const nombre = file.name.replace(/\.[^.]+$/, '').replace(/[-_]/g,' ');
+        _tpDisenosTemp.push({ nombre: nombre.charAt(0).toUpperCase()+nombre.slice(1), imagen: url });
+        subidos++;
+        showNotif(`Subiendo... ${subidos}/${files.length}`);
+      } catch(e) { showNotif('Error: '+file.name); }
+    }
+    renderDisenosTempAdmin();
+    showNotif(`✅ ${subidos} diseños agregados`);
   }
 
   async function uploadTempPortadaImg(input){
@@ -5956,6 +5996,7 @@ async function recargarProdTemp(){
         <div style="font-size:.75rem;color:var(--white);font-weight:600">${p.nombre}</div>
         <div style="font-family:var(--font-mono);font-size:.58rem;color:var(--neon)">$${(p.precio||0).toLocaleString()} MXN</div>
         ${p.tipo ? `<div style="font-size:.55rem;color:var(--gray)">${p.tipo}</div>` : ''}
+        ${(p.disenos&&p.disenos.length) ? `<div style="font-size:.55rem;color:var(--gray)">🎨 ${p.disenos.length} diseño${p.disenos.length!==1?'s':''}</div>` : ''}
       </div>
       <div style="display:flex;gap:.4rem;flex-shrink:0">
         <button onclick="abrirFormProdTemp('${p.id}')" style="background:none;border:1px solid rgba(255,255,255,.15);color:var(--gray);font-size:.55rem;padding:.25rem .5rem;cursor:pointer">✏️</button>
@@ -5973,6 +6014,8 @@ async function abrirFormProdTemp(id){
   if(!id){
     document.getElementById('temp-prod-form-titulo').textContent = '➕ NUEVO PRODUCTO';
     ['temp-prod-edit-id','tp-nombre','tp-precio','tp-stock','tp-desc','tp-colores','tp-tallas','tp-tipo','tp-imagen'].forEach(fid=>{ document.getElementById(fid).value=''; });
+    document.getElementById('tp-img-preview').style.display = 'none';
+    _tpDisenosTemp = [];
   } else {
     const { data } = await sb.from('temporada_productos').select('*').eq('id',id).single();
     if(!data) return;
@@ -5988,12 +6031,15 @@ async function abrirFormProdTemp(id){
     document.getElementById('tp-imagen').value = data.imagen || '';
     const prev = document.getElementById('tp-img-preview');
     if(data.imagen){ prev.src=data.imagen; prev.style.display='block'; } else { prev.style.display='none'; }
+    _tpDisenosTemp = JSON.parse(JSON.stringify(data.disenos||[]));
   }
+  renderDisenosTempAdmin();
   wrap.scrollIntoView({behavior:'smooth',block:'nearest'});
 }
 
 function cerrarFormProdTemp(){
   document.getElementById('temp-prod-form-wrap').style.display = 'none';
+  _tpDisenosTemp = [];
 }
 
 async function guardarProdTemp(){
@@ -6015,7 +6061,8 @@ async function guardarProdTemp(){
     colores: rawCol ? rawCol.split(',').map(s=>s.trim()).filter(Boolean) : [],
     tallas: rawTal ? rawTal.split(',').map(s=>s.trim()).filter(Boolean) : [],
     tipo: document.getElementById('tp-tipo').value.trim(),
-    imagen: document.getElementById('tp-imagen').value.trim()
+    imagen: document.getElementById('tp-imagen').value.trim(),
+    disenos: _tpDisenosTemp.filter(d=>d.imagen||d.nombre)
   };
   let err;
   if(id){
