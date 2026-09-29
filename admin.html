@@ -318,6 +318,20 @@
       <button class="admin-btn-sm" onclick="addPersonaje()" style="width:100%;margin-top:.4rem">+ Agregar personaje</button>
     </div>
     <div class="admin-field"><label>Badge</label><select class="admin-select" id="pm-badge"><option value="">Sin badge</option><option>Popular</option><option>Más vendido</option><option>Nuevo</option></select></div>
+    <div class="admin-field" style="border:1px solid rgba(232,25,44,.35);background:rgba(232,25,44,.06);padding:.7rem;border-radius:3px">
+      <label style="color:var(--neon)">📦 ¿Cómo publicar los diseños?</label>
+      <select class="admin-select" id="pm-modo-pub" onchange="actualizarPubHint('pm')">
+        <option value="juntas">Todas juntas (1 solo artículo con todas las imágenes)</option>
+        <option value="grupos">Dividir en grupos (varios artículos)</option>
+        <option value="una">Una por una (cada imagen es su propio artículo)</option>
+      </select>
+      <div id="pm-grupo-wrap" style="display:none;margin-top:.5rem">
+        <label style="font-size:.7rem">Imágenes por grupo</label>
+        <input class="admin-input" type="number" min="1" value="10" id="pm-grupo-size" oninput="actualizarPubHint('pm')" style="width:100px">
+      </div>
+      <div id="pm-pub-hint" style="font-family:var(--font-mono);font-size:.6rem;color:var(--gray);margin-top:.5rem;letter-spacing:1px"></div>
+      <div style="font-family:var(--font-mono);font-size:.55rem;color:var(--gray);margin-top:.3rem">Todos los artículos heredan precio, tallas, colores, existencia y demás datos. Se nombran «Nombre 1», «Nombre 2»… y después puedes editar o eliminar cada uno.</div>
+    </div>
     <button class="admin-modal-save" onclick="saveProdModal()">Guardar producto</button>
   </div>
 </div>
@@ -1086,7 +1100,21 @@ Casi listo...
                 <label class="admin-btn-sm" style="width:auto;flex:1;cursor:pointer;text-align:center;background:rgba(232,25,44,.15);border-color:rgba(232,25,44,.4)">📤 Varias imágenes<input type="file" multiple accept="image/*" style="display:none" onchange="uploadMasivoDisenosTemp(this)"></label>
               </div>
             </div>
-            <div style="display:flex;gap:.5rem">
+            <div class="admin-field" style="border:1px solid rgba(232,25,44,.35);background:rgba(232,25,44,.06);padding:.7rem;border-radius:3px">
+      <label style="color:var(--neon)">📦 ¿Cómo publicar los diseños?</label>
+      <select class="admin-select" id="tp-modo-pub" onchange="actualizarPubHint('tp')">
+        <option value="juntas">Todas juntas (1 solo artículo con todas las imágenes)</option>
+        <option value="grupos">Dividir en grupos (varios artículos)</option>
+        <option value="una">Una por una (cada imagen es su propio artículo)</option>
+      </select>
+      <div id="tp-grupo-wrap" style="display:none;margin-top:.5rem">
+        <label style="font-size:.7rem">Imágenes por grupo</label>
+        <input class="admin-input" type="number" min="1" value="10" id="tp-grupo-size" oninput="actualizarPubHint('tp')" style="width:100px">
+      </div>
+      <div id="tp-pub-hint" style="font-family:var(--font-mono);font-size:.6rem;color:var(--gray);margin-top:.5rem;letter-spacing:1px"></div>
+      <div style="font-family:var(--font-mono);font-size:.55rem;color:var(--gray);margin-top:.3rem">Todos los artículos heredan precio, tallas, colores, existencia y demás datos. Se nombran «Nombre 1», «Nombre 2»… y después puedes editar o eliminar cada uno.</div>
+    </div>
+    <div style="display:flex;gap:.5rem">
               <button class="admin-btn" onclick="guardarProdTemp()" style="flex:1;justify-content:center">💾 Guardar producto</button>
               <button class="admin-btn-sm" onclick="cerrarFormProdTemp()">✕</button>
             </div>
@@ -2195,7 +2223,37 @@ Casi listo...
     renderTipoDropdown('');
     document.getElementById('pm-badge').value=''; document.getElementById('pm-img-preview').style.display='none';
   }
-  function closeProdModal(){ document.getElementById('adminProdModal').classList.remove('show'); editingProd=null; }
+  function closeProdModal(){ document.getElementById('adminProdModal').classList.remove('show'); editingProd=null; resetPubModo('pm'); }
+  // ── Modo de publicación de diseños: juntas / grupos / una por una ──
+  function _pubDividir(items, modo, tam){
+    if(!items.length || modo==='juntas') return [items];
+    if(modo==='una') return items.map(d=>[d]);
+    const n = Math.max(1, parseInt(tam)||10), g = [];
+    for(let i=0;i<items.length;i+=n) g.push(items.slice(i,i+n));
+    return g;
+  }
+  function _pubNombre(base, i, total){ base = (base||'').trim() || 'Producto'; return total>1 ? base+' '+(i+1) : base; }
+  // Devuelve {disenos, imagen} para el grupo g (arreglo de diseños). principal = imagen principal del formulario (solo grupo 1)
+  function _pubGrupoDatos(g, i, principal){
+    const pr = (i===0 && principal) ? principal : '';
+    if(pr && pr !== g[0].imagen) return { disenos: g, imagen: pr };
+    return { disenos: g.length>1 ? g : [], imagen: g[0].imagen || '' };
+  }
+  function actualizarPubHint(pref){
+    const sel = document.getElementById(pref+'-modo-pub'); if(!sel) return;
+    const wrap = document.getElementById(pref+'-grupo-wrap'), hint = document.getElementById(pref+'-pub-hint');
+    wrap.style.display = sel.value==='grupos' ? 'block' : 'none';
+    const lista = pref==='pm' ? _disenosTemp : _tpDisenosTemp;
+    const n = lista.filter(d=>d.imagen||d.nombre).length;
+    const g = _pubDividir(lista.filter(d=>d.imagen||d.nombre), sel.value, document.getElementById(pref+'-grupo-size').value);
+    hint.textContent = n===0 ? 'Agrega diseños para usar esta opción.' :
+      sel.value==='juntas' ? `${n} imagen(es) → 1 artículo` :
+      `${n} imagen(es) → ${g.length} artículo(s)` + (sel.value==='grupos' ? ' ('+g.map(x=>x.length).join(' + ')+')' : '');
+  }
+  function resetPubModo(pref){
+    const s = document.getElementById(pref+'-modo-pub'); if(s) s.value='juntas';
+    actualizarPubHint(pref);
+  }
   function saveProdModal(){
     if(!editingProd) return;
     const {ci,pi}=editingProd;
@@ -2211,6 +2269,23 @@ Casi listo...
       imagen: document.getElementById('pm-imagen').value || (_disenosTemp[0]&&_disenosTemp[0].imagen)||'',
       badge: document.getElementById('pm-badge').value
     };
+    const modo = (document.getElementById('pm-modo-pub')||{}).value || 'juntas';
+    const grupos = _pubDividir(prod.disenos, modo, (document.getElementById('pm-grupo-size')||{}).value);
+    if(modo!=='juntas' && grupos.length>1){
+      if(pi!==-1 && !confirm(`Este producto se reemplazará por ${grupos.length} artículos (${_pubNombre(prod.nombre,0,grupos.length)} … ${_pubNombre(prod.nombre,grupos.length-1,grupos.length)}). ¿Continuar?`)) return;
+      const principal = document.getElementById('pm-imagen').value;
+      const lista = grupos.map((g,i)=>{
+        const p = JSON.parse(JSON.stringify(prod));
+        const dt = _pubGrupoDatos(g, i, principal);
+        p.nombre = _pubNombre(prod.nombre, i, grupos.length);
+        p.disenos = dt.disenos; p.imagen = dt.imagen;
+        if(i>0) p.personajes = [];
+        return p;
+      });
+      if(pi===-1) CATALOGO_D[ci].productos.push(...lista); else CATALOGO_D[ci].productos.splice(pi,1,...lista);
+      closeProdModal(); renderAdminCatalogo(); showNotif(`✅ ${lista.length} artículos creados (recuerda guardar todo)`);
+      return;
+    }
     if(pi===-1) CATALOGO_D[ci].productos.push(prod); else CATALOGO_D[ci].productos[pi]=prod;
     closeProdModal(); renderAdminCatalogo(); showNotif('Producto guardado (recuerda guardar todo)');
   }
@@ -2250,7 +2325,7 @@ Casi listo...
     renderTemasCheckboxes([...new Set(actuales)]);
     input.value='';
   }
-  function renderDisenosAdmin(){ const w=document.getElementById('pm-disenos-list'); if(!w) return; w.innerHTML=_disenosTemp.map((d,i)=>`<div class="diseno-admin-row">${d.imagen?`<img src="${d.imagen}">`:'<div style="width:40px;height:40px;background:#222">🖼️</div>'}<input class="admin-input" value="${d.nombre||''}" placeholder="Nombre diseño" oninput="_disenosTemp[${i}].nombre=this.value"><label style="padding:.2rem .5rem;background:#1a1a1a;cursor:pointer">📷<input type="file" style="display:none" onchange="uploadDisenoImg(this,${i})"></label><button class="admin-btn-sm danger" onclick="_disenosTemp.splice(${i},1);renderDisenosAdmin()">🗑️</button></div>`).join(''); }
+  function renderDisenosAdmin(){ const w=document.getElementById('pm-disenos-list'); if(!w) return; w.innerHTML=_disenosTemp.map((d,i)=>`<div class="diseno-admin-row">${d.imagen?`<img src="${d.imagen}">`:'<div style="width:40px;height:40px;background:#222">🖼️</div>'}<input class="admin-input" value="${d.nombre||''}" placeholder="Nombre diseño" oninput="_disenosTemp[${i}].nombre=this.value"><label style="padding:.2rem .5rem;background:#1a1a1a;cursor:pointer">📷<input type="file" style="display:none" onchange="uploadDisenoImg(this,${i})"></label><button class="admin-btn-sm danger" onclick="_disenosTemp.splice(${i},1);renderDisenosAdmin()">🗑️</button></div>`).join(''); actualizarPubHint('pm'); }
   function addDiseno(){ _disenosTemp.push({nombre:'',imagen:''}); renderDisenosAdmin(); }
 
   async function uploadMasivoDisenos(input) {
@@ -2865,6 +2940,7 @@ Casi listo...
   function renderDisenosTempAdmin(){
     const w = document.getElementById('tp-disenos-list'); if(!w) return;
     w.innerHTML = _tpDisenosTemp.map((d,i) => `<div class="diseno-admin-row">${d.imagen?`<img src="${d.imagen}">`:'<div style="width:40px;height:40px;background:#222">🖼️</div>'}<input class="admin-input" value="${d.nombre||''}" placeholder="Nombre diseño" oninput="_tpDisenosTemp[${i}].nombre=this.value"><label style="padding:.2rem .5rem;background:#1a1a1a;cursor:pointer">📷<input type="file" style="display:none" onchange="uploadDisenoImgTemp(this,${i})"></label><button class="admin-btn-sm danger" onclick="_tpDisenosTemp.splice(${i},1);renderDisenosTempAdmin()">🗑️</button></div>`).join('');
+    actualizarPubHint('tp');
   }
   function addDisenoTemp(){ _tpDisenosTemp.push({nombre:'',imagen:''}); renderDisenosTempAdmin(); }
   async function uploadDisenoImgTemp(input, idx) {
@@ -6040,6 +6116,7 @@ async function abrirFormProdTemp(id){
 function cerrarFormProdTemp(){
   document.getElementById('temp-prod-form-wrap').style.display = 'none';
   _tpDisenosTemp = [];
+  resetPubModo('tp');
 }
 
 async function guardarProdTemp(){
@@ -6065,6 +6142,25 @@ async function guardarProdTemp(){
     disenos: _tpDisenosTemp.filter(d=>d.imagen||d.nombre)
   };
   let err;
+  const modo = (document.getElementById('tp-modo-pub')||{}).value || 'juntas';
+  const grupos = _pubDividir(payload.disenos, modo, (document.getElementById('tp-grupo-size')||{}).value);
+  if(modo!=='juntas' && grupos.length>1){
+    if(id && !confirm(`Este producto se reemplazará por ${grupos.length} artículos. ¿Continuar?`)){ msg.textContent=''; return; }
+    const lista = grupos.map((g,i)=>{
+      const dt = _pubGrupoDatos(g, i, payload.imagen);
+      return Object.assign({}, payload, { nombre: _pubNombre(nombre, i, grupos.length), disenos: dt.disenos, imagen: dt.imagen });
+    });
+    if(id){
+      ({ error:err } = await sb.from('temporada_productos').update(lista[0]).eq('id',id));
+      if(!err) ({ error:err } = await sb.from('temporada_productos').insert(lista.slice(1)));
+    } else {
+      ({ error:err } = await sb.from('temporada_productos').insert(lista));
+    }
+    if(err){ msg.style.color='#ff4444'; msg.textContent='❌ Error: '+err.message; return; }
+    msg.style.color='#4caf50'; msg.textContent=`✅ ${lista.length} artículos guardados.`;
+    setTimeout(()=>{ cerrarFormProdTemp(); recargarProdTemp(); }, 700);
+    return;
+  }
   if(id){
     ({ error:err } = await sb.from('temporada_productos').update(payload).eq('id',id));
   } else {
