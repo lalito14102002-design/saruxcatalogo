@@ -311,6 +311,13 @@
         <label class="admin-btn-sm" style="width:auto;flex:1;cursor:pointer;text-align:center;background:rgba(232,25,44,.15);border-color:rgba(232,25,44,.4)">📤 Varias imágenes<input type="file" multiple accept="image/*" style="display:none" onchange="uploadMasivoDisenos(this)"></label>
       </div>
     </div>
+    <div class="admin-field" style="border:1px solid rgba(232,25,44,.35);background:rgba(232,25,44,.05);padding:.7rem;border-radius:3px">
+      <label style="color:var(--neon)">👕 Tipos de playera: Normal / Oversize <span style="font-size:.6rem;color:var(--gray);font-weight:300">(opcional)</span></label>
+      <div style="font-family:var(--font-mono);font-size:.55rem;color:var(--gray);margin-bottom:.6rem;letter-spacing:1px;line-height:1.7">Cada tipo lleva su propia imagen del diseño (con publicidad), sus fotos reales y sus precios por talla (se capturan una sola vez en Catálogo → «Precios por tipo y talla»). Si no agregas tipos, el producto funciona como siempre.</div>
+      <datalist id="dl-tipos-precio"></datalist>
+      <div id="pm-variantes-list"></div>
+      <button class="admin-btn-sm" onclick="addVariante()" style="width:100%;margin-top:.4rem">+ Agregar tipo de playera</button>
+    </div>
     <div class="admin-field">
       <label style="color:var(--neon)">⭐ Personajes / Sub-diseños <span style="font-size:.6rem;color:var(--gray);font-weight:300">(ej: Goku, Vegeta, Freezer — cada uno con sus diseños)</span></label>
       <div style="font-family:var(--font-mono);font-size:.55rem;color:var(--gray);margin-bottom:.6rem;letter-spacing:1px">Al agregar personajes, la tarjeta abrirá una galería en lugar del modal de compra.</div>
@@ -442,6 +449,7 @@
   let APP_DATA = {};
   let NEGOCIO, COLORES, FUENTES, POPUP_D, TICKER_D, LOGO_D;
   window.FILTROS_GLOBALES_D = {tipos:[], categorias:[], disenos:[]};
+  window.PRECIOS_TIPOS_D = {};
   let PROMOCIONES_D, MAS_VENDIDOS_D, CATALOGO_D, MAYOREO_D, LANZAMIENTOS_D, FAQS_D, RESENAS_D, NOSOTROS_D;
   let GRID_CONFIG = DEFAULTS.GRID_CONFIG, CARD_RATIO = DEFAULTS.CARD_RATIO, CARD_FIT = DEFAULTS.CARD_FIT;
   let IMAGENES_PERSONALIZACION = [];   
@@ -508,6 +516,7 @@
     IMAGEN_LLUVIA = APP_DATA.IMAGEN_LLUVIA || "";
     LLUVIA_CONFIG = APP_DATA.LLUVIA_CONFIG || {activa:true, cantidad:20, velocidad:2, espera:0};
     window.FILTROS_GLOBALES_D = APP_DATA.FILTROS_GLOBALES || {tipos:[],categorias:[],disenos:[]};
+    window.PRECIOS_TIPOS_D = APP_DATA.PRECIOS_TIPOS || {};
     if(!APP_DATA.FOTOS_CLIENTES_CFG) APP_DATA.FOTOS_CLIENTES_CFG = {activo:true, titulo:'FOTOS REALES'};
   }
 
@@ -908,7 +917,23 @@ Casi listo...
         </div>
       </div>
       <div id="sec-promos" class="admin-section"><div class="admin-section-title">PROMOCIONES</div><div id="admin-promos-list"></div><button class="admin-btn-add" onclick="addPromo()">+ Agregar promoción</button></div>
-      <div id="sec-productos" class="admin-section"><div class="admin-section-title">CATÁLOGO</div><div id="admin-cats-list"></div><button class="admin-btn-add" onclick="addCategoria()">+ Agregar categoría</button></div>
+      <div id="sec-productos" class="admin-section"><div class="admin-section-title">CATÁLOGO</div>
+        <div class="admin-card" style="border-left:3px solid var(--neon)">
+          <div class="admin-card-title">💲 Precios por tipo y talla</div>
+          <div style="font-family:var(--font-mono);font-size:.55rem;color:var(--gray);letter-spacing:1px;line-height:1.8;margin-bottom:.8rem">Captura aquí el precio de cada talla de playera Normal, Oversize u otros tipos. Aplica a todos los artículos que usen ese tipo; si cambias un precio aquí, cambia en todo el catálogo al guardar.</div>
+          <div id="precios-tipos-list"></div>
+        </div>
+        <div class="admin-card" style="border-left:3px solid var(--neon)">
+          <div class="admin-card-title">🧩 Dividir catálogo en artículos por diseño</div>
+          <div style="font-family:var(--font-mono);font-size:.55rem;color:var(--gray);letter-spacing:1px;line-height:1.8;margin-bottom:.8rem">Convierte los productos que tienen muchas imágenes juntas en un artículo por diseño («Smash Bros 1», «Smash Bros 2»…), asigna Normal u Oversize y une la versión Normal y Oversize del mismo diseño. Trabaja una categoría a la vez, muestra una vista previa y descarga un respaldo antes de aplicar.</div>
+          <div class="admin-field"><label>Categoría</label><select class="admin-select" id="ht-cat"></select></div>
+          <label style="display:flex;gap:.5rem;align-items:flex-start;margin:.4rem 0;font-size:.75rem"><input type="checkbox" id="ht-dividir" checked> <span>Dividir productos con varias imágenes en un artículo por diseño</span></label>
+          <label style="display:flex;gap:.5rem;align-items:flex-start;margin:.4rem 0;font-size:.75rem"><input type="checkbox" id="ht-asignar" checked> <span>Asignar tipo de playera automáticamente (si el nombre dice «oversize» → Oversize; si no → Normal)</span></label>
+          <label style="display:flex;gap:.5rem;align-items:flex-start;margin:.4rem 0;font-size:.75rem"><input type="checkbox" id="ht-unir" checked> <span>Unir en un solo artículo el Normal y el Oversize del mismo diseño (mismo nombre y misma cantidad de imágenes, en el mismo orden)</span></label>
+          <div style="display:flex;gap:.5rem;margin-top:.6rem"><button class="admin-btn-sm" style="flex:1" onclick="htVistaPrevia()">👁️ Vista previa</button><button class="admin-btn-save" style="flex:1" onclick="htAplicar()">Aplicar</button></div>
+          <div id="ht-resultado" style="font-family:var(--font-mono);font-size:.6rem;letter-spacing:1px;line-height:1.8;margin-top:.8rem"></div>
+        </div>
+        <div id="admin-cats-list"></div><button class="admin-btn-add" onclick="addCategoria()">+ Agregar categoría</button></div>
       <div id="sec-filtros" class="admin-section">
         <div class="admin-section-title">FILTROS DEL CATÁLOGO</div>
         <div class="admin-card" style="border-left:3px solid var(--neon)">
@@ -1952,6 +1977,7 @@ Casi listo...
   }
 
   function renderAdminCatalogo(){
+    try{ renderHerramientasCat(); renderPreciosTipos(); }catch(e){ console.warn(e); }
     const cont = document.getElementById('admin-cats-list'); if(!cont) return;
     cont.innerHTML = '';
     CATALOGO_D.forEach((cat, ci)=>{
@@ -2201,7 +2227,7 @@ Casi listo...
 
   let editingProd = null;
   let _disenosTemp = [];
-  function openAddProd(ci){ editingProd={ci, pi:-1}; _disenosTemp=[]; _personajesTemp=[]; document.getElementById('adminModalTitle').textContent='Agregar Producto'; clearProdModal(); renderTipoDropdown(''); renderTemasCheckboxes([]); renderDisenosAdmin(); renderPersonajesAdmin(); document.getElementById('adminProdModal').classList.add('show'); }
+  function openAddProd(ci){ editingProd={ci, pi:-1}; _disenosTemp=[]; _personajesTemp=[]; _variantesTemp=[]; document.getElementById('adminModalTitle').textContent='Agregar Producto'; clearProdModal(); renderTipoDropdown(''); renderTemasCheckboxes([]); renderDisenosAdmin(); renderPersonajesAdmin(); renderVariantesAdmin(); document.getElementById('adminProdModal').classList.add('show'); }
   function openEditProd(ci, pi){
     const p = CATALOGO_D[ci].productos[pi];
     editingProd={ci,pi}; _disenosTemp = JSON.parse(JSON.stringify(p.disenos||[]));
@@ -2214,7 +2240,8 @@ Casi listo...
     document.getElementById('pm-tipo').value=p.tipo||'';
     renderTipoDropdown(p.tipo||'');
     _personajesTemp = JSON.parse(JSON.stringify(p.personajes||[]));
-    renderTemasCheckboxes(p.temas||[]); renderDisenosAdmin(); renderPersonajesAdmin();
+    _variantesTemp = JSON.parse(JSON.stringify(p.variantes||[]));
+    renderTemasCheckboxes(p.temas||[]); renderDisenosAdmin(); renderPersonajesAdmin(); renderVariantesAdmin();
     const preview=document.getElementById('pm-img-preview'); if(p.imagen){preview.src=p.imagen;preview.style.display='block';}else preview.style.display='none';
     document.getElementById('adminProdModal').classList.add('show');
   }
@@ -2254,6 +2281,294 @@ Casi listo...
     const s = document.getElementById(pref+'-modo-pub'); if(s) s.value='juntas';
     actualizarPubHint(pref);
   }
+  // <VARIANTES-CORE>
+  function _vNum(v){ const n=Number(v); return (isFinite(n)&&n>0)?n:null; }
+  function _vNorm(s){ return String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase(); }
+  const _VAR_OVER_RE = /over[\s-]*(size|sise|zise|said|saiz|side|sized|siz|sai)\b/i;
+  function _vEsOversize(p){ return _VAR_OVER_RE.test(_vNorm((p.nombre||'')+' '+(p.tipo||''))); }
+  function _vBaseKey(p){ return _vNorm(p.nombre).replace(_VAR_OVER_RE,' ').replace(/\s+/g,' ').trim(); }
+  function _vDisenosDe(p){
+    const d=(p.disenos||[]).filter(x=>x&&x.imagen);
+    if(d.length) return d;
+    return p.imagen?[{nombre:'',imagen:p.imagen}]:[];
+  }
+  function _vResolver(p,v,plant){
+    const pl=(plant||{})[v.nombre]||{};
+    const tallas=(v.tallas&&v.tallas.length)?v.tallas:((pl.tallas&&pl.tallas.length)?pl.tallas:(p.tallas||[]));
+    const base=_vNum(v.precio)??_vNum(pl.precio)??_vNum(p.precio)??0;
+    const precios={};
+    tallas.forEach(t=>{ precios[t]=_vNum((v.precios||{})[t])??_vNum((pl.precios||{})[t])??base; });
+    return {tallas,precios,base};
+  }
+  function _vPrecioMin(p,plant){
+    if(!(p.variantes&&p.variantes.length)) return p.precio||0;
+    let min=null;
+    p.variantes.forEach(v=>{
+      const r=_vResolver(p,v,plant); const vals=Object.values(r.precios);
+      const m=vals.length?Math.min.apply(null,vals):r.base;
+      if(m&&(min===null||m<min)) min=m;
+    });
+    return min===null?(p.precio||0):min;
+  }
+  function catPlanificar(prods,opt){
+    const nN=opt.nombreNormal||'Normal', nO=opt.nombreOver||'Oversize';
+    const stats={antes:prods.length,despues:0,uniones:0,divididos:0,conTipo:0};
+    const clone=o=>JSON.parse(JSON.stringify(o));
+    const esMulti=p=>(p.disenos||[]).filter(d=>d&&d.imagen).length>1;
+    const intocable=p=>(p.personajes&&p.personajes.length)||(p.variantes&&p.variantes.length);
+    const usados=new Set(), mergedAt=new Map();
+    if(opt.unir){
+      const grupos=new Map();
+      prods.forEach((p,i)=>{
+        if(intocable(p)) return;
+        const k=_vBaseKey(p);
+        if(!grupos.has(k)) grupos.set(k,{N:[],O:[]});
+        grupos.get(k)[_vEsOversize(p)?'O':'N'].push(i);
+      });
+      grupos.forEach(g=>{
+        const k=Math.min(g.N.length,g.O.length);
+        for(let a=0;a<k;a++){
+          const pn=prods[g.N[a]], po=prods[g.O[a]];
+          const dn=_vDisenosDe(pn), dO=_vDisenosDe(po);
+          if(!dn.length||dn.length!==dO.length) continue;
+          const arts=dn.map((d,j)=>{
+            const np=clone(pn);
+            np.nombre=dn.length>1?String(pn.nombre).trim()+' '+(j+1):pn.nombre;
+            np.disenos=[]; np.personajes=[]; np.imagen=d.imagen;
+            np.variantes=[{nombre:nN,imagen:d.imagen},{nombre:nO,imagen:dO[j].imagen}];
+            return np;
+          });
+          mergedAt.set(Math.min(g.N[a],g.O[a]),arts);
+          usados.add(g.N[a]); usados.add(g.O[a]);
+          stats.uniones+=arts.length;
+        }
+      });
+    }
+    const lista=[];
+    prods.forEach((p,i)=>{
+      if(mergedAt.has(i)) lista.push(...mergedAt.get(i));
+      if(usados.has(i)) return;
+      if(intocable(p)){ lista.push(p); return; }
+      const over=_vEsOversize(p);
+      let items=[p];
+      if(opt.dividir&&esMulti(p)){
+        items=_vDisenosDe(p).map((d,j)=>{
+          const np=clone(p);
+          np.nombre=String(p.nombre).trim()+' '+(j+1);
+          np.disenos=[]; np.personajes=[]; np.imagen=d.imagen;
+          return np;
+        });
+        stats.divididos++;
+      }
+      items.forEach(np=>{
+        if(opt.asignar){
+          const c=(np===p)?clone(p):np;
+          c.variantes=[{nombre:over?nO:nN,imagen:(c.disenos&&c.disenos.length)?'':(c.imagen||'')}];
+          stats.conTipo++;
+          lista.push(c);
+        } else lista.push(np);
+      });
+    });
+    stats.despues=lista.length;
+    return {lista,stats};
+  }
+  // </VARIANTES-CORE>
+
+  // ═══ TIPOS DE PLAYERA (Normal / Oversize) · PRECIOS POR TALLA ═══
+  function _vEsc(t){ return String(t==null?'':t).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+  function _vParseLista(txt){ return String(txt||'').split(',').map(x=>x.trim()).filter(Boolean); }
+  function _vParsePrecios(txt){
+    const o={}; String(txt||'').split(',').forEach(par=>{
+      const i=par.lastIndexOf(':'); if(i<0) return;
+      const k=par.slice(0,i).trim(), v=_vNum(par.slice(i+1).trim()); if(k&&v) o[k]=v;
+    }); return o;
+  }
+  function _vFmtPrecios(o){ return Object.keys(o||{}).map(k=>k+':'+o[k]).join(', '); }
+
+  // ---- Lista global de precios por tipo y talla ----
+  function _vActualizarMinTipo(k){
+    const t=(window.PRECIOS_TIPOS_D||{})[k]; if(!t) return;
+    const vals=Object.values(t.precios||{}).map(Number).filter(n=>n>0);
+    t.precio=vals.length?Math.min.apply(null,vals):0;
+  }
+  function renderPreciosTipos(){
+    const w=document.getElementById('precios-tipos-list'); if(!w) return;
+    const T=window.PRECIOS_TIPOS_D||(window.PRECIOS_TIPOS_D={});
+    const keys=Object.keys(T);
+    if(!keys.length){
+      w.innerHTML='<div style="font-family:var(--font-mono);font-size:.6rem;color:var(--gray);letter-spacing:1px;line-height:1.8;margin-bottom:.6rem">Todavía no hay tipos. Crea «Normal» y «Oversize» con un clic y captura el precio de cada talla.</div>'+
+        '<button class="admin-btn-sm" style="width:100%;background:rgba(232,25,44,.15);border-color:rgba(232,25,44,.4)" onclick="crearTiposBase()">⚡ Crear Normal y Oversize</button>';
+      return;
+    }
+    w.innerHTML=keys.map((k,ki)=>{
+      const t=T[k], tallas=t.tallas||[];
+      return `<div class="admin-card" style="border-left:3px solid var(--neon)">
+        <div style="display:flex;gap:.5rem;align-items:center;margin-bottom:.6rem">
+          <input class="admin-input" value="${_vEsc(k)}" onchange="renombrarTipoPrecio(${ki},this.value)" style="flex:1;font-weight:bold">
+          <button class="admin-btn-sm danger" onclick="eliminarTipoPrecio(${ki})">🗑️</button>
+        </div>
+        <div class="admin-field"><label>Tallas (separadas por coma, en el orden que quieres que se vean)</label>
+          <input class="admin-input" value="${_vEsc(tallas.join(', '))}" onchange="cambiarTallasTipo(${ki},this.value)"></div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:.5rem">
+          ${tallas.map((ta,ti)=>`<div class="admin-field" style="margin:0"><label>${_vEsc(ta)} ($)</label>
+            <input class="admin-input" type="number" min="0" value="${(t.precios||{})[ta]??''}" placeholder="0" oninput="setPrecioTipo(${ki},${ti},this.value)"></div>`).join('')}
+        </div>
+      </div>`;
+    }).join('')+'<button class="admin-btn-sm" style="width:100%" onclick="agregarTipoPrecio()">+ Agregar otro tipo</button>';
+  }
+  function crearTiposBase(){
+    const T=window.PRECIOS_TIPOS_D||(window.PRECIOS_TIPOS_D={});
+    ['Normal','Oversize'].forEach(n=>{ if(!T[n]) T[n]={tallas:['Chica','Mediana','Grande','Extragrande'],precios:{},precio:0}; });
+    renderPreciosTipos();
+  }
+  function agregarTipoPrecio(){
+    const T=window.PRECIOS_TIPOS_D||(window.PRECIOS_TIPOS_D={});
+    let n='Nuevo tipo', i=2; while(T[n]) n='Nuevo tipo '+(i++);
+    T[n]={tallas:['Chica','Mediana','Grande','Extragrande'],precios:{},precio:0}; renderPreciosTipos();
+  }
+  function eliminarTipoPrecio(ki){
+    const T=window.PRECIOS_TIPOS_D, k=Object.keys(T)[ki]; if(!k) return;
+    if(!confirm('¿Eliminar el tipo «'+k+'»? Los artículos que lo usen tomarán el precio base del producto.')) return;
+    delete T[k]; renderPreciosTipos();
+  }
+  function renombrarTipoPrecio(ki,nuevo){
+    const T=window.PRECIOS_TIPOS_D, k=Object.keys(T)[ki]; nuevo=String(nuevo||'').trim();
+    if(!k||!nuevo||nuevo===k) { renderPreciosTipos(); return; }
+    if(T[nuevo]){ showNotif('Ya existe un tipo con ese nombre'); renderPreciosTipos(); return; }
+    const nT={}; Object.keys(T).forEach(x=>{ nT[x===k?nuevo:x]=T[x]; });
+    window.PRECIOS_TIPOS_D=nT;
+    (CATALOGO_D||[]).forEach(c=>(c.productos||[]).forEach(pr=>(pr.variantes||[]).forEach(v=>{ if(v.nombre===k) v.nombre=nuevo; })));
+    renderPreciosTipos();
+  }
+  function cambiarTallasTipo(ki,txt){
+    const t=window.PRECIOS_TIPOS_D[Object.keys(window.PRECIOS_TIPOS_D)[ki]]; if(!t) return;
+    const nuevas=_vParseLista(txt), pr={};
+    nuevas.forEach(x=>{ if((t.precios||{})[x]) pr[x]=t.precios[x]; });
+    t.tallas=nuevas; t.precios=pr; _vActualizarMinTipo(Object.keys(window.PRECIOS_TIPOS_D)[ki]); renderPreciosTipos();
+  }
+  function setPrecioTipo(ki,ti,val){
+    const k=Object.keys(window.PRECIOS_TIPOS_D)[ki], t=window.PRECIOS_TIPOS_D[k]; if(!t) return;
+    const ta=t.tallas[ti]; t.precios=t.precios||{};
+    if(_vNum(val)) t.precios[ta]=_vNum(val); else delete t.precios[ta];
+    _vActualizarMinTipo(k);
+  }
+  // Recalcula el precio "desde" de cada artículo con tipos (se usa al guardar todo)
+  function recalcPreciosVariantes(){
+    (CATALOGO_D||[]).forEach(c=>(c.productos||[]).forEach(pr=>{
+      if(pr.variantes&&pr.variantes.length){ const m=_vPrecioMin(pr,window.PRECIOS_TIPOS_D); if(m) pr.precio=m; }
+    }));
+  }
+
+  // ---- Editor de tipos dentro del producto ----
+  let _variantesTemp=[];
+  function renderVariantesAdmin(){
+    const w=document.getElementById('pm-variantes-list'); if(!w) return;
+    const dl=document.getElementById('dl-tipos-precio');
+    if(dl) dl.innerHTML=Object.keys(window.PRECIOS_TIPOS_D||{}).map(t=>`<option value="${_vEsc(t)}">`).join('');
+    w.innerHTML=_variantesTemp.map((v,i)=>{
+      const fotos=(v.fotos||[]).map((f,j)=>`<div style="position:relative;display:inline-block;margin:0 .3rem .3rem 0"><img src="${_vEsc(f.imagen)}" style="width:52px;height:52px;object-fit:cover;border:1px solid #333"><button class="admin-btn-sm danger" style="position:absolute;top:0;right:0;padding:0 5px;font-size:.6rem" onclick="quitarFotoVariante(${i},${j})">✕</button></div>`).join('');
+      return `<div class="admin-card" style="margin:.5rem 0;padding:.7rem;border:1px solid rgba(232,25,44,.25)">
+        <div style="display:flex;gap:.5rem;align-items:center;margin-bottom:.5rem">
+          <input class="admin-input" list="dl-tipos-precio" value="${_vEsc(v.nombre||'')}" placeholder="Tipo (ej: Normal, Oversize)" oninput="_variantesTemp[${i}].nombre=this.value" style="flex:1;font-weight:bold">
+          <button class="admin-btn-sm danger" onclick="_variantesTemp.splice(${i},1);renderVariantesAdmin()">🗑️</button>
+        </div>
+        <label style="font-size:.7rem">Imagen del diseño (con publicidad)</label>
+        <div style="display:flex;gap:.5rem;align-items:center;margin-bottom:.5rem">
+          ${v.imagen?`<img src="${_vEsc(v.imagen)}" style="width:52px;height:52px;object-fit:cover;border:1px solid #333">`:'<div style="width:52px;height:52px;background:#222;display:flex;align-items:center;justify-content:center">🖼️</div>'}
+          <input class="admin-input" value="${_vEsc(v.imagen||'')}" placeholder="URL o sube imagen →" oninput="_variantesTemp[${i}].imagen=this.value" style="flex:1">
+          <label style="padding:.4rem .6rem;background:#1a1a1a;cursor:pointer">📷<input type="file" accept="image/*" style="display:none" onchange="uploadVarImg(this,${i})"></label>
+        </div>
+        <label style="font-size:.7rem">Fotos reales de este tipo (opcional)</label>
+        <div style="margin:.3rem 0">${fotos}</div>
+        <label class="admin-btn-sm" style="width:auto;cursor:pointer;display:block;text-align:center;margin-bottom:.5rem">📤 Subir fotos reales<input type="file" multiple accept="image/*" style="display:none" onchange="uploadVarFotos(this,${i})"></label>
+        <details><summary style="cursor:pointer;font-family:var(--font-mono);font-size:.55rem;letter-spacing:1px;color:var(--gray)">AJUSTES ESPECIALES (opcional: precio, tallas o existencia solo para este artículo)</summary>
+          <div style="margin-top:.5rem">
+            <div class="admin-field"><label>Precio base propio (si no usas la lista general)</label><input class="admin-input" type="number" min="0" value="${v.precio||''}" oninput="_variantesTemp[${i}].precio=this.value?+this.value:''"></div>
+            <div class="admin-field"><label>Precios por talla propios (ej: Extragrande:300, Grande:280)</label><input class="admin-input" value="${_vEsc(_vFmtPrecios(v.precios))}" onchange="_variantesTemp[${i}].precios=_vParsePrecios(this.value)"></div>
+            <div class="admin-field"><label>Tallas propias (ej: Chica, Mediana)</label><input class="admin-input" value="${_vEsc((v.tallas||[]).join(', '))}" onchange="_variantesTemp[${i}].tallas=_vParseLista(this.value)"></div>
+            <div class="admin-field"><label>Existencia propia (vacío = usa la del producto)</label><input class="admin-input" type="number" min="0" value="${v.stock===undefined||v.stock===null?'':v.stock}" oninput="_variantesTemp[${i}].stock=this.value===''?'':+this.value"></div>
+          </div>
+        </details>
+      </div>`;
+    }).join('');
+  }
+  function addVariante(){
+    const usados=_variantesTemp.map(v=>v.nombre);
+    const sug=Object.keys(window.PRECIOS_TIPOS_D||{}).find(t=>!usados.includes(t))||(usados.includes('Normal')?'Oversize':'Normal');
+    _variantesTemp.push({nombre:sug,imagen:'',fotos:[]}); renderVariantesAdmin();
+  }
+  async function uploadVarImg(input,i){
+    const f=input.files[0]; if(!f) return;
+    try{ _variantesTemp[i].imagen=await uploadToStorage(f,'productos'); renderVariantesAdmin(); }catch(e){ showNotif('Error: '+e.message); }
+  }
+  async function uploadVarFotos(input,i){
+    const files=Array.from(input.files); if(!files.length) return;
+    showNotif('Subiendo '+files.length+' foto(s)...'); let ok=0;
+    for(const f of files){
+      try{ const url=await uploadToStorage(f,'productos'); (_variantesTemp[i].fotos=_variantesTemp[i].fotos||[]).push({nombre:'',imagen:url}); ok++; }
+      catch(e){ showNotif('Error: '+f.name); }
+    }
+    renderVariantesAdmin(); showNotif('✅ '+ok+' foto(s) agregadas');
+  }
+  function quitarFotoVariante(i,j){ _variantesTemp[i].fotos.splice(j,1); renderVariantesAdmin(); }
+  function _variantesLimpias(){
+    return _variantesTemp.filter(v=>(v.nombre||'').trim()).map(v=>{
+      const o={nombre:v.nombre.trim(),imagen:v.imagen||'',fotos:(v.fotos||[]).filter(f=>f&&f.imagen)};
+      if(_vNum(v.precio)) o.precio=_vNum(v.precio);
+      if(v.precios&&Object.keys(v.precios).length) o.precios=v.precios;
+      if(v.tallas&&v.tallas.length) o.tallas=v.tallas;
+      if(v.stock!==undefined&&v.stock!==''&&v.stock!==null) o.stock=+v.stock;
+      return o;
+    });
+  }
+
+  // ---- Herramienta: dividir en artículos / asignar tipo / unir Normal+Oversize ----
+  function renderHerramientasCat(){
+    const sel=document.getElementById('ht-cat'); if(!sel) return;
+    const prev=sel.value;
+    sel.innerHTML='<option value="">Elige una categoría…</option>'+(CATALOGO_D||[]).map((c,i)=>`<option value="${i}">${_vEsc((c.emoji||'')+' '+c.nombre)} (${(c.productos||[]).length})</option>`).join('');
+    if(prev!=='' && (CATALOGO_D||[])[+prev]) sel.value=prev;
+  }
+  function _htOpciones(){
+    return {
+      dividir:document.getElementById('ht-dividir').checked,
+      asignar:document.getElementById('ht-asignar').checked,
+      unir:document.getElementById('ht-unir').checked,
+      nombreNormal:'Normal', nombreOver:'Oversize'
+    };
+  }
+  function htVistaPrevia(){
+    const out=document.getElementById('ht-resultado');
+    const ci=document.getElementById('ht-cat').value;
+    if(ci===''){ out.innerHTML='<span style="color:#ff9500">Elige primero una categoría.</span>'; return null; }
+    const plan=catPlanificar(CATALOGO_D[+ci].productos||[],_htOpciones());
+    const st=plan.stats;
+    out.innerHTML=`<div style="color:var(--neon)">${st.antes} producto(s) → <b>${st.despues} artículo(s)</b></div>
+      <div>• Productos divididos en un artículo por diseño: ${st.divididos}</div>
+      <div>• Artículos con Normal + Oversize unidos: ${st.uniones}</div>
+      <div>• Artículos con tipo de playera asignado: ${st.conTipo}</div>
+      <div style="margin-top:.4rem;color:var(--gray)">Ejemplos: ${plan.lista.slice(0,6).map(p=>_vEsc(p.nombre)+((p.variantes||[]).length?' ['+p.variantes.map(v=>_vEsc(v.nombre)).join(' + ')+']':'')).join(' · ')}</div>`;
+    return plan;
+  }
+  function _descargarRespaldoCatalogo(){
+    const blob=new Blob([JSON.stringify(CATALOGO_D)],{type:'application/json'});
+    const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+    a.download='respaldo-catalogo-'+new Date().toISOString().slice(0,16).replace(/[:T]/g,'-')+'.json';
+    document.body.appendChild(a); a.click(); a.remove();
+  }
+  function htAplicar(){
+    const plan=htVistaPrevia(); if(!plan) return;
+    const st=plan.stats;
+    if(st.despues===st.antes && !st.uniones && !st.conTipo && !st.divididos){ showNotif('No hay nada que cambiar con esas opciones'); return; }
+    if(!confirm(`Se aplicará el cambio: ${st.antes} producto(s) → ${st.despues} artículo(s).\n\nPrimero se descargará un respaldo de tu catálogo actual. Después tendrás que presionar «Guardar todo» para publicar los cambios.\n\n¿Continuar?`)) return;
+    _descargarRespaldoCatalogo();
+    const ci=+document.getElementById('ht-cat').value;
+    CATALOGO_D[ci].productos=plan.lista;
+    renderAdminCatalogo();
+    document.getElementById('ht-resultado').innerHTML='<span style="color:#34c759">✅ Aplicado: '+st.despues+' artículos. Revisa el catálogo y presiona «Guardar todo» para publicarlo. Si algo no te gusta, recarga la página sin guardar y se queda como estaba.</span>';
+    showNotif('✅ Listo (recuerda Guardar todo)');
+  }
+
   function saveProdModal(){
     if(!editingProd) return;
     const {ci,pi}=editingProd;
@@ -2269,6 +2584,12 @@ Casi listo...
       imagen: document.getElementById('pm-imagen').value || (_disenosTemp[0]&&_disenosTemp[0].imagen)||'',
       badge: document.getElementById('pm-badge').value
     };
+    const _vars=_variantesLimpias();
+    if(_vars.length){
+      prod.variantes=_vars;
+      if(!prod.imagen) prod.imagen=(_vars[0].imagen)||'';
+      const _m=_vPrecioMin(prod,window.PRECIOS_TIPOS_D); if(_m) prod.precio=_m;
+    }
     const modo = (document.getElementById('pm-modo-pub')||{}).value || 'juntas';
     const grupos = _pubDividir(prod.disenos, modo, (document.getElementById('pm-grupo-size')||{}).value);
     if(modo!=='juntas' && grupos.length>1){
@@ -4720,6 +5041,8 @@ Casi listo...
       cantidad: parseInt(document.getElementById('mv-cantidad').value) || 4,
       horas: parseInt(document.getElementById('mv-horas').value) || 24
     };
+    APP_DATA.PRECIOS_TIPOS = window.PRECIOS_TIPOS_D || {};
+    recalcPreciosVariantes();
     APP_DATA.CATALOGO = CATALOGO_D;
     APP_DATA.LANZAMIENTOS = LANZAMIENTOS_D;
     APP_DATA.FAQS = FAQS_D;
