@@ -444,6 +444,25 @@
   </div>
 </div>
 
+<!-- PANEL DE SERIE / GRUPO (todos los diseños de una colección) -->
+<div id="grupoPanel" class="cat-panel-overlay grupo-panel-overlay">
+  <div class="cat-panel-inner">
+    <div class="cat-panel-header">
+      <button class="cat-panel-back" onclick="volverDeGrupo()">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+        <span id="grupoPanelBackLabel">Catálogo</span>
+      </button>
+      <div class="cat-panel-title" id="grupoPanelTitle"></div>
+      <button onclick="toggleCarrito()" style="background:none;border:1px solid rgba(232,25,44,.3);color:var(--light);font-family:var(--font-mono);font-size:.6rem;letter-spacing:1px;padding:.45rem .8rem;cursor:pointer;display:flex;align-items:center;gap:.4rem;white-space:nowrap">🛒 <span id="grupoPanelCarritoBadge">0</span></button>
+    </div>
+    <div class="cat-panel-body" id="grupoPanelBody">
+      <div id="grupoPanelChips" class="cat-sub-filters" style="display:none;padding:.2rem 0 .8rem;border-bottom:none"></div>
+      <div class="catalogo-count" id="grupoPanelCount" style="padding:.5rem 0 1rem"></div>
+      <div class="product-grid" id="grupoPanelGrid"></div>
+    </div>
+  </div>
+</div>
+
 <!-- MAYOREO -->
 <section class="mayoreo-section" id="mayoreo"></section>
 

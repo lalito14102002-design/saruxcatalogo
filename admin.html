@@ -298,6 +298,8 @@
       </div>
     </div>
     <div class="admin-field"><label>Diseño / Serie <span style="font-size:.6rem;color:var(--gray)">(ej: Dragon Ball, Naruto)</span></label><input class="admin-input" id="pm-subtema" placeholder="ej: Dragon Ball"></div>
+    <div class="admin-field"><label>Grupo / Colección <span style="font-size:.6rem;color:var(--gray)">(opcional)</span></label><input class="admin-input" id="pm-grupo" placeholder="Déjalo vacío: se agrupa solo por el nombre">
+      <div style="font-size:.6rem;color:var(--gray);margin-top:.3rem;line-height:1.4">Los productos con el mismo nombre y número al final (PLAYERAS SMASH BROS 1, 2, 3…) se agrupan solos. Escribe aquí un nombre solo si quieres forzar que varios productos queden juntos en una misma colección.</div></div>
     <div class="admin-field">
       <label>Imagen principal</label>
       <div class="admin-img-upload"><input type="file" accept="image/*" onchange="uploadProdImg(this)"><p>Subir imagen</p><img id="pm-img-preview" class="admin-img-preview"></div>
@@ -2008,19 +2010,136 @@ Casi listo...
         </div></div>`;
       const prodList = document.getElementById(`cat-prods-${ci}`);
       if(prodList){
-        cat.productos.forEach((p, pi)=>{
-          prodList.innerHTML += `<div class="admin-product-item">
+        const items = _adAgrupar(cat.productos);
+        const filaProd = (p, extraStyle, enGrupo)=>{
+          const pi = cat.productos.indexOf(p);
+          const pos = enGrupo ? _adPosEnGrupo(cat.productos, p) : null;
+          const puedeSub = enGrupo ? pos.i>0 : pi>0;
+          const puedeBaj = enGrupo ? pos.i<pos.n-1 : pi<cat.productos.length-1;
+          const fnMover = enGrupo ? 'moverProductoEnGrupo' : 'moverProducto';
+          return `<div class="admin-product-item" style="${extraStyle||''}">
             <div style="display:flex;flex-direction:column;gap:2px;margin-right:.4rem">
-              <button class="admin-btn-sm" style="padding:1px 5px;font-size:.65rem;opacity:${pi>0?1:.25}" ${pi>0?`onclick="moverProducto(${ci},${pi},-1)"`:'disabled'}>▲</button>
-              <button class="admin-btn-sm" style="padding:1px 5px;font-size:.65rem;opacity:${pi<cat.productos.length-1?1:.25}" ${pi<cat.productos.length-1?`onclick="moverProducto(${ci},${pi},1)"`:'disabled'}>▼</button>
+              <button class="admin-btn-sm" style="padding:1px 5px;font-size:.65rem;opacity:${puedeSub?1:.25}" ${puedeSub?`onclick="${fnMover}(${ci},${pi},-1)"`:'disabled'}>▲</button>
+              <button class="admin-btn-sm" style="padding:1px 5px;font-size:.65rem;opacity:${puedeBaj?1:.25}" ${puedeBaj?`onclick="${fnMover}(${ci},${pi},1)"`:'disabled'}>▼</button>
             </div>
             <div class="admin-product-name">${p.nombre}</div>
             <div class="admin-product-price">$${p.precio}</div>
             <div><button class="admin-btn-sm" onclick="openEditProd(${ci},${pi})">✏️</button><button class="admin-btn-sm danger" onclick="eliminarProducto(${ci},${pi})">🗑️</button></div>
           </div>`;
+        };
+        let html = '';
+        items.forEach((it, ii)=>{
+          if(!it.grupo){ html += filaProd(it.p, '', false); return; }
+          const abierto = _adGA().has(ci+'|'+it.key);
+          const keyAttr = _adKeyAttr(it.key);
+          const puedeSub = ii>0, puedeBaj = ii<items.length-1;
+          html += `<div style="border:1px solid rgba(232,25,44,.35);background:#0d0d0d">
+            <div class="admin-product-item" style="background:#140a0c;cursor:pointer" onclick="toggleGrupoAdmin(${ci},'${keyAttr}')">
+              <div style="display:flex;flex-direction:column;gap:2px;margin-right:.4rem" onclick="event.stopPropagation()">
+                <button class="admin-btn-sm" style="padding:1px 5px;font-size:.65rem;opacity:${puedeSub?1:.25}" ${puedeSub?`onclick="moverGrupo(${ci},'${keyAttr}',-1)"`:'disabled'}>▲</button>
+                <button class="admin-btn-sm" style="padding:1px 5px;font-size:.65rem;opacity:${puedeBaj?1:.25}" ${puedeBaj?`onclick="moverGrupo(${ci},'${keyAttr}',1)"`:'disabled'}>▼</button>
+              </div>
+              <div class="admin-product-name">📁 ${it.nombre} <span style="font-family:var(--font-mono);font-size:.55rem;color:var(--gray)">(${it.prods.length} diseños)</span></div>
+              <div onclick="event.stopPropagation()"><button class="admin-btn-sm" title="Renombrar grupo" onclick="renombrarGrupo(${ci},'${keyAttr}')">✏️</button></div>
+              <div style="color:var(--neon);font-size:1rem;padding:0 .3rem">${abierto?'▾':'▸'}</div>
+            </div>
+            ${abierto ? `<div style="display:flex;flex-direction:column;gap:.3rem;padding:.4rem .4rem .4rem 1.2rem">${it.prods.map(p=>filaProd(p,'',true)).join('')}</div>` : ''}
+          </div>`;
         });
+        prodList.innerHTML = html;
       }
     });
+  }
+
+  // ── Grupos de productos (series): se agrupan solos por nombre "XXXX 1, XXXX 2…" o por el campo "grupo" ──
+  function _adGA(){ return (window.__adGA = window.__adGA || new Set()); }
+  function _adKeyAttr(k){ return String(k).replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'&quot;'); }
+  function _adNorm(s){ return String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/\s+/g,' ').trim(); }
+  // Misma lógica que la página: se ignora el TIPO (oversize, corte redondo, con cierre, capucha, manga larga…) y el número final
+  const _AD_TIPOS = ['corte redondo','cuello redondo','cuello v','oversize','over size','oversized','con cierre','sin cierre','cierre','con capucha','sin capucha','capucha','manga larga','manga corta','sin manga'];
+  const _AD_NOUNS = /\b(playeras?|sudaderas?|camisetas?|hoodies?|chamarras?|chaquetas?)\b/gi;
+  function _adFraseRe(frase){
+    const m = {a:'aáAÁ',e:'eéEÉ',i:'iíIÍ',o:'oóOÓ',u:'uúUÚ'};
+    let t = frase.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+    t = t.replace(/[aeiouáéíóúAEIOUÁÉÍÓÚ]/g, c=>{ const k=c.normalize('NFD')[0].toLowerCase(); return '['+m[k]+']'; });
+    return t.replace(/\s+/g,'\\s+');
+  }
+  function _adPrepararRe(prods){
+    const set = new Set(_AD_TIPOS);
+    const agregar = t=>{ const f=String(t||'').replace(_AD_NOUNS,' ').replace(/\s+/g,' ').trim().toLowerCase(); if(f.length>=4 && f!=='normal') set.add(f); };
+    (prods||[]).forEach(p=>agregar(p.tipo));
+    Object.keys(window.PRECIOS_TIPOS_D||{}).forEach(agregar);
+    const frases = [...set].sort((a,b)=>b.length-a.length).map(_adFraseRe);
+    return new RegExp('(^|[\\s(\\[-])(?:'+frases.join('|')+')(?=$|[\\s)\\].,-])','gi');
+  }
+  function _adLimpiar(txt){ return String(txt||'').replace(/\(\s*\)|\[\s*\]/g,' ').replace(/\s+/g,' ').replace(/^[\s\-–—|,]+|[\s\-–—|,]+$/g,'').trim(); }
+  function _adGrupoBase(p){
+    const g = String((p&&p.grupo)||'').trim(); if(g) return g;
+    const n = String((p&&p.nombre)||'').trim();
+    let b = window.__adRe ? _adLimpiar(n.replace(window.__adRe,' ')) : n;
+    return b.replace(/\s+#?\d{1,3}$/,'').trim();
+  }
+  function _adAgrupar(prods){
+    window.__adRe = _adPrepararRe(prods);
+    const mapa = new Map(), orden = [];
+    (prods||[]).forEach(p=>{
+      const base = _adGrupoBase(p);
+      if(!base){ orden.push({p}); return; }
+      const k = _adNorm(base);
+      let g = mapa.get(k);
+      if(!g){ g = {grupo:true,key:k,nombre:base,prods:[]}; mapa.set(k,g); orden.push(g); }
+      g.prods.push(p);
+    });
+    return orden.map(it=> (it.grupo && it.prods.length===1) ? {p:it.prods[0]} : it);
+  }
+  function _adPosEnGrupo(prods, p){
+    const k = _adNorm(_adGrupoBase(p));
+    const miembros = prods.filter(x=>_adNorm(_adGrupoBase(x))===k);
+    return {i: miembros.indexOf(p), n: miembros.length};
+  }
+  function toggleGrupoAdmin(ci, key){
+    const k = ci+'|'+key;
+    if(_adGA().has(k)) _adGA().delete(k); else _adGA().add(k);
+    renderAdminCatalogo();
+  }
+  function moverGrupo(ci, key, dir){
+    const prods = CATALOGO_D[ci].productos;
+    const items = _adAgrupar(prods);
+    const idx = items.findIndex(it=>it.grupo && it.key===key);
+    const nueva = idx + dir;
+    if(idx<0 || nueva<0 || nueva>=items.length) return;
+    const tmp = items[idx]; items[idx] = items[nueva]; items[nueva] = tmp;
+    CATALOGO_D[ci].productos = items.flatMap(it=> it.grupo ? it.prods : [it.p]);
+    renderAdminCatalogo();
+    showNotif('✅ Grupo reordenado — recuerda guardar todo');
+  }
+  function moverProductoEnGrupo(ci, pi, dir){
+    const prods = CATALOGO_D[ci].productos;
+    window.__adRe = _adPrepararRe(prods);
+    const p = prods[pi]; if(!p) return;
+    const k = _adNorm(_adGrupoBase(p));
+    const idxs = []; prods.forEach((x,i)=>{ if(_adNorm(_adGrupoBase(x))===k) idxs.push(i); });
+    const pos = idxs.indexOf(pi), vecino = idxs[pos+dir];
+    if(pos<0 || vecino===undefined) return;
+    const tmp = prods[pi]; prods[pi] = prods[vecino]; prods[vecino] = tmp;
+    renderAdminCatalogo();
+    showNotif('✅ Diseño reordenado — recuerda guardar todo');
+  }
+  function renombrarGrupo(ci, key){
+    const prods = CATALOGO_D[ci].productos;
+    window.__adRe = _adPrepararRe(prods);
+    const miembros = prods.filter(x=>_adNorm(_adGrupoBase(x))===key);
+    if(!miembros.length) return;
+    const actual = _adGrupoBase(miembros[0]);
+    const nuevo = prompt('Nombre del grupo (así se verá en el catálogo):', actual);
+    if(nuevo===null) return;
+    const n = nuevo.trim();
+    if(!n) return;
+    miembros.forEach(p=>{ p.grupo = n; });
+    _adGA().delete(ci+'|'+key);
+    _adGA().add(ci+'|'+_adNorm(n));
+    renderAdminCatalogo();
+    showNotif('✅ Grupo renombrado — recuerda guardar todo');
   }
 
   // Mover categoría arriba (-1) o abajo (1)
@@ -2236,7 +2355,7 @@ Casi listo...
     document.getElementById('pm-stock').value=p.stock; document.getElementById('pm-desc').value=p.descripcion||'';
     actualizarStockHint(p.stock);
     document.getElementById('pm-colores').value=(p.colores||[]).join(', '); document.getElementById('pm-tallas').value=(p.tallas||[]).join(', ');
-    document.getElementById('pm-imagen').value=p.imagen||''; document.getElementById('pm-subtema').value=p.subtema||'';
+    document.getElementById('pm-imagen').value=p.imagen||''; document.getElementById('pm-subtema').value=p.subtema||''; document.getElementById('pm-grupo').value=p.grupo||'';
     document.getElementById('pm-tipo').value=p.tipo||'';
     renderTipoDropdown(p.tipo||'');
     _personajesTemp = JSON.parse(JSON.stringify(p.personajes||[]));
@@ -2246,7 +2365,7 @@ Casi listo...
     document.getElementById('adminProdModal').classList.add('show');
   }
   function clearProdModal(){
-    ['pm-nombre','pm-precio','pm-stock','pm-desc','pm-colores','pm-tallas','pm-imagen','pm-subtema'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
+    ['pm-nombre','pm-precio','pm-stock','pm-desc','pm-colores','pm-tallas','pm-imagen','pm-subtema','pm-grupo'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
     renderTipoDropdown('');
     document.getElementById('pm-badge').value=''; document.getElementById('pm-img-preview').style.display='none';
   }
@@ -2584,6 +2703,7 @@ Casi listo...
       imagen: document.getElementById('pm-imagen').value || (_disenosTemp[0]&&_disenosTemp[0].imagen)||'',
       badge: document.getElementById('pm-badge').value
     };
+    const _grp=(document.getElementById('pm-grupo')||{}).value; if(_grp&&_grp.trim()) prod.grupo=_grp.trim();
     const _vars=_variantesLimpias();
     if(_vars.length){
       prod.variantes=_vars;

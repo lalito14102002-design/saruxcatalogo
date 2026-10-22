@@ -515,7 +515,8 @@ function renderCatPanel(){
     if(_sfTema!=='Todos') parts.push(_sfTema);
     if(_sfDiseno!=='Todos') parts.push(_sfDiseno);
     if(_panelSearchQ.trim()) parts.push(`"${_panelSearchQ.trim()}"`);
-    countEl.textContent=prods.length>0?`${prods.length} producto${prods.length!==1?'s':''}${parts.length?' · '+parts.join(' · '):''}`:'';
+    const _nItems=_panelSearchQ.trim()?prods.length:agruparProductos(prods).length;
+    countEl.textContent=prods.length>0?(_nItems!==prods.length?`${_nItems} colecciones · ${prods.length} diseños`:`${prods.length} producto${prods.length!==1?'s':''}`)+(parts.length?' · '+parts.join(' · '):''):'';
   }
 
   const panelGrid=document.getElementById('catPanelGrid');
@@ -523,7 +524,7 @@ function renderCatPanel(){
   if(prods.length){
     panelGrid.innerHTML=mkSkeletons(Math.min(prods.length,6));
     requestAnimationFrame(()=>{
-      panelGrid.innerHTML=prods.map(p=>mkCard(p,c.nombre,c.emoji)).join('');
+      panelGrid.innerHTML=_panelSearchQ.trim() ? prods.map(p=>mkCard(p,c.nombre,c.emoji)).join('') : mkListaAgrupada(prods,c.nombre,c.emoji);
       initLazyImages();
       // Mover subfiltros al panel
       const sf=document.getElementById('cat-sub-filters');
@@ -823,7 +824,7 @@ function cambiarVarianteModal(idx){
   _abrirModalCore(varAplicar(base, idx), ref.catNombre, ref.catEmoji, true);
 }
 
-function mkCard(p,catNombre,catEmoji){
+function mkCard(p,catNombre,catEmoji,extra){
   const pOrig = p;
   if(p.variantes && p.variantes.length){ p = Object.assign({}, p, { precio: varPrecioMin(p), tallas: varTallasUnion(p) }); }
   const BLANK = 'data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=';
@@ -840,6 +841,7 @@ function mkCard(p,catNombre,catEmoji){
     ? `<span style="position:absolute;bottom:.5rem;left:.5rem;background:rgba(255,204,0,.85);color:#000;font-family:var(--font-mono);font-size:.5rem;letter-spacing:1.5px;padding:.25rem .55rem;z-index:3;pointer-events:none">⚡ POCAS</span>`
     : '';  const tallasTag=(p.tallas&&p.tallas.length)?`<span class="card-tag">📏 ${p.tallas.join(' · ')}</span>`:'';
   const coloresTag=(p.colores&&p.colores.length)?`<span class="card-tag">🎨 ${p.colores.join(' · ')}</span>`:'';
+  const tipoTagX=(extra&&extra.tipo)?`<span class="card-tag" style="color:var(--neon);border-color:rgba(232,25,44,.35)">👕 ${extra.tipo}</span>`:'';
   const temasTag=(p.temas&&p.temas.length)?`<span class="card-tag" style="color:var(--neon2);border-color:rgba(255,0,60,.2)">🏷️ ${p.temas.join(' · ')}</span>`:'';
   const tienePersonajes=(p.personajes&&p.personajes.length>0);
   const pid = '_p' + Math.random().toString(36).slice(2);
@@ -856,7 +858,156 @@ function mkCard(p,catNombre,catEmoji){
   const favBtn = `<button class="card-fav-btn${esFav?' active':''}" data-pid="${pid}" onclick="toggleFavorito('${pid}',event)" title="${esFav?'Quitar de favoritos':'Guardar en favoritos'}">${esFav?'❤️':'🤍'}</button>`;
   const shareBtn=`<button class="card-share-btn" onclick="event.stopPropagation();compartirProducto('${nomSafe}','${catSafe}')" title="Compartir">🔗</button>`;
   const cartBtn=tienePersonajes?'':`<button style="background:none;border:none;color:var(--gray);cursor:pointer;font-size:.95rem;padding:.2rem .4rem;transition:color .2s" onclick="event.stopPropagation();${(p.variantes&&p.variantes.length)?"abrirModalById('"+pid+"')":"agregarAlCarritoById('"+pid+"')"}" title="Agregar al carrito" onmouseover="this.style.color='var(--neon)'" onmouseout="this.style.color='var(--gray)'">🛒</button>`;
-  return`<div class="product-card" onclick="${onclick}"><div class="card-img-wrap">${img}${extraBadge}${stockBadge}${favBtn}${shareBtn}<div class="card-overlay"><button class="card-overlay-btn">${btnLabel}</button></div></div><div class="card-body"><div class="card-cat">${catNombre||p.categoria||''}</div><div class="card-name">${p.nombre}</div><div class="card-tags">${temasTag}${tallasTag}${coloresTag}</div><div class="card-footer"><div class="card-price">${(pOrig.variantes&&pOrig.variantes.length&&p.precio)?'<small style="margin-right:.3rem">DESDE</small>':''}$${(p.precio||0).toLocaleString()}<small>MXN</small></div><div style="display:flex;align-items:center;gap:.3rem">${badgeHTML}${cartBtn}</div></div></div></div>`;
+  return`<div class="product-card" onclick="${onclick}"><div class="card-img-wrap">${img}${extraBadge}${stockBadge}${favBtn}${shareBtn}<div class="card-overlay"><button class="card-overlay-btn">${btnLabel}</button></div></div><div class="card-body"><div class="card-cat">${catNombre||p.categoria||''}</div><div class="card-name">${p.nombre}</div><div class="card-tags">${tipoTagX}${temasTag}${tallasTag}${coloresTag}</div><div class="card-footer"><div class="card-price">${(pOrig.variantes&&pOrig.variantes.length&&p.precio)?'<small style="margin-right:.3rem">DESDE</small>':''}$${(p.precio||0).toLocaleString()}<small>MXN</small></div><div style="display:flex;align-items:center;gap:.3rem">${badgeHTML}${cartBtn}</div></div></div></div>`;
+}
+
+// ═══ AGRUPAR PRODUCTOS POR SERIE (Playeras Smash Bros 1, 2, 3… → una sola tarjeta) ═══
+function _gNorm(s){ return String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/\s+/g,' ').trim(); }
+function _gEsc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;'); }
+// Palabras que describen el TIPO de prenda (no la serie). Se ignoran al agrupar para que
+// "PLAYERAS OVERSIZE SMASH BROS 1" y "PLAYERAS SMASH BROS 1" queden en la misma carpeta.
+const _G_TIPOS = ['corte redondo','cuello redondo','cuello v','oversize','over size','oversized','con cierre','sin cierre','cierre','con capucha','sin capucha','capucha','manga larga','manga corta','sin manga'];
+const _G_NOUNS = /\b(playeras?|sudaderas?|camisetas?|hoodies?|chamarras?|chaquetas?)\b/gi;
+function _gFraseRe(frase){
+  const m = {a:'aáAÁ',e:'eéEÉ',i:'iíIÍ',o:'oóOÓ',u:'uúUÚ'};
+  let t = frase.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+  t = t.replace(/[aeiouáéíóúAEIOUÁÉÍÓÚ]/g, c=>{ const k=c.normalize('NFD')[0].toLowerCase(); return '['+m[k]+']'; });
+  return t.replace(/\s+/g,'\\s+');
+}
+// Arma una sola expresión con todas las frases de tipo (las fijas + las que salen de los "tipos" de tus productos)
+function _gPrepararRe(prods){
+  const set = new Set(_G_TIPOS);
+  const agregar = t => {
+    const f = String(t||'').replace(_G_NOUNS,' ').replace(/\s+/g,' ').trim().toLowerCase();
+    if(f.length>=4 && f!=='normal') set.add(f);
+  };
+  (prods||[]).forEach(p=>agregar(p.tipo));
+  Object.keys(window.PRECIOS_TIPOS_D||{}).forEach(agregar);
+  const frases = [...set].sort((a,b)=>b.length-a.length).map(_gFraseRe);
+  return new RegExp('(^|[\\s(\\[-])(?:'+frases.join('|')+')(?=$|[\\s)\\].,-])','gi');
+}
+function _gLimpiar(txt){
+  return String(txt||'').replace(/\(\s*\)|\[\s*\]/g,' ').replace(/\s+/g,' ').replace(/^[\s\-–—|,]+|[\s\-–—|,]+$/g,'').trim();
+}
+// Nombre de la serie de un producto: campo "grupo" si existe; si no, el nombre sin el tipo y sin el número final
+function grupoBase(p, re){
+  const g = String((p && p.grupo) || '').trim();
+  if(g) return g;
+  const n = String((p && p.nombre) || '').trim();
+  let b = re ? _gLimpiar(n.replace(re,' ')) : n;
+  b = b.replace(/\s+#?\d{1,3}$/, '').trim();
+  return b;
+}
+// Tipo de prenda de un producto (campo "tipo" o detectado en el nombre)
+function tipoDe(p){
+  const t = String((p && p.tipo) || '').trim();
+  if(t) return t;
+  const n = String((p && p.nombre) || '');
+  let best = null;
+  _G_TIPOS.forEach(f=>{
+    const m = n.match(new RegExp('(^|[\\s(\\[-])'+_gFraseRe(f)+'(?=$|[\\s)\\].,-])','i'));
+    if(m && (best===null || m.index < best.idx)) best = {idx:m.index, f};
+  });
+  if(!best) return '';
+  const f = (best.f==='over size'||best.f==='oversized') ? 'oversize' : best.f;
+  return f.charAt(0).toUpperCase() + f.slice(1);
+}
+// Tipo dentro de un grupo: si unos tienen tipo (Oversize) y otros no, los que no tienen se llaman "Normal"
+function tipoEnGrupo(p, ps){ return tipoDe(p) || ((ps||[]).some(x=>tipoDe(x)) ? 'Normal' : ''); }
+// Recibe la lista de productos y devuelve elementos: {p} (producto suelto) o {grupo:true, nombre, prods:[...]}
+function agruparProductos(prods){
+  const re = _gPrepararRe(prods);
+  const mapa = new Map(), orden = [];
+  (prods||[]).forEach(p=>{
+    const base = grupoBase(p, re);
+    if(!base){ orden.push({p}); return; }
+    const k = _gNorm(base);
+    let g = mapa.get(k);
+    if(!g){ g = {grupo:true, key:k, nombre:base, prods:[]}; mapa.set(k,g); orden.push(g); }
+    g.prods.push(p);
+  });
+  // Un "grupo" de un solo producto se muestra como tarjeta normal
+  return orden.map(it => (it.grupo && it.prods.length === 1) ? {p: it.prods[0]} : it);
+}
+function mkGrupoCard(g, catNombre, catEmoji){
+  const ps = g.prods;
+  const BLANK = 'data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=';
+  const first = ps.find(x=>x.imagen) || ps[0];
+  const nom = _gEsc(g.nombre);
+  const img = first.imagen
+    ? `<img data-src="${first.imagen}" src="${BLANK}" class="card-img-real lazy" alt="${nom}" loading="lazy">`
+    : `<span class="card-img">${catEmoji||'📦'}</span>`;
+  const precios = ps.map(x=>{
+    const v = (x.variantes && x.variantes.length) ? varPrecioMin(x) : x.precio;
+    return Number(v)||0;
+  }).filter(n=>n>0);
+  const min = precios.length ? Math.min(...precios) : 0;
+  const max = precios.length ? Math.max(...precios) : 0;
+  const desde = (min !== max) ? '<small style="margin-right:.3rem">DESDE</small>' : '';
+  const temas = [...new Set(ps.flatMap(x=>x.temas||[]))];
+  const tallas = [...new Set(ps.flatMap(x=>(x.variantes&&x.variantes.length) ? varTallasUnion(x) : (x.tallas||[])))];
+  const colores = [...new Set(ps.flatMap(x=>x.colores||[]))];
+  const temasTag = temas.length ? `<span class="card-tag" style="color:var(--neon2);border-color:rgba(255,0,60,.2)">🏷️ ${temas.join(' · ')}</span>` : '';
+  const tallasTag = tallas.length ? `<span class="card-tag">📏 ${tallas.join(' · ')}</span>` : '';
+  const coloresTag = colores.length ? `<span class="card-tag">🎨 ${colores.join(' · ')}</span>` : '';
+  const tiposG = [...new Set(ps.map(x=>tipoEnGrupo(x,ps)).filter(Boolean))];
+  const tiposTag = tiposG.length>1 ? `<span class="card-tag">👕 ${tiposG.join(' · ')}</span>` : '';
+  window._grupoRegistry = window._grupoRegistry || {};
+  const gid = '_g' + Math.random().toString(36).slice(2);
+  window._grupoRegistry[gid] = {g, catNombre, catEmoji: catEmoji||'📦'};
+  const n = ps.length;
+  return `<div class="product-card grupo-card" onclick="abrirGrupoById('${gid}')"><div class="card-img-wrap">${img}<span class="badge badge-new" style="position:absolute;top:.5rem;left:.5rem">📁 ${n} DISEÑOS</span><div class="card-overlay"><button class="card-overlay-btn">Ver diseños</button></div></div><div class="card-body"><div class="card-cat">${_gEsc(catNombre||'')}</div><div class="card-name">${nom}</div><div class="card-tags">${tiposTag}${temasTag}${tallasTag}${coloresTag}</div><div class="card-footer"><div class="card-price">${min?desde+'$'+min.toLocaleString()+'<small>MXN</small>':''}</div><div style="display:flex;align-items:center;gap:.3rem"><span style="color:var(--neon);font-size:1.1rem">›</span></div></div></div></div>`;
+}
+// Lista mezclada (productos sueltos + grupos) → HTML
+function mkListaAgrupada(prods, catNombre, catEmoji){
+  return agruparProductos(prods).map(it => it.grupo ? mkGrupoCard(it, catNombre, catEmoji) : mkCard(it.p, catNombre, catEmoji)).join('');
+}
+function abrirGrupoById(gid){
+  const r = window._grupoRegistry && window._grupoRegistry[gid]; if(!r) return;
+  abrirGrupoPanel(r);
+}
+let _grupoTipoSel = 'Todos';
+function _renderGrupoPanel(){
+  const r = window._grupoActivo; if(!r) return;
+  const {g, catNombre, catEmoji} = r;
+  const tipos = [...new Set(g.prods.map(x=>tipoEnGrupo(x,g.prods)).filter(Boolean))];
+  if(_grupoTipoSel!=='Todos' && !tipos.includes(_grupoTipoSel)) _grupoTipoSel='Todos';
+  const lista = _grupoTipoSel==='Todos' ? g.prods : g.prods.filter(p=>tipoEnGrupo(p,g.prods)===_grupoTipoSel);
+  const chips = document.getElementById('grupoPanelChips');
+  if(chips){
+    if(tipos.length>1){
+      chips.style.display='flex';
+      chips.innerHTML = ['Todos',...tipos].map(t=>`<button class="csf-chip${t===_grupoTipoSel?' active':''}" data-tipo="${_gEsc(t)}">${_gEsc(t)}</button>`).join('');
+      chips.querySelectorAll('button').forEach(b=>{ b.onclick=()=>{ _grupoTipoSel=b.getAttribute('data-tipo'); _renderGrupoPanel(); }; });
+    } else { chips.style.display='none'; chips.innerHTML=''; }
+  }
+  document.getElementById('grupoPanelCount').textContent = lista.length + ' diseño' + (lista.length!==1?'s':'') + (_grupoTipoSel!=='Todos' ? ' · '+_grupoTipoSel : '');
+  const grid = document.getElementById('grupoPanelGrid');
+  grid.setAttribute('data-cols', GRID_CONFIG.productos||2);
+  grid.innerHTML = lista.map(p=>mkCard(p, catNombre, catEmoji, tipos.length>1 ? {tipo: tipoEnGrupo(p,g.prods)} : null)).join('');
+  initLazyImages();
+}
+function abrirGrupoPanel(r){
+  const panel = document.getElementById('grupoPanel'); if(!panel) return;
+  window._grupoActivo = r;
+  _grupoTipoSel = 'Todos';
+  document.getElementById('grupoPanelTitle').textContent = r.g.nombre;
+  document.getElementById('grupoPanelBackLabel').textContent = r.catNombre || 'Catálogo';
+  _renderGrupoPanel();
+  const body = document.getElementById('grupoPanelBody'); if(body) body.scrollTop = 0;
+  panel.classList.add('open');
+  setTimeout(initLazyImages, 380);
+  try{ actualizarBadge(); }catch(e){}
+  history.pushState({ saruxGrupoPanel: true }, '', window.location.href);
+}
+function cerrarGrupoPanel(){
+  const panel = document.getElementById('grupoPanel');
+  if(panel) panel.classList.remove('open');
+}
+// Botón "‹ atrás" del panel: usa el historial para que el botón atrás del celular quede en sintonía
+function volverDeGrupo(){
+  if(history.state && history.state.saruxGrupoPanel){ history.back(); }
+  else { cerrarGrupoPanel(); }
 }
 
 // GALERÍA DE PERSONAJES
@@ -2026,6 +2177,8 @@ function actualizarBadge(){
   if(badge){ badge.textContent = total; badge.style.display = total > 0 ? 'inline-block' : 'none'; }
   const panelBadge = document.getElementById('catPanelCarritoBadge');
   if(panelBadge){ panelBadge.textContent = total; }
+  const grupoBadge = document.getElementById('grupoPanelCarritoBadge');
+  if(grupoBadge){ grupoBadge.textContent = total; }
 }
 
 function toggleCarrito(){
@@ -3119,6 +3272,9 @@ async function subirFotoCliente(){
     // 1. Modal de producto abierto → cerrarlo
     const modalOverlay = document.getElementById('modalOverlay');
     if(modalOverlay && modalOverlay.classList.contains('open')){ cerrarModal(); return; }
+    // 1b. Panel de serie/grupo abierto → cerrarlo (queda el catálogo de la categoría)
+    const gPanel = document.getElementById('grupoPanel');
+    if(gPanel && gPanel.classList.contains('open')){ cerrarGrupoPanel(); return; }
     // 2. Panel de categoría → cerrarlo
     const panel = document.getElementById('catPanel');
     if(panel && panel.classList.contains('open')){ cerrarCatPanel(); return; }
