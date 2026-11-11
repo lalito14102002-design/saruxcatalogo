@@ -313,12 +313,13 @@
         <label class="admin-btn-sm" style="width:auto;flex:1;cursor:pointer;text-align:center;background:rgba(232,25,44,.15);border-color:rgba(232,25,44,.4)">📤 Varias imágenes<input type="file" multiple accept="image/*" style="display:none" onchange="uploadMasivoDisenos(this)"></label>
       </div>
     </div>
-    <div class="admin-field" style="border:1px solid rgba(232,25,44,.35);background:rgba(232,25,44,.05);padding:.7rem;border-radius:3px">
-      <label style="color:var(--neon)">👕 Tipos de playera: Normal / Oversize <span style="font-size:.6rem;color:var(--gray);font-weight:300">(opcional)</span></label>
-      <div style="font-family:var(--font-mono);font-size:.55rem;color:var(--gray);margin-bottom:.6rem;letter-spacing:1px;line-height:1.7">Cada tipo lleva su propia imagen del diseño (con publicidad), sus fotos reales y sus precios por talla (se capturan una sola vez en Catálogo → «Precios por tipo y talla»). Si no agregas tipos, el producto funciona como siempre.</div>
-      <datalist id="dl-tipos-precio"></datalist>
+    <div class="admin-field" style="border:1px solid rgba(232,25,44,.35);background:rgba(232,25,44,.05);padding:.8rem;border-radius:3px">
+      <label style="color:var(--neon);font-size:.85rem">👕 ¿Qué tipo de playera es? <span style="font-size:.6rem;color:var(--gray);font-weight:300">(opcional)</span></label>
+      <div style="font-size:.7rem;color:var(--gray);margin:.3rem 0 .7rem;line-height:1.6">Toca el tipo que vendes con este diseño. Puedes elegir <b>uno</b> o <b>los dos</b>. Vuelve a tocarlo para quitarlo. Si no eliges ninguno, el producto se publica normal, sin tipos.</div>
+      <div id="pm-tipos-chips" style="display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:.5rem"></div>
+      <div id="pm-tipos-estado" style="font-size:.7rem;color:var(--gray);line-height:1.6;margin-bottom:.4rem"></div>
       <div id="pm-variantes-list"></div>
-      <button class="admin-btn-sm" onclick="addVariante()" style="width:100%;margin-top:.4rem">+ Agregar tipo de playera</button>
+      <div style="font-size:.6rem;color:var(--gray);margin-top:.5rem;line-height:1.5">Los precios por talla de cada tipo se capturan una sola vez en Catálogo → «Precios por tipo y talla». ¿Falta un tipo en los botones? Créalo ahí.</div>
     </div>
     <div class="admin-field">
       <label style="color:var(--neon)">⭐ Personajes / Sub-diseños <span style="font-size:.6rem;color:var(--gray);font-weight:300">(ej: Goku, Vegeta, Freezer — cada uno con sus diseños)</span></label>
@@ -2040,10 +2041,10 @@ Casi listo...
                 <button class="admin-btn-sm" style="padding:1px 5px;font-size:.65rem;opacity:${puedeBaj?1:.25}" ${puedeBaj?`onclick="moverGrupo(${ci},'${keyAttr}',1)"`:'disabled'}>▼</button>
               </div>
               <div class="admin-product-name">📁 ${it.nombre} <span style="font-family:var(--font-mono);font-size:.55rem;color:var(--gray)">(${it.prods.length} diseños)</span></div>
-              <div onclick="event.stopPropagation()"><button class="admin-btn-sm" title="Renombrar grupo" onclick="renombrarGrupo(${ci},'${keyAttr}')">✏️</button></div>
+              <div onclick="event.stopPropagation()" style="display:flex;gap:.3rem"><button class="admin-btn-sm" style="width:auto" title="Agregar un diseño a esta carpeta" onclick="openAddProdEnGrupo(${ci},'${keyAttr}')">➕ Agregar</button><button class="admin-btn-sm" title="Renombrar grupo" onclick="renombrarGrupo(${ci},'${keyAttr}')">✏️</button></div>
               <div style="color:var(--neon);font-size:1rem;padding:0 .3rem">${abierto?'▾':'▸'}</div>
             </div>
-            ${abierto ? `<div style="display:flex;flex-direction:column;gap:.3rem;padding:.4rem .4rem .4rem 1.2rem">${it.prods.map(p=>filaProd(p,'',true)).join('')}</div>` : ''}
+            ${abierto ? `<div style="display:flex;flex-direction:column;gap:.3rem;padding:.4rem .4rem .4rem 1.2rem">${it.prods.map(p=>filaProd(p,'',true)).join('')}<button class="admin-btn-add" style="width:100%;margin-top:.3rem" onclick="openAddProdEnGrupo(${ci},'${keyAttr}')">+ Agregar producto a esta carpeta</button></div>` : ''}
           </div>`;
         });
         prodList.innerHTML = html;
@@ -2346,7 +2347,33 @@ Casi listo...
 
   let editingProd = null;
   let _disenosTemp = [];
-  function openAddProd(ci){ editingProd={ci, pi:-1}; _disenosTemp=[]; _personajesTemp=[]; _variantesTemp=[]; document.getElementById('adminModalTitle').textContent='Agregar Producto'; clearProdModal(); renderTipoDropdown(''); renderTemasCheckboxes([]); renderDisenosAdmin(); renderPersonajesAdmin(); renderVariantesAdmin(); document.getElementById('adminProdModal').classList.add('show'); }
+  function openAddProd(ci){ editingProd={ci, pi:-1}; _disenosTemp=[]; _personajesTemp=[]; _variantesTemp=[]; _variantesOff={}; document.getElementById('adminModalTitle').textContent='Agregar Producto'; clearProdModal(); renderTipoDropdown(''); renderTemasCheckboxes([]); renderDisenosAdmin(); renderPersonajesAdmin(); renderVariantesAdmin(); document.getElementById('adminProdModal').classList.add('show'); }
+  // Agregar un producto/diseño DENTRO de una carpeta (copia los datos de la carpeta y continúa la numeración)
+  function openAddProdEnGrupo(ci, key){
+    const prods = CATALOGO_D[ci].productos;
+    window.__adRe = _adPrepararRe(prods);
+    const miembros = prods.filter(p=>_adNorm(_adGrupoBase(p))===key);
+    if(!miembros.length){ openAddProd(ci); return; }
+    const ref = miembros[miembros.length-1];
+    const baseNombre = String(ref.nombre||'').replace(/\s+#?\d{1,3}\s*$/,'').trim() || _adGrupoBase(ref);
+    let max = 0; miembros.forEach(p=>{ const m=String(p.nombre||'').match(/#?(\d{1,3})\s*$/); if(m) max=Math.max(max,+m[1]); });
+    const sig = (max || miembros.length) + 1;
+    openAddProd(ci);
+    editingProd = {ci, pi:-1, carpeta:{key, baseNombre, sig}};
+    document.getElementById('adminModalTitle').textContent = 'Agregar a la carpeta «'+_adGrupoBase(ref)+'»';
+    const set=(id,v)=>{ const el=document.getElementById(id); if(el) el.value=v; };
+    set('pm-nombre', baseNombre+' '+sig);
+    set('pm-precio', ref.precio||''); set('pm-stock', ref.stock===undefined?'':ref.stock); set('pm-desc', ref.descripcion||'');
+    actualizarStockHint(ref.stock);
+    set('pm-colores', (ref.colores||[]).join(', ')); set('pm-tallas', (ref.tallas||[]).join(', '));
+    set('pm-subtema', ref.subtema||''); set('pm-grupo', ref.grupo||''); set('pm-badge', ref.badge||'');
+    renderTipoDropdown(ref.tipo||''); set('pm-tipo', ref.tipo||'');
+    renderTemasCheckboxes(ref.temas||[]);
+    _variantesTemp = (ref.variantes||[]).map(v=>{ const o={nombre:v.nombre,imagen:'',fotos:[]}; if(v.precio) o.precio=v.precio; if(v.precios) o.precios=JSON.parse(JSON.stringify(v.precios)); if(v.tallas) o.tallas=v.tallas.slice(); if(v.stock!==undefined&&v.stock!=='') o.stock=v.stock; return o; });
+    _variantesOff = {};
+    renderVariantesAdmin();
+    showNotif('Se copiaron los datos de la carpeta. Solo sube la imagen del diseño y guarda.');
+  }
   function openEditProd(ci, pi){
     const p = CATALOGO_D[ci].productos[pi];
     editingProd={ci,pi}; _disenosTemp = JSON.parse(JSON.stringify(p.disenos||[]));
@@ -2359,7 +2386,7 @@ Casi listo...
     document.getElementById('pm-tipo').value=p.tipo||'';
     renderTipoDropdown(p.tipo||'');
     _personajesTemp = JSON.parse(JSON.stringify(p.personajes||[]));
-    _variantesTemp = JSON.parse(JSON.stringify(p.variantes||[]));
+    _variantesTemp = JSON.parse(JSON.stringify(p.variantes||[])); _variantesOff = {};
     renderTemasCheckboxes(p.temas||[]); renderDisenosAdmin(); renderPersonajesAdmin(); renderVariantesAdmin();
     const preview=document.getElementById('pm-img-preview'); if(p.imagen){preview.src=p.imagen;preview.style.display='block';}else preview.style.display='none';
     document.getElementById('adminProdModal').classList.add('show');
@@ -2580,41 +2607,70 @@ Casi listo...
 
   // ---- Editor de tipos dentro del producto ----
   let _variantesTemp=[];
+  // Tipos que se pueden elegir: los de la lista de precios (o Normal/Oversize si aún no hay lista) + los que ya tenga el producto
+  let _variantesOff = {}; // guarda lo capturado de un tipo apagado, por si lo vuelves a prender en esta misma ventana
+  function _tiposDisponibles(){
+    const T = Object.keys(window.PRECIOS_TIPOS_D||{});
+    const base = T.length ? T : ['Normal','Oversize'];
+    const extra = _variantesTemp.map(v=>v.nombre).concat(Object.keys(_variantesOff)).filter(n=>n && !base.includes(n));
+    return [...new Set([...base, ...extra])];
+  }
+  function toggleTipoVariante(idx){
+    const nombre = _tiposDisponibles()[idx]; if(!nombre) return;
+    const i = _variantesTemp.findIndex(v=>v.nombre===nombre);
+    if(i>=0){
+      _variantesOff[nombre] = _variantesTemp[i];
+      _variantesTemp.splice(i,1);
+    } else {
+      _variantesTemp.push(_variantesOff[nombre] || {nombre:nombre, imagen:'', fotos:[]});
+      delete _variantesOff[nombre];
+      const orden = _tiposDisponibles();
+      _variantesTemp.sort((x,y)=>orden.indexOf(x.nombre)-orden.indexOf(y.nombre));
+    }
+    renderVariantesAdmin();
+  }
   function renderVariantesAdmin(){
     const w=document.getElementById('pm-variantes-list'); if(!w) return;
-    const dl=document.getElementById('dl-tipos-precio');
-    if(dl) dl.innerHTML=Object.keys(window.PRECIOS_TIPOS_D||{}).map(t=>`<option value="${_vEsc(t)}">`).join('');
+    const tipos=_tiposDisponibles();
+    const chips=document.getElementById('pm-tipos-chips');
+    if(chips) chips.innerHTML=tipos.map((t,idx)=>{
+      const on=_variantesTemp.some(v=>v.nombre===t);
+      return `<button type="button" class="admin-btn-sm" onclick="toggleTipoVariante(${idx})" style="width:auto;padding:.65rem 1.2rem;font-size:.85rem;font-weight:bold;${on?'background:var(--neon);color:#fff;border-color:var(--neon)':'opacity:.9'}">${on?'✅':'⬜'} ${_vEsc(t)}</button>`;
+    }).join('');
+    const estado=document.getElementById('pm-tipos-estado');
+    if(estado){
+      const sel=_variantesTemp.map(v=>v.nombre).filter(Boolean);
+      estado.innerHTML = sel.length
+        ? 'Elegiste: <b style="color:#fff">'+sel.map(_vEsc).join(' + ')+'</b>. Completa lo que sigue para cada uno 👇'
+        : 'No elegiste ninguno: se publica como una sola playera, sin tipos.';
+    }
     w.innerHTML=_variantesTemp.map((v,i)=>{
-      const fotos=(v.fotos||[]).map((f,j)=>`<div style="position:relative;display:inline-block;margin:0 .3rem .3rem 0"><img src="${_vEsc(f.imagen)}" style="width:52px;height:52px;object-fit:cover;border:1px solid #333"><button class="admin-btn-sm danger" style="position:absolute;top:0;right:0;padding:0 5px;font-size:.6rem" onclick="quitarFotoVariante(${i},${j})">✕</button></div>`).join('');
-      return `<div class="admin-card" style="margin:.5rem 0;padding:.7rem;border:1px solid rgba(232,25,44,.25)">
-        <div style="display:flex;gap:.5rem;align-items:center;margin-bottom:.5rem">
-          <input class="admin-input" list="dl-tipos-precio" value="${_vEsc(v.nombre||'')}" placeholder="Tipo (ej: Normal, Oversize)" oninput="_variantesTemp[${i}].nombre=this.value" style="flex:1;font-weight:bold">
-          <button class="admin-btn-sm danger" onclick="_variantesTemp.splice(${i},1);renderVariantesAdmin()">🗑️</button>
+      const nom=_vEsc(v.nombre||'');
+      const fotos=(v.fotos||[]).map((f,j)=>`<div style="position:relative;display:inline-block;margin:0 .3rem .3rem 0"><img src="${_vEsc(f.imagen)}" style="width:56px;height:56px;object-fit:cover;border:1px solid #333"><button class="admin-btn-sm danger" style="position:absolute;top:0;right:0;padding:0 5px;font-size:.6rem" onclick="quitarFotoVariante(${i},${j})">✕</button></div>`).join('');
+      return `<div class="admin-card" style="margin:.6rem 0;padding:.8rem;border:1px solid rgba(232,25,44,.45)">
+        <div style="display:flex;gap:.5rem;align-items:center;margin-bottom:.7rem">
+          <div style="flex:1;font-weight:bold;font-size:.95rem;color:var(--neon)">👕 Playera ${nom}</div>
+          <button type="button" class="admin-btn-sm danger" style="width:auto" onclick="toggleTipoVariante(${tipos.indexOf(v.nombre)})">Quitar este tipo</button>
         </div>
-        <label style="font-size:.7rem">Imagen del diseño (con publicidad)</label>
-        <div style="display:flex;gap:.5rem;align-items:center;margin-bottom:.5rem">
-          ${v.imagen?`<img src="${_vEsc(v.imagen)}" style="width:52px;height:52px;object-fit:cover;border:1px solid #333">`:'<div style="width:52px;height:52px;background:#222;display:flex;align-items:center;justify-content:center">🖼️</div>'}
-          <input class="admin-input" value="${_vEsc(v.imagen||'')}" placeholder="URL o sube imagen →" oninput="_variantesTemp[${i}].imagen=this.value" style="flex:1">
-          <label style="padding:.4rem .6rem;background:#1a1a1a;cursor:pointer">📷<input type="file" accept="image/*" style="display:none" onchange="uploadVarImg(this,${i})"></label>
+        <label style="font-size:.75rem;font-weight:bold">1️⃣ Imagen del diseño <span style="font-weight:300;color:var(--gray)">(la que lleva tu publicidad)</span></label>
+        <div style="display:flex;gap:.6rem;align-items:center;margin:.4rem 0 .9rem;flex-wrap:wrap">
+          ${v.imagen?`<img src="${_vEsc(v.imagen)}" style="width:64px;height:64px;object-fit:cover;border:1px solid #333">`:'<div style="width:64px;height:64px;background:#222;display:flex;align-items:center;justify-content:center;font-size:1.4rem">🖼️</div>'}
+          <label class="admin-btn-sm" style="width:auto;cursor:pointer;padding:.65rem 1rem">📷 Subir imagen<input type="file" accept="image/*" style="display:none" onchange="uploadVarImg(this,${i})"></label>
+          <input class="admin-input" value="${_vEsc(v.imagen||'')}" placeholder="o pega aquí el enlace de la imagen" oninput="_variantesTemp[${i}].imagen=this.value" style="flex:1;min-width:150px;font-size:.7rem">
         </div>
-        <label style="font-size:.7rem">Fotos reales de este tipo (opcional)</label>
-        <div style="margin:.3rem 0">${fotos}</div>
-        <label class="admin-btn-sm" style="width:auto;cursor:pointer;display:block;text-align:center;margin-bottom:.5rem">📤 Subir fotos reales<input type="file" multiple accept="image/*" style="display:none" onchange="uploadVarFotos(this,${i})"></label>
-        <details><summary style="cursor:pointer;font-family:var(--font-mono);font-size:.55rem;letter-spacing:1px;color:var(--gray)">AJUSTES ESPECIALES (opcional: precio, tallas o existencia solo para este artículo)</summary>
-          <div style="margin-top:.5rem">
-            <div class="admin-field"><label>Precio base propio (si no usas la lista general)</label><input class="admin-input" type="number" min="0" value="${v.precio||''}" oninput="_variantesTemp[${i}].precio=this.value?+this.value:''"></div>
-            <div class="admin-field"><label>Precios por talla propios (ej: Extragrande:300, Grande:280)</label><input class="admin-input" value="${_vEsc(_vFmtPrecios(v.precios))}" onchange="_variantesTemp[${i}].precios=_vParsePrecios(this.value)"></div>
-            <div class="admin-field"><label>Tallas propias (ej: Chica, Mediana)</label><input class="admin-input" value="${_vEsc((v.tallas||[]).join(', '))}" onchange="_variantesTemp[${i}].tallas=_vParseLista(this.value)"></div>
-            <div class="admin-field"><label>Existencia propia (vacío = usa la del producto)</label><input class="admin-input" type="number" min="0" value="${v.stock===undefined||v.stock===null?'':v.stock}" oninput="_variantesTemp[${i}].stock=this.value===''?'':+this.value"></div>
+        <label style="font-size:.75rem;font-weight:bold">2️⃣ Fotos reales de la playera ${nom} <span style="font-weight:300;color:var(--gray)">(opcional)</span></label>
+        <div style="margin:.4rem 0">${fotos}</div>
+        <label class="admin-btn-sm" style="width:auto;cursor:pointer;display:block;text-align:center;margin-bottom:.7rem;padding:.65rem 1rem">📤 Subir fotos reales<input type="file" multiple accept="image/*" style="display:none" onchange="uploadVarFotos(this,${i})"></label>
+        <details><summary style="cursor:pointer;font-size:.7rem;color:var(--gray)">⚙️ Cambiar precio, tallas o existencia solo para este artículo (opcional, casi nunca se usa)</summary>
+          <div style="margin-top:.6rem">
+            <div class="admin-field"><label>Precio de este tipo <span style="font-size:.6rem;color:var(--gray)">(vacío = usa la lista de precios por talla)</span></label><input class="admin-input" type="number" min="0" value="${v.precio||''}" oninput="_variantesTemp[${i}].precio=this.value?+this.value:''"></div>
+            <div class="admin-field"><label>Precio por talla <span style="font-size:.6rem;color:var(--gray)">(ej: Extragrande:300, Grande:280)</span></label><input class="admin-input" value="${_vEsc(_vFmtPrecios(v.precios))}" onchange="_variantesTemp[${i}].precios=_vParsePrecios(this.value)"></div>
+            <div class="admin-field"><label>Tallas de este tipo <span style="font-size:.6rem;color:var(--gray)">(ej: Chica, Mediana)</span></label><input class="admin-input" value="${_vEsc((v.tallas||[]).join(', '))}" onchange="_variantesTemp[${i}].tallas=_vParseLista(this.value)"></div>
+            <div class="admin-field"><label>Existencia de este tipo <span style="font-size:.6rem;color:var(--gray)">(vacío = usa la del producto)</span></label><input class="admin-input" type="number" min="0" value="${v.stock===undefined||v.stock===null?'':v.stock}" oninput="_variantesTemp[${i}].stock=this.value===''?'':+this.value"></div>
           </div>
         </details>
       </div>`;
     }).join('');
-  }
-  function addVariante(){
-    const usados=_variantesTemp.map(v=>v.nombre);
-    const sug=Object.keys(window.PRECIOS_TIPOS_D||{}).find(t=>!usados.includes(t))||(usados.includes('Normal')?'Oversize':'Normal');
-    _variantesTemp.push({nombre:sug,imagen:'',fotos:[]}); renderVariantesAdmin();
   }
   async function uploadVarImg(input,i){
     const f=input.files[0]; if(!f) return;
@@ -2712,13 +2768,15 @@ Casi listo...
     }
     const modo = (document.getElementById('pm-modo-pub')||{}).value || 'juntas';
     const grupos = _pubDividir(prod.disenos, modo, (document.getElementById('pm-grupo-size')||{}).value);
-    if(modo!=='juntas' && grupos.length>1){
+    const _carp = editingProd.carpeta || null;
+    if(_carp) _adGA().add(ci+'|'+_carp.key);
+    if(modo!=='juntas' && (grupos.length>1 || (_carp && grupos.length===1 && prod.disenos.length))){
       if(pi!==-1 && !confirm(`Este producto se reemplazará por ${grupos.length} artículos (${_pubNombre(prod.nombre,0,grupos.length)} … ${_pubNombre(prod.nombre,grupos.length-1,grupos.length)}). ¿Continuar?`)) return;
       const principal = document.getElementById('pm-imagen').value;
       const lista = grupos.map((g,i)=>{
         const p = JSON.parse(JSON.stringify(prod));
         const dt = _pubGrupoDatos(g, i, principal);
-        p.nombre = _pubNombre(prod.nombre, i, grupos.length);
+        p.nombre = _carp ? (String(prod.nombre||'').replace(/\s+#?\d{1,3}\s*$/,'').trim()||_carp.baseNombre)+' '+(_carp.sig+i) : _pubNombre(prod.nombre, i, grupos.length);
         p.disenos = dt.disenos; p.imagen = dt.imagen;
         if(i>0) p.personajes = [];
         return p;
